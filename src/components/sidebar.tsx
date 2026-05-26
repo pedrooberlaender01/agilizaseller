@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { signOut } from '@/app/actions/auth'
+import { cn } from '@/lib/utils'
 
 type NavLink = { href: string; label: string; icon: string }
 type NavGroup = { label: string; icon: string; basePath: string; children: NavLink[] }
@@ -13,6 +14,7 @@ const isGroup = (item: NavItem): item is NavGroup => 'children' in item
 
 const baseNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { href: '/pedidos', label: 'Pedidos', icon: 'receipt_long' },
   {
     label: 'Mercado Livre',
     icon: 'storefront',
@@ -83,15 +85,15 @@ function NavLinkItem({
     <Link
       href={href}
       className={[
-        'flex items-center gap-sm px-sm py-2 rounded-lg transition-all active:translate-x-1 duration-200',
-        nested ? 'pl-9' : '',
+        'group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-150',
+        nested ? 'pl-10' : '',
         active
-          ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500'
-          : 'text-slate-500 hover:text-slate-200 hover:bg-white/5',
+          ? 'text-zinc-50 bg-zinc-800/70'
+          : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40',
       ].join(' ')}
     >
-      <span className="material-symbols-outlined text-lg">{icon}</span>
-      <span>{label}</span>
+      <span className={['material-symbols-outlined text-[20px]', active && 'fill'].filter(Boolean).join(' ')}>{icon}</span>
+      <span className={cn('font-medium', active && 'font-semibold')}>{label}</span>
     </Link>
   )
 }
@@ -107,14 +109,14 @@ function NavGroupItem({ group }: { group: NavGroup }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={[
-          'flex items-center gap-sm px-sm py-2 rounded-lg transition-all active:translate-x-1 duration-200',
+          'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-150',
           groupActive
-            ? 'text-slate-200'
-            : 'text-slate-500 hover:text-slate-200 hover:bg-white/5',
+            ? 'text-zinc-50'
+            : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40',
         ].join(' ')}
       >
-        <span className="material-symbols-outlined text-lg">{group.icon}</span>
-        <span className="flex-1 text-left">{group.label}</span>
+        <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        <span className="flex-1 text-left font-medium">{group.label}</span>
         <span
           className={`material-symbols-outlined text-base transition-transform ${
             open ? 'rotate-180' : ''
@@ -143,19 +145,19 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
   const nav: NavItem[] = role === 'admin' ? [...baseNav, adminNav] : baseNav
 
   return (
-    <nav className="fixed left-0 top-0 h-screen flex-col p-4 z-50 bg-[#0d1117]/60 backdrop-blur-2xl w-[240px] border-r border-white/10 hidden md:flex font-inter text-[13px] font-medium">
-      <Link href="/dashboard" className="flex items-center gap-sm px-sm mb-lg">
-        <div className="w-8 h-8 rounded bg-primary-container flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined fill text-on-primary-container text-xl">
-            rocket_launch
+    <nav className="fixed left-0 top-0 h-screen flex-col p-3 z-50 bg-[#0a0a0c] w-[240px] border-r border-zinc-800 hidden md:flex font-sans text-sm font-medium">
+      <Link href="/dashboard" className="flex items-center gap-3 px-2 py-2 mb-4">
+        <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined fill text-[#0a0a0c] text-lg">
+            insights
           </span>
         </div>
         <div className="flex flex-col">
-          <span className="text-lg font-black text-white leading-tight tracking-tight">
+          <span className="text-[15px] font-bold text-zinc-50 leading-tight tracking-tight">
             Painel Luzzo
           </span>
-          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-            Mission Control
+          <span className="text-[11px] text-zinc-500 font-medium">
+            Marketplace intelligence
           </span>
         </div>
       </Link>
@@ -170,21 +172,21 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
         )}
       </div>
 
-      <div className="flex flex-col gap-xs mt-auto pt-4 border-t border-white/10">
+      <div className="flex flex-col gap-1 mt-auto pt-3 border-t border-zinc-800">
         <a
           href="#"
-          className="flex items-center gap-sm px-sm py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all active:translate-x-1 duration-200"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40 transition-colors duration-150"
         >
-          <span className="material-symbols-outlined text-lg">help</span>
-          <span>Suporte</span>
+          <span className="material-symbols-outlined text-[20px]">help_outline</span>
+          <span className="font-medium">Suporte</span>
         </a>
         <form action={signOut}>
           <button
             type="submit"
-            className="w-full flex items-center gap-sm px-sm py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all active:translate-x-1 duration-200"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40 transition-colors duration-150"
           >
-            <span className="material-symbols-outlined text-lg">logout</span>
-            <span>Sair</span>
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+            <span className="font-medium">Sair</span>
           </button>
         </form>
       </div>

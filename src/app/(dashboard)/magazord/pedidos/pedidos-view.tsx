@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
@@ -9,6 +9,18 @@ import { cn } from '@/lib/utils'
 const PAGE_SIZE = 50
 
 type Period = '7d' | '30d' | '90d'
+
+export type OrderItem = {
+  codigo_produto: string | null
+  codigo_derivacao: string | null
+  titulo: string | null
+  quantidade: number | null
+  valor_unitario: number | string | null
+  valor_desconto: number | string | null
+  valor_acrescimo: number | string | null
+  brinde: boolean | null
+  presente: boolean | null
+}
 
 export type OrderRow = {
   id: string
@@ -26,7 +38,7 @@ export type OrderRow = {
   uf: string | null
   cidade: string | null
   forma_pagamento_descricao: string | null
-  mag_order_items: { count: number }[]
+  mag_order_items: OrderItem[]
 }
 
 type SitTone = 'green' | 'blue' | 'yellow' | 'red' | 'gray'
@@ -66,11 +78,11 @@ const situacaoMeta: Record<number, { label: string; tone: SitTone }> = {
 }
 
 const toneClasses: Record<SitTone, string> = {
-  yellow: 'bg-tertiary/15 text-tertiary border border-tertiary/30',
-  blue:   'bg-primary/15 text-primary border border-primary/30',
-  green:  'bg-secondary/15 text-secondary border border-secondary/30',
-  red:    'bg-error/15 text-error border border-error/30',
-  gray:   'bg-outline/20 text-outline border border-outline/30',
+  yellow: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+  blue:   'bg-blue-500/15 text-blue-300 border border-blue-500/30',
+  green:  'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+  red:    'bg-rose-500/15 text-rose-300 border border-rose-500/30',
+  gray:   'bg-zinc-700/30 text-zinc-300 border border-zinc-600/40',
 }
 
 const allSituacoes = Object.keys(situacaoMeta).map(Number).sort((a, b) => a - b)
@@ -208,6 +220,16 @@ export function PedidosView({
   const [pending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebounced(searchInput, 300)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   function pushParams(updater: (next: URLSearchParams) => void, resetPage = true) {
     const next = new URLSearchParams(sp.toString())
@@ -317,10 +339,11 @@ export function PedidosView({
           </div>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-white/10">
+                <th className="w-10 px-2 py-4" />
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Código</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Marketplace</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Cliente</th>
@@ -334,32 +357,145 @@ export function PedidosView({
             <tbody className="text-sm text-slate-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-outline">
                     Nenhum pedido encontrado.
                   </td>
                 </tr>
               ) : (
                 orders.map((o) => {
                   const meta = situacaoMeta[o.situacao]
-                  const cls = meta ? toneClasses[meta.tone] : toneClasses.gray
+                  const clsBadge = meta ? toneClasses[meta.tone] : toneClasses.gray
                   const label = meta?.label ?? o.situacao_descricao ?? `#${o.situacao}`
-                  const itemCount = o.mag_order_items[0]?.count ?? 0
+                  const items = o.mag_order_items ?? []
+                  const itemCount = items.reduce((s, i) => s + (Number(i.quantidade) || 0), 0)
+                  const distinctSkus = items.length
+                  const isOpen = expanded.has(o.id)
+                  const hasItems = distinctSkus > 0
                   return (
-                    <tr
-                      key={o.id}
-                      className="border-b border-white/5 transition-colors hover:bg-white/5"
-                    >
-                      <td className="px-6 py-4 font-mono text-slate-300">{o.external_id}</td>
-                      <td className="px-6 py-4 text-xs text-slate-300">{o.marketplace_origem || 'Próprio'}</td>
-                      <td className="px-6 py-4 text-xs">{o.pessoa_nome ?? '—'}</td>
-                      <td className="px-6 py-4">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</td>
-                      <td className="px-6 py-4 font-medium">{fmtBrl(o.valor_total)}</td>
-                      <td className="px-6 py-4">
-                        <span className={cn('rounded-full px-2 py-1 text-xs font-medium', cls)}>{label}</span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-400">{o.uf || '—'}</td>
-                      <td className="px-6 py-4 text-slate-400">{fmtRelDate(o.data_hora)}</td>
-                    </tr>
+                    <Fragment key={o.id}>
+                      <tr
+                        className={cn(
+                          'border-b border-white/5 transition-colors',
+                          isOpen ? 'bg-white/[0.03]' : 'hover:bg-white/5',
+                          hasItems && 'cursor-pointer',
+                        )}
+                        onClick={() => hasItems && toggleExpand(o.id)}
+                      >
+                        <td className="px-2 py-4 text-center">
+                          {hasItems ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleExpand(o.id)
+                              }}
+                              className={cn(
+                                'inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/10 transition-all',
+                                isOpen
+                                  ? 'border-primary/40 bg-primary/10 text-primary'
+                                  : 'text-outline hover:border-primary/30 hover:text-white',
+                              )}
+                              aria-label={isOpen ? 'Recolher itens' : 'Expandir itens'}
+                              aria-expanded={isOpen}
+                            >
+                              <Icon name={isOpen ? 'expand_less' : 'expand_more'} size={14} />
+                            </button>
+                          ) : (
+                            <span className="text-outline">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-slate-300">{o.external_id}</td>
+                        <td className="px-6 py-4 text-xs text-slate-300">{o.marketplace_origem || 'Próprio'}</td>
+                        <td className="px-6 py-4 text-xs">{o.pessoa_nome ?? '—'}</td>
+                        <td className="px-6 py-4">
+                          <span className="font-medium text-white">{itemCount}</span>
+                          <span className="ml-1 text-xs text-outline">
+                            {itemCount === 1 ? 'item' : 'itens'}
+                          </span>
+                          {distinctSkus > 1 && (
+                            <span className="ml-2 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-400">
+                              {distinctSkus} SKUs
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 font-medium">{fmtBrl(o.valor_total)}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn('rounded-full px-2 py-1 text-xs font-medium', clsBadge)}>{label}</span>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-400">{o.uf || '—'}</td>
+                        <td className="px-6 py-4 text-slate-400">{fmtRelDate(o.data_hora)}</td>
+                      </tr>
+                      {isOpen && hasItems && (
+                        <tr className="border-b border-white/10 bg-black/30">
+                          <td colSpan={9} className="px-12 py-4">
+                            <div className="rounded-xl border border-white/5 bg-[#050507]/60">
+                              <table className="w-full text-left text-xs">
+                                <thead>
+                                  <tr className="border-b border-white/5 text-[10px] uppercase tracking-wider text-outline">
+                                    <th className="px-4 py-2 font-medium">SKU</th>
+                                    <th className="px-4 py-2 font-medium">Produto</th>
+                                    <th className="px-4 py-2 text-right font-medium">Qtd</th>
+                                    <th className="px-4 py-2 text-right font-medium">Unitário</th>
+                                    <th className="px-4 py-2 text-right font-medium">Desconto</th>
+                                    <th className="px-4 py-2 text-right font-medium">Total</th>
+                                    <th className="px-4 py-2 text-center font-medium">Flags</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {items.map((it, idx) => {
+                                    const qty = Number(it.quantidade) || 0
+                                    const unit = Number(it.valor_unitario) || 0
+                                    const desc = Number(it.valor_desconto) || 0
+                                    const acresc = Number(it.valor_acrescimo) || 0
+                                    const total = qty * unit - desc + acresc
+                                    return (
+                                      <tr
+                                        key={`${o.id}-item-${idx}`}
+                                        className="border-b border-white/5 last:border-b-0"
+                                      >
+                                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-300">
+                                          {it.codigo_derivacao || it.codigo_produto || '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-200">
+                                          <p className="line-clamp-2 max-w-[380px]">{it.titulo || '—'}</p>
+                                          {it.codigo_derivacao && it.codigo_produto && it.codigo_derivacao !== it.codigo_produto && (
+                                            <p className="mt-0.5 font-mono text-[9px] text-outline">
+                                              SKU pai: {it.codigo_produto}
+                                            </p>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-medium text-white">{qty}</td>
+                                        <td className="px-4 py-2.5 text-right text-slate-300">{fmtBrl(unit)}</td>
+                                        <td className="px-4 py-2.5 text-right text-error">
+                                          {desc > 0 ? `−${fmtBrl(desc)}` : '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-semibold text-white">
+                                          {fmtBrl(total)}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                          <div className="flex justify-center gap-1">
+                                            {it.brinde && (
+                                              <span className="rounded bg-secondary/15 px-1.5 py-0.5 text-[9px] font-medium text-secondary">
+                                                Brinde
+                                              </span>
+                                            )}
+                                            {it.presente && (
+                                              <span className="rounded bg-tertiary/15 px-1.5 py-0.5 text-[9px] font-medium text-tertiary">
+                                                Presente
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })
               )}

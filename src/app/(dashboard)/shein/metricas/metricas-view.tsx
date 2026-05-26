@@ -35,13 +35,13 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
     default: 'text-white',
     green: 'text-secondary',
     red: 'text-error',
-    blue: 'text-primary',
+    blue: 'text-blue-400',
   }[tone]
   return (
-    <div className="glass-card rounded-2xl p-5">
+    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
-        <Icon name={icon} size={18} className="text-outline" />
+        <Icon name={icon} size={18} className="text-zinc-500" />
       </div>
       <p className={cn('mt-2 text-3xl font-semibold', toneCls)}>{value}</p>
     </div>
@@ -95,7 +95,7 @@ export function MetricasView({
             <h2 className="text-h2 font-semibold text-white">Visão geral</h2>
             {nickname && <p className="mt-1 text-xs text-slate-400">Conexão: {nickname}</p>}
           </div>
-          <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
+          <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
             {(['7d', '30d', '90d'] as Period[]).map((p) => (
               <button
                 key={p}
@@ -123,14 +123,14 @@ export function MetricasView({
           <StatCard label="Receita Líquida" value={fmtBrl(totals.net)} icon="account_balance_wallet" tone="green" />
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="border-b border-white/10 px-6 py-4">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
+          <div className="border-b border-zinc-800 px-6 py-4">
             <h3 className="text-sm font-semibold text-white">Diário — {period === '7d' ? '7 dias' : period === '90d' ? '90 dias' : '30 dias'}</h3>
             <p className="mt-1 text-xs text-slate-400">Agregado diariamente pelo workflow Shein - Métricas Diárias (06h BRT).</p>
           </div>
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Data</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Pedidos</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Cancelados</th>
@@ -142,13 +142,13 @@ export function MetricasView({
             <tbody className="text-sm text-slate-200">
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Sem métricas no período. Aguarde próxima execução do cron diário (06h BRT).
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.metric_date} className="border-b border-white/5 hover:bg-white/5">
+                  <tr key={r.metric_date} className="border-b border-zinc-800/60 hover:bg-white/5">
                     <td className="px-6 py-4 font-mono text-xs text-slate-300">{fmtDateBR(r.metric_date)}</td>
                     <td className="px-6 py-4 text-right">{fmtInt(r.orders_count)}</td>
                     <td className="px-6 py-4 text-right text-error">{fmtInt(r.cancellations)}</td>

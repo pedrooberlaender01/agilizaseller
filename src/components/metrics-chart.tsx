@@ -156,7 +156,7 @@ export function MetricsChart({
   }
 
   return (
-    <div className="bg-surface-container/70 backdrop-blur-[16px] rounded-xl border border-white/10 flex flex-col relative">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col relative">
       <div className="flex flex-wrap items-end gap-3 border-b border-white/10 px-lg pt-3">
         <div className="flex items-end gap-1">
           {tabs.map((k) => {
@@ -169,7 +169,7 @@ export function MetricsChart({
                 onClick={() => setTab(k)}
                 className={cn(
                   'relative px-3 pb-3 pt-2 font-label-md text-label-md transition-colors',
-                  active ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface',
+                  active ? 'text-zinc-50' : 'text-zinc-400 hover:text-zinc-50',
                 )}
               >
                 <span className="flex items-center gap-2">
@@ -199,7 +199,7 @@ export function MetricsChart({
             onClick={() => setShowCurrent((v) => !v)}
             className={cn(
               'flex items-center gap-2 rounded-md px-2 py-1 text-label-md font-label-md transition-colors',
-              showCurrent ? 'text-on-surface' : 'text-outline-variant',
+              showCurrent ? 'text-zinc-50' : 'text-zinc-600',
             )}
             aria-pressed={showCurrent}
           >
@@ -218,7 +218,7 @@ export function MetricsChart({
             onClick={() => setShowPrevious((v) => !v)}
             className={cn(
               'flex items-center gap-2 rounded-md px-2 py-1 text-label-md font-label-md transition-colors',
-              showPrevious ? 'text-on-surface' : 'text-outline-variant',
+              showPrevious ? 'text-zinc-50' : 'text-zinc-600',
             )}
             aria-pressed={showPrevious}
           >
@@ -235,7 +235,7 @@ export function MetricsChart({
       </div>
 
       <div className="relative h-[320px] pb-9 pl-16 pr-lg pt-lg">
-        <div className="pointer-events-none absolute bottom-9 left-3 top-lg flex flex-col justify-between font-mono text-[10px] uppercase tracking-wider text-outline-variant">
+        <div className="pointer-events-none absolute bottom-9 left-3 top-lg flex flex-col justify-between font-mono text-[10px] uppercase tracking-wider text-zinc-600">
           {ticks.map((t) => (
             <span key={t} className="tabular-nums">{meta.axis(max * t)}</span>
           ))}
@@ -281,7 +281,7 @@ export function MetricsChart({
               />
             )}
 
-            {showCurrent && (
+            {showCurrent && len > 1 && (
               <>
                 <polygon fill={`url(#grad-${tab})`} points={`0,100 ${currentPoints} 100,100`} />
                 <polyline
@@ -294,6 +294,17 @@ export function MetricsChart({
                   vectorEffect="non-scaling-stroke"
                 />
               </>
+            )}
+            {showCurrent && len === 1 && (
+              <circle
+                cx="50"
+                cy={100 - (current[0] / max) * 100}
+                r="2.5"
+                fill={meta.color}
+                stroke={meta.color}
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
             )}
 
             {hovered !== null && (
@@ -339,7 +350,7 @@ export function MetricsChart({
               >
                 <div className="rounded-lg border border-white/10 bg-[#050507]/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-md">
                   <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
-                    <span className="font-mono text-[11px] tabular-nums text-outline">
+                    <span className="font-mono text-[11px] tabular-nums text-zinc-500">
                       {fmtFull(dates[idx])}
                     </span>
                     {showCurrent && showPrevious && (
@@ -364,7 +375,7 @@ export function MetricsChart({
                             className="h-2 w-2 rounded-full"
                             style={{ background: meta.color }}
                           />
-                          <span className="text-[11px] text-outline">Atual</span>
+                          <span className="text-[11px] text-zinc-500">Atual</span>
                         </div>
                         <span
                           className="font-mono text-[13px] font-semibold tabular-nums"
@@ -378,9 +389,9 @@ export function MetricsChart({
                       <div className="flex items-baseline justify-between">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full border border-dashed border-outline" />
-                          <span className="text-[11px] text-outline">Anterior</span>
+                          <span className="text-[11px] text-zinc-500">Anterior</span>
                         </div>
-                        <span className="font-mono text-[12px] text-on-surface-variant tabular-nums">
+                        <span className="font-mono text-[12px] text-zinc-400 tabular-nums">
                           {meta.format(prevVal)}
                         </span>
                       </div>
@@ -392,7 +403,7 @@ export function MetricsChart({
           })()}
         </div>
 
-        <div className="pointer-events-none absolute bottom-2 left-16 right-lg flex justify-between font-mono text-[10px] tabular-nums text-outline-variant">
+        <div className="pointer-events-none absolute bottom-2 left-16 right-lg flex justify-between font-mono text-[10px] tabular-nums text-zinc-600">
           {dateMarkers.map((i) => (
             <span key={i}>{fmtShort(dates[i])}</span>
           ))}

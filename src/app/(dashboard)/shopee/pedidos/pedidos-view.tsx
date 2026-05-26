@@ -42,15 +42,15 @@ const allStatuses: ShopeeOrderStatus[] = [
 ]
 
 const statusMeta: Record<ShopeeOrderStatus, { label: string; cls: string; tone: 'yellow' | 'blue' | 'green' | 'gray' | 'red' }> = {
-  UNPAID:             { label: 'Aguardando pagto.',  cls: 'bg-tertiary/15 text-tertiary border border-tertiary/30',     tone: 'yellow' },
-  READY_TO_SHIP:      { label: 'Pronto p/ envio',    cls: 'bg-primary/15 text-primary border border-primary/30',         tone: 'blue' },
-  PROCESSED:          { label: 'Processado',         cls: 'bg-primary/15 text-primary border border-primary/30',         tone: 'blue' },
-  SHIPPED:            { label: 'Enviado',            cls: 'bg-primary/15 text-primary border border-primary/30',         tone: 'blue' },
-  TO_CONFIRM_RECEIVE: { label: 'Confirmar recebim.', cls: 'bg-primary/15 text-primary border border-primary/30',         tone: 'blue' },
-  COMPLETED:          { label: 'Concluído',          cls: 'bg-secondary/15 text-secondary border border-secondary/30',   tone: 'green' },
-  IN_CANCEL:          { label: 'Em cancelamento',    cls: 'bg-tertiary/15 text-tertiary border border-tertiary/30',     tone: 'yellow' },
-  CANCELLED:          { label: 'Cancelado',          cls: 'bg-error/15 text-error border border-error/30',               tone: 'red' },
-  INVOICE_PENDING:    { label: 'NF pendente',        cls: 'bg-outline/20 text-outline border border-outline/30',         tone: 'gray' },
+  UNPAID:             { label: 'Aguardando pagto.',  cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/30',     tone: 'yellow' },
+  READY_TO_SHIP:      { label: 'Pronto p/ envio',    cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',         tone: 'blue' },
+  PROCESSED:          { label: 'Processado',         cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',         tone: 'blue' },
+  SHIPPED:            { label: 'Enviado',            cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',         tone: 'blue' },
+  TO_CONFIRM_RECEIVE: { label: 'Confirmar recebim.', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',         tone: 'blue' },
+  COMPLETED:          { label: 'Concluído',          cls: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',   tone: 'green' },
+  IN_CANCEL:          { label: 'Em cancelamento',    cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/30',     tone: 'yellow' },
+  CANCELLED:          { label: 'Cancelado',          cls: 'bg-rose-500/15 text-rose-300 border border-rose-500/30',               tone: 'red' },
+  INVOICE_PENDING:    { label: 'NF pendente',        cls: 'bg-outline/20 text-zinc-500 border border-outline/30',         tone: 'gray' },
 }
 
 const logisticsLabel: Record<string, string> = {
@@ -116,24 +116,24 @@ function StatusMultiselect({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex items-center gap-2 rounded-lg border border-white/10 bg-[#050507] px-4 py-2 text-sm text-on-surface outline-none transition-colors hover:border-tertiary',
-          open && 'border-tertiary',
+          'flex items-center gap-2 rounded-lg border border-zinc-800 bg-[#050507] px-4 py-2 text-sm text-zinc-50 outline-none transition-colors hover:border-zinc-50/40',
+          open && 'border-zinc-50/40',
         )}
       >
         <span>Status</span>
         {selected.size > 0 && (
-          <span className="rounded bg-tertiary/20 px-1.5 py-0.5 font-mono text-[10px] text-tertiary">
+          <span className="rounded bg-zinc-800/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-50">
             {selected.size}
           </span>
         )}
-        <Icon name={open ? 'expand_less' : 'expand_more'} size={16} className="text-outline" />
+        <Icon name={open ? 'expand_less' : 'expand_more'} size={16} className="text-zinc-500" />
       </button>
       {open && (
-        <div className="absolute z-30 mt-2 w-[260px] rounded-xl border border-white/10 bg-[#0d1117]/97 p-2 shadow-2xl shadow-black/60 backdrop-blur-md">
-          <div className="mb-1 flex items-center justify-between border-b border-white/5 px-2 py-1">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-outline">Filtrar status</span>
+        <div className="absolute z-30 mt-2 w-[260px] rounded-xl border border-zinc-800 bg-[#0d1117]/97 p-2 shadow-2xl shadow-black/60 backdrop-blur-md">
+          <div className="mb-1 flex items-center justify-between border-b border-zinc-800/60 px-2 py-1">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Filtrar status</span>
             {selected.size > 0 && (
-              <button onClick={onClear} className="text-[10px] text-tertiary hover:underline">
+              <button onClick={onClear} className="text-[10px] text-zinc-50 hover:underline">
                 Limpar
               </button>
             )}
@@ -146,16 +146,16 @@ function StatusMultiselect({
                   key={s}
                   type="button"
                   onClick={() => onToggle(s)}
-                  className="flex items-center justify-between rounded px-2 py-1.5 text-left text-sm text-on-surface hover:bg-white/5"
+                  className="flex items-center justify-between rounded px-2 py-1.5 text-left text-sm text-zinc-50 hover:bg-white/5"
                 >
                   <span className="flex items-center gap-2">
                     <span
                       className={cn(
                         'flex h-3.5 w-3.5 items-center justify-center rounded border',
-                        isOn ? 'border-tertiary bg-tertiary' : 'border-outline/40',
+                        isOn ? 'border-zinc-50/40 bg-zinc-50' : 'border-outline/40',
                       )}
                     >
-                      {isOn && <Icon name="check" size={11} className="text-on-tertiary" />}
+                      {isOn && <Icon name="check" size={11} className="text-zinc-900" />}
                     </span>
                     {statusMeta[s].label}
                   </span>
@@ -171,14 +171,14 @@ function StatusMultiselect({
 
 function MarginCell({ margin }: { margin: OrderRow['shopee_order_margins'][number] | undefined }) {
   if (!margin || margin.cost_missing) {
-    return <span className="rounded-full bg-outline/15 px-2 py-1 text-xs font-medium text-outline">Sem custo</span>
+    return <span className="rounded-full bg-outline/15 px-2 py-1 text-xs font-medium text-zinc-500">Sem custo</span>
   }
   const pct = margin.margin_pct ?? 0
   const cls =
     pct >= 20
       ? 'bg-secondary/10 text-secondary'
       : pct >= 10
-        ? 'bg-tertiary/10 text-tertiary'
+        ? 'bg-zinc-800/60 text-zinc-50'
         : 'bg-error/10 text-error'
   return <span className={cn('rounded-full px-2 py-1 text-xs font-medium', cls)}>{pct.toFixed(1)}%</span>
 }
@@ -221,10 +221,10 @@ function OrderDrawer({
 
   return (
     <aside
-      className="fixed right-0 top-0 z-40 flex h-screen w-[380px] flex-col overflow-y-auto border-l border-white/10 bg-[#0d1117]"
+      className="fixed right-0 top-0 z-40 flex h-screen w-[380px] flex-col overflow-y-auto border-l border-zinc-800 bg-[#0d1117]"
       style={{ boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 60, 0.1)' }}
     >
-      <div className="sticky top-0 z-10 flex items-start justify-between border-b border-white/10 bg-[#0d1117]/90 p-6 backdrop-blur-md">
+      <div className="sticky top-0 z-10 flex items-start justify-between border-b border-zinc-800 bg-[#0d1117]/90 p-6 backdrop-blur-md">
         <div className="min-w-0 pr-3">
           <h3 className="truncate font-mono text-base font-semibold text-white">#{orderRow.external_id}</h3>
           <p className="mt-1 text-sm text-slate-400">{fmtRelDate(orderRow.date_created)} · Shopee</p>
@@ -242,18 +242,18 @@ function OrderDrawer({
       <div className="flex-1 space-y-6 p-6">
         {loading && (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Icon name="progress_activity" className="animate-spin text-tertiary" size={28} />
-            <span className="text-xs text-outline">Carregando detalhes…</span>
+            <Icon name="progress_activity" className="animate-spin text-zinc-50" size={28} />
+            <span className="text-xs text-zinc-500">Carregando detalhes…</span>
           </div>
         )}
 
         {!loading && shipment && (
-          <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-white/5 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tertiary/20 text-tertiary">
+          <div className="flex items-center gap-4 rounded-lg border border-zinc-800 bg-white/5 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800/60 text-zinc-50">
               <Icon name="local_shipping" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-tertiary">
+              <p className="text-xs font-medium uppercase tracking-wider text-zinc-50">
                 {logisticsLabel[shipment.logistics_status] ?? shipment.logistics_status}
               </p>
               {shipment.tracking_number && (
@@ -266,7 +266,7 @@ function OrderDrawer({
         {!loading && (
           <div className="space-y-3">
             <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Comprador</h4>
-            <div className="glass-card rounded-lg p-4">
+            <div className="border border-zinc-800 bg-zinc-900/40 rounded-lg p-4">
               <p className="font-mono text-sm font-medium text-white">{orderRow.buyer_username ?? '—'}</p>
               {receiverName && <p className="mt-1 text-sm text-slate-300">{receiverName}</p>}
               {receiverAddress && <p className="mt-2 whitespace-pre-line text-sm text-slate-400">{receiverAddress}</p>}
@@ -279,10 +279,10 @@ function OrderDrawer({
             <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">
               Itens ({items.length})
             </h4>
-            <div className="glass-card divide-y divide-white/10 rounded-lg">
+            <div className="border border-zinc-800 bg-zinc-900/40 divide-y divide-white/10 rounded-lg">
               {items.map((it) => (
                 <div key={it.id} className="flex gap-4 p-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-white/10 bg-white/5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-zinc-800 bg-white/5">
                     <Icon name="inventory_2" className="text-slate-500" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -302,17 +302,17 @@ function OrderDrawer({
           <div className="space-y-3">
             <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Resumo Financeiro</h4>
             {margin?.cost_missing && (
-              <div className="flex items-start gap-2 rounded-lg border border-tertiary/30 bg-tertiary/10 p-3 text-xs text-tertiary">
+              <div className="flex items-start gap-2 rounded-lg border border-zinc-50/30 bg-zinc-800/60 p-3 text-xs text-zinc-50">
                 <Icon name="warning" size={14} className="mt-0.5 shrink-0" />
                 <span>Cálculo aproximado — custo do produto não cadastrado para 1+ SKUs.</span>
               </div>
             )}
-            <div className="glass-card space-y-2 rounded-lg p-4">
+            <div className="border border-zinc-800 bg-zinc-900/40 space-y-2 rounded-lg p-4">
               <div className="flex justify-between text-sm text-slate-300">
                 <span>Subtotal Itens</span>
                 <span>{fmtBrl(subtotal)}</span>
               </div>
-              <div className="my-2 border-t border-white/10" />
+              <div className="my-2 border-t border-zinc-800" />
               {margin ? (
                 <>
                   <div className="flex justify-between text-sm text-error">
@@ -335,7 +335,7 @@ function OrderDrawer({
                     <span>Impostos</span>
                     <span>- {fmtBrl(margin.seller_tax_total)}</span>
                   </div>
-                  <div className="my-2 border-t border-white/10" />
+                  <div className="my-2 border-t border-zinc-800" />
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-base font-semibold text-white">Lucro Líquido</span>
                     <div className="text-right">
@@ -354,7 +354,7 @@ function OrderDrawer({
                             margin.margin_pct >= 20
                               ? 'text-secondary'
                               : margin.margin_pct >= 10
-                                ? 'text-tertiary'
+                                ? 'text-zinc-50'
                                 : 'text-error',
                           )}
                         >
@@ -370,7 +370,7 @@ function OrderDrawer({
                     <span>Comissão Shopee (~20%)</span>
                     <span>- {fmtBrl(subtotal * SHOPEE_COMMISSION_RATE)}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-1 text-sm text-outline">
+                  <div className="flex items-center justify-between pt-1 text-sm text-zinc-500">
                     <span>Margem indisponível</span>
                     <span>—</span>
                   </div>
@@ -381,11 +381,11 @@ function OrderDrawer({
         )}
       </div>
 
-      <div className="flex gap-3 border-t border-white/10 bg-[#0d1117] p-6">
-        <button className="flex-1 rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white transition-colors hover:bg-white/10">
+      <div className="flex gap-3 border-t border-zinc-800 bg-[#0d1117] p-6">
+        <button className="flex-1 rounded-lg border border-zinc-800 bg-white/5 py-2 text-sm text-white transition-colors hover:bg-white/10">
           Imprimir Etiqueta
         </button>
-        <button className="flex-1 rounded-lg bg-tertiary py-2 text-sm font-medium text-on-tertiary shadow-lg shadow-orange-900/20 transition-colors hover:bg-tertiary/90">
+        <button className="flex-1 rounded-lg bg-zinc-50 py-2 text-sm font-medium text-zinc-900 shadow-lg shadow-orange-900/20 transition-colors hover:bg-zinc-100">
           Ver na Shopee
         </button>
       </div>
@@ -495,12 +495,12 @@ export function PedidosView({
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+                className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-zinc-50/40 focus:ring-1 focus:ring-tertiary"
                 placeholder="Buscar pedido ou comprador..."
               />
             </div>
             <StatusMultiselect selected={statusSet} onToggle={toggleStatus} onClear={clearStatus} />
-            <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
+            <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
               {(['7d', '30d', '90d'] as Period[]).map((p) => (
                 <button
                   key={p}
@@ -536,7 +536,7 @@ export function PedidosView({
               <button
                 key={s}
                 onClick={() => toggleStatus(s)}
-                className="flex items-center gap-2 rounded-full border border-tertiary/30 bg-tertiary/10 px-3 py-1 text-xs font-medium text-tertiary"
+                className="flex items-center gap-2 rounded-full border border-zinc-50/30 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-50"
               >
                 {statusMeta[s].label}
                 <Icon name="close" size={14} />
@@ -545,7 +545,7 @@ export function PedidosView({
             {search && (
               <button
                 onClick={() => setSearchInput('')}
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
+                className="flex items-center gap-2 rounded-full border border-zinc-800 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
               >
                 Busca: &quot;{search}&quot;
                 <Icon name="close" size={14} />
@@ -554,7 +554,7 @@ export function PedidosView({
             {period !== '30d' && (
               <button
                 onClick={() => setPeriod('30d')}
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
+                className="flex items-center gap-2 rounded-full border border-zinc-800 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
               >
                 Período: {period === '7d' ? '7 dias' : '90 dias'}
                 <Icon name="close" size={14} />
@@ -563,10 +563,10 @@ export function PedidosView({
           </div>
         )}
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">ID do Pedido</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Comprador</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Itens</th>
@@ -581,7 +581,7 @@ export function PedidosView({
             <tbody className="text-sm text-slate-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Nenhum pedido encontrado.
                   </td>
                 </tr>
@@ -595,7 +595,7 @@ export function PedidosView({
                       ? margin.gross_profit >= 0
                         ? 'text-secondary'
                         : 'text-error'
-                      : 'text-outline'
+                      : 'text-zinc-500'
                   const itemCount = o.shopee_order_items[0]?.count ?? 0
                   const shipLabel = ship?.logistics_status
                     ? logisticsLabel[ship.logistics_status] ?? ship.logistics_status
@@ -606,11 +606,11 @@ export function PedidosView({
                       key={o.id}
                       onClick={() => setSelectedId(o.id)}
                       className={cn(
-                        'cursor-pointer border-b border-white/5 transition-colors hover:bg-white/5',
+                        'cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5',
                         isSelected && 'bg-white/5 ring-1 ring-inset ring-tertiary/30',
                       )}
                     >
-                      <td className={cn('px-6 py-4 font-mono', isSelected ? 'text-tertiary' : 'text-slate-300')}>
+                      <td className={cn('px-6 py-4 font-mono', isSelected ? 'text-zinc-50' : 'text-slate-300')}>
                         {o.external_id}
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">{o.buyer_username ?? '—'}</td>
@@ -636,7 +636,7 @@ export function PedidosView({
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
             <span className="text-sm text-slate-400">
               {totalCount === 0
                 ? '0 resultados'
@@ -646,7 +646,7 @@ export function PedidosView({
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -656,7 +656,7 @@ export function PedidosView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= totalPages}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Próximo
               </button>

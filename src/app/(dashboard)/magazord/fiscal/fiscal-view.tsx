@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
+import { getMagInvoiceDetail, type MagInvoiceDetail } from '@/app/actions/magazord'
 
 const PAGE_SIZE = 50
 
@@ -149,6 +150,8 @@ export function FiscalView({
     }, false)
   }
 
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = invoices.find((inv) => inv.id === selectedId) ?? null
   const selectedSituacoes = situacao ? situacao.split(',') : []
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
@@ -183,21 +186,21 @@ export function FiscalView({
 
         {/* Stat cards */}
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="glass-card rounded-2xl p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wider text-slate-400">NFs no período</span>
               <Icon name="receipt_long" size={18} className="text-outline" />
             </div>
             <p className="mt-2 text-3xl font-semibold text-white">{totalCount.toLocaleString('pt-BR')}</p>
           </div>
-          <div className="glass-card rounded-2xl p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Autorizadas (página)</span>
               <Icon name="check_circle" size={18} className="text-outline" />
             </div>
             <p className="mt-2 text-3xl font-semibold text-secondary">{autorizadasCount}</p>
           </div>
-          <div className="glass-card rounded-2xl p-5">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Valor (página)</span>
               <Icon name="payments" size={18} className="text-outline" />
@@ -256,7 +259,7 @@ export function FiscalView({
         </div>
 
         {/* Tabela */}
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-white/10">
@@ -287,10 +290,18 @@ export function FiscalView({
                   const tipoCode = nf.tipo ?? -1
                   const sitCode = nf.situacao ?? -1
                   const sitTone = situacaoTone[sitCode] ?? 'gray'
+                  const isSelected = selectedId === nf.id
                   return (
-                    <tr key={nf.id} className="border-b border-white/5 transition-colors hover:bg-white/5">
+                    <tr
+                      key={nf.id}
+                      onClick={() => setSelectedId(nf.id)}
+                      className={cn(
+                        'cursor-pointer border-b border-white/5 transition-colors hover:bg-white/5',
+                        isSelected && 'bg-white/5 ring-1 ring-inset ring-tertiary/30',
+                      )}
+                    >
                       <td className="px-6 py-4">
-                        <div className="font-mono text-sm text-white">{nf.numero ?? '—'}</div>
+                        <div className={cn('font-mono text-sm', isSelected ? 'text-tertiary' : 'text-white')}>{nf.numero ?? '—'}</div>
                         {nf.serie != null && (
                           <div className="font-mono text-[10px] text-slate-500">série {nf.serie}</div>
                         )}
@@ -354,6 +365,270 @@ export function FiscalView({
           </div>
         </div>
       </main>
+
+      {selected && (
+        <InvoiceDrawer
+          invoiceId={selected.id}
+          fallback={selected}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
     </>
+  )
+}
+
+function InvoiceDrawer({
+  invoiceId,
+  fallback,
+  onClose,
+}: {
+  invoiceId: string
+  fallback: InvoiceRow
+  onClose: () => void
+}) {
+  const [details, setDetails] = useState<MagInvoiceDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [xmlOpen, setXmlOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setDetails(null)
+    setXmlOpen(false)
+    getMagInvoiceDetail(invoiceId).then((res) => {
+      if (!cancelled) {
+        setDetails(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [invoiceId])
+
+  function copyChave() {
+    if (!fallback.chave) return
+    navigator.clipboard.writeText(fallback.chave).catch(() => {})
+  }
+
+  function downloadXml() {
+    const xml = details?.xml
+    if (!xml) return
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `NFe-${fallback.numero ?? fallback.identificador ?? 'sem-numero'}.xml`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const raw = details?.raw_payload ?? null
+  const itens = raw?.itens ?? []
+  const order = details?.mag_orders ?? null
+  const sitM = fallback.situacao !== null ? situacaoLabel[fallback.situacao] : null
+  const sitTone = fallback.situacao !== null ? situacaoTone[fallback.situacao] : 'gray'
+  const tipoM = fallback.tipo !== null ? tipoLabel[fallback.tipo] : null
+
+  return (
+    <aside
+      className="fixed right-0 top-0 z-40 flex h-screen w-[420px] flex-col overflow-y-auto border-l border-white/10 bg-[#0d1117]"
+      style={{ boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 60, 0.1)' }}
+    >
+      <div className="sticky top-0 z-10 flex items-start justify-between border-b border-white/10 bg-[#0d1117]/90 p-6 backdrop-blur-md">
+        <div className="min-w-0 pr-3">
+          <h3 className="font-mono text-base font-semibold text-white">NF {fallback.numero ?? '—'}</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            Série {fallback.serie ?? '—'} · {fallback.data_emissao ? new Date(fallback.data_emissao).toLocaleString('pt-BR') : '—'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sitM && (
+              <span className={cn('rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-wider', toneClass[sitTone])}>
+                {sitM}
+              </span>
+            )}
+            {tipoM && (
+              <span className={cn('rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-wider', toneClass.blue)}>
+                {tipoM}
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Fechar"
+          className="rounded-full p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <Icon name="close" />
+        </button>
+      </div>
+
+      <div className="flex-1 space-y-6 p-6">
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Chave de Acesso</h4>
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+            <code className="break-all text-[11px] text-slate-300">{fallback.chave ?? '—'}</code>
+            <button
+              onClick={copyChave}
+              disabled={!fallback.chave}
+              className="shrink-0 rounded p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              title="Copiar chave"
+            >
+              <Icon name="content_copy" size={14} />
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <Icon name="progress_activity" className="animate-spin text-tertiary" size={24} />
+            <span className="text-xs text-outline">Carregando detalhes…</span>
+          </div>
+        )}
+
+        {!loading && order && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Pedido vinculado</h4>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+              <p className="font-mono text-sm text-white">#{order.external_id}</p>
+              {order.pessoa_nome && <p className="mt-1 text-sm text-slate-300">{order.pessoa_nome}</p>}
+              <p className="mt-1 text-xs text-slate-400">
+                {order.marketplace_origem || 'Próprio'}
+                {(order.uf || order.cidade) && ` · ${[order.cidade, order.uf].filter(Boolean).join(' / ')}`}
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                Total pedido: {fmtBrl(order.valor_total)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!loading && raw?.descricaoSituacao && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Situação SEFAZ</h4>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-slate-200">
+              {raw.descricaoSituacao}
+              {raw.dataAtualizacao && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Atualizada em {new Date(raw.dataAtualizacao).toLocaleString('pt-BR')}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!loading && itens.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              Itens ({itens.length})
+            </h4>
+            <div className="divide-y divide-white/10 rounded-lg border border-zinc-800 bg-zinc-900/40">
+              {itens.map((it, i) => (
+                <div key={it.id ?? i} className="p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-white">{it.descricao}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+                        {it.codigo} · Qtd {Number(it.quantidade)} × {fmtBrl(it.valorUnitario)}
+                        {it.deposito ? ` · Dep ${it.deposito}` : ''}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-medium text-white">{fmtBrl(it.valorTotal)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Resumo Financeiro</h4>
+            <div className="space-y-1.5 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-sm">
+              <div className="flex justify-between text-slate-300">
+                <span>Valor Produtos</span>
+                <span>{fmtBrl(fallback.valor)}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Frete (itens)</span>
+                <span>{fmtBrl(fallback.valor_frete)}</span>
+              </div>
+              <div className="my-2 border-t border-white/10" />
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-base font-semibold text-white">Total NF</span>
+                <span className="text-xl font-semibold text-secondary">{fmtBrl(fallback.valor)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && raw?.titulos && raw.titulos.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Títulos</h4>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-sm">
+              {raw.titulos.map((t) => (
+                <code key={t} className="mr-2 inline-block text-xs text-slate-300">{t}</code>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && details?.xml && (
+          <div className="space-y-2">
+            <button
+              onClick={() => setXmlOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-white/10"
+            >
+              <span className="flex items-center gap-2">
+                <Icon name="code" size={14} />
+                XML ({Math.round((details.xml.length / 1024) * 10) / 10} KB)
+              </span>
+              <Icon name={xmlOpen ? 'expand_less' : 'expand_more'} size={16} />
+            </button>
+            {xmlOpen && (
+              <pre className="max-h-[300px] overflow-auto rounded-lg border border-white/10 bg-black/40 p-3 text-[10px] leading-relaxed text-slate-400">
+                {details.xml}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-white/10 bg-[#0d1117] p-6">
+        <div className="flex gap-2">
+          <a
+            href={`/api/magazord/invoice/${invoiceId}/danfe`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-tertiary py-2 text-sm font-medium text-on-tertiary transition-colors hover:bg-tertiary/90"
+          >
+            <Icon name="picture_as_pdf" size={16} />
+            DANFE
+          </a>
+          <a
+            href={`/api/magazord/invoice/${invoiceId}/danfe?variant=simplificada`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-tertiary/40 bg-tertiary/10 py-2 text-sm font-medium text-tertiary transition-colors hover:bg-tertiary/20"
+          >
+            <Icon name="receipt" size={16} />
+            Simplificada
+          </a>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={`/api/magazord/invoice/${invoiceId}/danfe?variant=etiqueta`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white transition-colors hover:bg-white/10"
+          >
+            <Icon name="local_shipping" size={16} />
+            Etiqueta
+          </a>
+          <button
+            onClick={downloadXml}
+            disabled={loading || !details?.xml}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="code" size={16} />
+            XML
+          </button>
+        </div>
+      </div>
+    </aside>
   )
 }

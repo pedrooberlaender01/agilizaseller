@@ -5,10 +5,20 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
+import { mapOrderStatus, statusToneClass } from '@/lib/shein-status'
 
 const PAGE_SIZE = 50
 
 type Period = '7d' | '30d' | '90d'
+
+export type OrderItem = {
+  quantity?: number | null
+  commission?: number | string | null
+  service_charge?: number | string | null
+  estimated_income?: number | string | null
+  seller_price?: number | string | null
+  product_name?: string | null
+}
 
 export type OrderRow = {
   id: string
@@ -23,17 +33,17 @@ export type OrderRow = {
   buyer_email: string | null
   order_time: string | null
   payment_time: string | null
-  shein_order_items: { count: number }[]
+  shein_order_items: OrderItem[]
 }
 
 type Tone = 'green' | 'blue' | 'yellow' | 'red' | 'gray'
 
 const toneClasses: Record<Tone, string> = {
-  yellow: 'bg-tertiary/15 text-tertiary border border-tertiary/30',
-  blue:   'bg-primary/15 text-primary border border-primary/30',
-  green:  'bg-secondary/15 text-secondary border border-secondary/30',
-  red:    'bg-error/15 text-error border border-error/30',
-  gray:   'bg-outline/20 text-outline border border-outline/30',
+  yellow: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/30',
+  blue:   'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+  green:  'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+  red:    'bg-rose-500/15 text-rose-300 border border-rose-500/30',
+  gray:   'bg-outline/20 text-zinc-500 border border-outline/30',
 }
 
 function statusTone(s: string | null): Tone {
@@ -144,11 +154,15 @@ export function PedidosView({
     return orders.reduce(
       (acc, o) => {
         acc.gmv += Number(o.total_amount ?? 0)
+        for (const it of o.shein_order_items ?? []) {
+          acc.fees += Number(it.commission ?? 0) + Number(it.service_charge ?? 0)
+          acc.estimated += Number(it.estimated_income ?? 0)
+        }
         if (o.order_status?.toLowerCase().includes('cancel')) acc.cancel++
         else acc.valid++
         return acc
       },
-      { gmv: 0, valid: 0, cancel: 0 },
+      { gmv: 0, valid: 0, cancel: 0, fees: 0, estimated: 0 },
     )
   }, [orders])
 
@@ -163,7 +177,7 @@ export function PedidosView({
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+                className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-zinc-50/40 focus:ring-1 focus:ring-tertiary"
                 placeholder="Buscar order_no, comprador..."
               />
             </div>
@@ -171,15 +185,15 @@ export function PedidosView({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-tertiary"
+                className="rounded-lg border border-zinc-800 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-zinc-50/40"
               >
                 <option value="">Todos status</option>
                 {statuses.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>{mapOrderStatus(s).label}</option>
                 ))}
               </select>
             )}
-            <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
+            <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
               {(['7d', '30d', '90d'] as Period[]).map((p) => (
                 <button
                   key={p}
@@ -200,63 +214,78 @@ export function PedidosView({
               <p className="text-sm font-semibold text-white">{fmtBrl(totals.gmv)}</p>
             </div>
             <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400">Taxas Shein</p>
+              <p className="text-sm font-semibold text-error">{fmtBrl(totals.fees)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400">Líquido est.</p>
+              <p className="text-sm font-semibold text-secondary">{fmtBrl(totals.estimated)}</p>
+            </div>
+            <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">Pedidos</p>
               <p className="text-sm font-semibold text-white">{totalCount.toLocaleString('pt-BR')}</p>
             </div>
           </div>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Pedido</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Comprador</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Status</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Pagamento</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Envio</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Itens</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Total</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Taxas</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Líquido est.</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Quando</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Nenhum pedido encontrado. Aguarde sincronização (Reconciliar a cada 30min).
                   </td>
                 </tr>
               ) : (
                 orders.map((o) => {
-                  const items = o.shein_order_items?.[0]?.count ?? 0
+                  const items = o.shein_order_items ?? []
+                  let fees = 0
+                  let estimated = 0
+                  for (const it of items) {
+                    fees += Number(it.commission ?? 0) + Number(it.service_charge ?? 0)
+                    estimated += Number(it.estimated_income ?? 0)
+                  }
+                  const firstProduct = items[0]?.product_name?.trim() || '—'
+                  const extraCount = items.length > 1 ? ` +${items.length - 1}` : ''
                   return (
-                    <tr key={o.id} className="border-b border-white/5 hover:bg-white/5">
+                    <tr
+                      key={o.id}
+                      onClick={() => router.push(`/shein/pedidos/${encodeURIComponent(o.order_no)}`)}
+                      className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
+                    >
                       <td className="px-6 py-4">
-                        <p className="font-mono text-xs text-white">{o.order_no}</p>
-                        {o.store_code && <p className="mt-1 font-mono text-[10px] text-outline">{o.store_code}</p>}
+                        <p className="line-clamp-2 max-w-[340px] text-sm font-medium text-white">
+                          {firstProduct}
+                          {extraCount && <span className="ml-1 text-xs text-zinc-500">{extraCount}</span>}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] text-zinc-500">{o.order_no}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-slate-200">{o.buyer_name || '—'}</p>
-                        {o.buyer_email && <p className="mt-1 text-[11px] text-outline">{o.buyer_email}</p>}
+                        {(() => {
+                          const m = mapOrderStatus(o.order_status)
+                          return (
+                            <span className={cn('inline-flex rounded px-2 py-0.5 text-[10px] font-medium', statusToneClass(m.tone))}>
+                              {m.label}
+                            </span>
+                          )
+                        })()}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={cn('inline-flex rounded px-2 py-0.5 text-[10px] font-medium', toneClasses[statusTone(o.order_status)])}>
-                          {o.order_status || '—'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={cn('inline-flex rounded px-2 py-0.5 text-[10px] font-medium', toneClasses[statusTone(o.payment_status)])}>
-                          {o.payment_status || '—'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={cn('inline-flex rounded px-2 py-0.5 text-[10px] font-medium', toneClasses[statusTone(o.shipping_status)])}>
-                          {o.shipping_status || '—'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-xs text-slate-400">{items}</td>
+                      <td className="px-6 py-4 text-right font-mono text-xs text-slate-400">{items.length}</td>
                       <td className="px-6 py-4 text-right font-medium text-white">{fmtBrl(o.total_amount, o.currency ?? 'BRL')}</td>
+                      <td className="px-6 py-4 text-right text-error">{fmtBrl(fees, o.currency ?? 'BRL')}</td>
+                      <td className="px-6 py-4 text-right font-medium text-secondary">{fmtBrl(estimated, o.currency ?? 'BRL')}</td>
                       <td className="px-6 py-4 text-xs text-slate-400">{fmtRelDate(o.order_time)}</td>
                     </tr>
                   )
@@ -265,7 +294,7 @@ export function PedidosView({
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
             <span className="text-sm text-slate-400">
               {totalCount === 0
                 ? '0 resultados'
@@ -275,7 +304,7 @@ export function PedidosView({
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -283,7 +312,7 @@ export function PedidosView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= totalPages}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Próximo
               </button>

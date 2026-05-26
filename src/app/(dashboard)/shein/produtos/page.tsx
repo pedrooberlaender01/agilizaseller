@@ -28,7 +28,7 @@ export default async function SheinProdutosPage({
       <>
         <TopBar title="Produtos — Shein" />
         <main className="flex flex-1 items-center justify-center p-margin">
-          <p className="text-sm text-outline">Sem conexão Shein ativa.</p>
+          <p className="text-sm text-zinc-500">Sem conexão Shein ativa.</p>
         </main>
       </>
     )

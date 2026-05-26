@@ -29,7 +29,7 @@ export default async function SheinEstoquePage({
       <>
         <TopBar title="Estoque — Shein" />
         <main className="flex flex-1 items-center justify-center p-margin">
-          <p className="text-sm text-outline">Sem conexão Shein ativa.</p>
+          <p className="text-sm text-zinc-500">Sem conexão Shein ativa.</p>
         </main>
       </>
     )
@@ -37,7 +37,7 @@ export default async function SheinEstoquePage({
 
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
-    .from('shein_stock')
+    .from('shein_stock_enriched')
     .select('*', { count: 'exact' })
     .eq('connection_id', conn.id)
 
@@ -45,7 +45,7 @@ export default async function SheinEstoquePage({
   if (baixo) query = query.lte('available_qty', 5)
   if (search) {
     const term = search.replace(/%/g, '')
-    query = query.ilike('sku_code', `%${term}%`)
+    query = query.or(`sku_code.ilike.%${term}%,product_name.ilike.%${term}%`)
   }
 
   const { data, count } = await query

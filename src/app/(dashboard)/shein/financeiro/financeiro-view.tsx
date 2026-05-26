@@ -14,8 +14,12 @@ export type SettlementRow = {
   id: string
   settlement_id: string | null
   order_no: string | null
-  amount: number | string | null
+  gross_amount: number | string | null
+  amount?: number | string | null
   fee: number | string | null
+  commission: number | string | null
+  service_charge: number | string | null
+  estimated_income: number | string | null
   net_amount: number | string | null
   currency: string | null
   settlement_date: string | null
@@ -48,13 +52,13 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
     default: 'text-white',
     green: 'text-secondary',
     red: 'text-error',
-    blue: 'text-primary',
+    blue: 'text-blue-400',
   }[tone]
   return (
-    <div className="glass-card rounded-2xl p-5">
+    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
-        <Icon name={icon} size={18} className="text-outline" />
+        <Icon name={icon} size={18} className="text-zinc-500" />
       </div>
       <p className={cn('mt-2 text-2xl font-semibold', toneCls)}>{value}</p>
     </div>
@@ -114,14 +118,18 @@ export function FinanceiroView({
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, r) => {
-        acc.gross += Number(r.amount ?? 0)
+        acc.gross += Number(r.gross_amount ?? r.amount ?? 0)
         acc.fee += Number(r.fee ?? 0)
+        acc.commission += Number(r.commission ?? 0)
+        acc.service += Number(r.service_charge ?? 0)
+        acc.estimated += Number(r.estimated_income ?? 0)
         acc.net += Number(r.net_amount ?? 0)
         return acc
       },
-      { gross: 0, fee: 0, net: 0 },
+      { gross: 0, fee: 0, commission: 0, service: 0, estimated: 0, net: 0 },
     )
   }, [rows])
+  const taxaPct = totals.gross > 0 ? (totals.fee / totals.gross) * 100 : 0
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
@@ -134,7 +142,7 @@ export function FinanceiroView({
             <h2 className="text-h2 font-semibold text-white">Liquidações</h2>
             {nickname && <p className="mt-1 text-xs text-slate-400">Conexão: {nickname}</p>}
           </div>
-          <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
+          <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
             {(['7d', '30d', '90d', 'all'] as Period[]).map((p) => (
               <button
                 key={p}
@@ -150,10 +158,12 @@ export function FinanceiroView({
           </div>
         </div>
 
-        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <StatCard label="Bruto" value={fmtBrl(totals.gross)} icon="payments" tone="blue" />
-          <StatCard label="Taxas Shein" value={fmtBrl(totals.fee)} icon="percent" tone="red" />
-          <StatCard label="Líquido a receber" value={fmtBrl(totals.net)} icon="account_balance_wallet" tone="green" />
+          <StatCard label="Comissão Shein" value={fmtBrl(totals.commission)} icon="percent" tone="red" />
+          <StatCard label="Service charge" value={fmtBrl(totals.service)} icon="local_shipping" tone="red" />
+          <StatCard label={`Taxa total (${taxaPct.toFixed(1)}%)`} value={fmtBrl(totals.fee)} icon="receipt" tone="red" />
+          <StatCard label="Receita líquida est." value={fmtBrl(totals.estimated)} icon="account_balance_wallet" tone="green" />
         </div>
 
         <div className="mb-lg flex flex-wrap items-center gap-4">
@@ -162,39 +172,41 @@ export function FinanceiroView({
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+              className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-zinc-50/40 focus:ring-1 focus:ring-tertiary"
               placeholder="Buscar settlement_id ou order_no..."
             />
           </div>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Settlement ID</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Pedido</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Bruto</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Taxa</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Líquido</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Comissão</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Service</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Líquido est.</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Data</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-200">
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Sem liquidações no período. Aguarde sync de settlements.
                   </td>
                 </tr>
               ) : (
                 rows.map((s) => (
-                  <tr key={s.id} className="border-b border-white/5 hover:bg-white/5">
+                  <tr key={s.id} className="border-b border-zinc-800/60 hover:bg-white/5">
                     <td className="px-6 py-4 font-mono text-xs text-white">{s.settlement_id || '—'}</td>
                     <td className="px-6 py-4 font-mono text-xs text-slate-400">{s.order_no || '—'}</td>
-                    <td className="px-6 py-4 text-right">{fmtBrl(s.amount, s.currency ?? 'BRL')}</td>
-                    <td className="px-6 py-4 text-right text-error">{fmtBrl(s.fee, s.currency ?? 'BRL')}</td>
-                    <td className="px-6 py-4 text-right font-medium text-secondary">{fmtBrl(s.net_amount, s.currency ?? 'BRL')}</td>
+                    <td className="px-6 py-4 text-right">{fmtBrl(s.gross_amount ?? s.amount, s.currency ?? 'BRL')}</td>
+                    <td className="px-6 py-4 text-right text-error">{fmtBrl(s.commission, s.currency ?? 'BRL')}</td>
+                    <td className="px-6 py-4 text-right text-error">{fmtBrl(s.service_charge, s.currency ?? 'BRL')}</td>
+                    <td className="px-6 py-4 text-right font-medium text-secondary">{fmtBrl(s.estimated_income, s.currency ?? 'BRL')}</td>
                     <td className="px-6 py-4 text-xs text-slate-400">{fmtDate(s.settlement_date)}</td>
                   </tr>
                 ))
@@ -202,7 +214,7 @@ export function FinanceiroView({
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
             <span className="text-sm text-slate-400">
               {totalCount === 0
                 ? '0 resultados'
@@ -212,7 +224,7 @@ export function FinanceiroView({
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -220,7 +232,7 @@ export function FinanceiroView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= totalPages}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Próximo
               </button>

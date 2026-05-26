@@ -2,6 +2,9 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { MetricasView, type DailyMetric } from './metricas-view'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type Period = '7d' | '30d' | '90d'
 
 function parsePeriod(raw: string | undefined): Period {
@@ -11,8 +14,8 @@ function parsePeriod(raw: string | undefined): Period {
 function periodCutoffIso(period: Period): string {
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const d = new Date()
-  d.setDate(d.getDate() - days + 1)
-  return d.toISOString().slice(0, 10)
+  d.setDate(d.getDate() - days)
+  return d.toISOString()
 }
 
 export default async function SheinMetricasPage({
@@ -37,18 +40,27 @@ export default async function SheinMetricasPage({
       <>
         <TopBar title="Métricas — Shein" />
         <main className="flex flex-1 items-center justify-center p-margin">
-          <p className="text-sm text-outline">Sem conexão Shein ativa.</p>
+          <p className="text-sm text-zinc-500">Sem conexão Shein ativa.</p>
         </main>
       </>
     )
   }
 
-  const { data: rows } = await supabase
-    .from('shein_daily_metrics')
-    .select('*')
-    .eq('connection_id', conn.id)
-    .gte('metric_date', periodCutoffIso(period))
-    .order('metric_date', { ascending: false })
+  const { data: rows, error } = await supabase.rpc('shein_metrics_realtime', {
+    p_connection_id: conn.id,
+    p_cutoff: periodCutoffIso(period),
+  })
+
+  if (error) {
+    return (
+      <>
+        <TopBar title="Métricas — Shein" />
+        <main className="flex flex-1 items-center justify-center p-margin">
+          <p className="text-sm text-error">Erro ao calcular métricas: {error.message}</p>
+        </main>
+      </>
+    )
+  }
 
   return (
     <MetricasView

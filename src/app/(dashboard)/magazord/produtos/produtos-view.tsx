@@ -120,7 +120,7 @@ export function ProdutosView({
           </span>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-white/10">

@@ -16,6 +16,9 @@ export type StockRow = {
   reserved_qty: number
   total_qty: number
   updated_at: string | null
+  product_name?: string | null
+  spu_name?: string | null
+  skc_name?: string | null
 }
 
 function useDebounced<T>(value: T, delay: number): T {
@@ -108,7 +111,7 @@ export function EstoqueView({
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+                className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-zinc-50/40 focus:ring-1 focus:ring-tertiary"
                 placeholder="Buscar SKU..."
               />
             </div>
@@ -116,7 +119,7 @@ export function EstoqueView({
               <select
                 value={warehouse}
                 onChange={(e) => setWarehouse(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-tertiary"
+                className="rounded-lg border border-zinc-800 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-zinc-50/40"
               >
                 <option value="">Todos depósitos</option>
                 {warehouses.map((w) => (
@@ -130,7 +133,7 @@ export function EstoqueView({
                 'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
                 baixo
                   ? 'border-error/40 bg-error/10 text-error'
-                  : 'border-white/10 bg-[#050507] text-slate-400 hover:text-white',
+                  : 'border-zinc-800 bg-[#050507] text-slate-400 hover:text-white',
               )}
             >
               <Icon name="warning" size={14} />
@@ -142,11 +145,11 @@ export function EstoqueView({
           </span>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">SKU</th>
+              <tr className="border-b border-zinc-800">
+                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Produto</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Depósito</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Disponível</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Reservado</th>
@@ -157,21 +160,42 @@ export function EstoqueView({
             <tbody className="text-sm text-slate-200">
               {stock.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Nenhum item de estoque encontrado. Sync horário em execução.
                   </td>
                 </tr>
               ) : (
                 stock.map((s) => {
                   const low = s.available_qty <= 5
+                  const productName = (s.product_name || '').trim() || s.skc_name || s.spu_name || '—'
                   return (
-                    <tr key={s.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="px-6 py-4 font-mono text-xs text-slate-300">{s.sku_code}</td>
-                      <td className="px-6 py-4 text-xs text-slate-400">{s.warehouse || '—'}</td>
+                    <tr
+                      key={s.id}
+                      onClick={() => router.push(`/shein/estoque/${encodeURIComponent(s.sku_code)}`)}
+                      className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
+                    >
+                      <td className="px-6 py-4">
+                        <p className="line-clamp-2 max-w-[340px] text-sm font-medium text-white">{productName}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-zinc-500">{s.sku_code}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigator.clipboard?.writeText(s.sku_code).catch(() => undefined)
+                            }}
+                            className="rounded p-0.5 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+                            title="Copiar SKU"
+                          >
+                            <Icon name="content_copy" size={12} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[10px] text-slate-400">{s.warehouse || '—'}</td>
                       <td className={cn('px-6 py-4 text-right font-medium', low ? 'text-error' : 'text-white')}>
                         {s.available_qty}
                       </td>
-                      <td className="px-6 py-4 text-right text-tertiary">{s.reserved_qty}</td>
+                      <td className="px-6 py-4 text-right text-zinc-50">{s.reserved_qty}</td>
                       <td className="px-6 py-4 text-right text-slate-400">{s.total_qty}</td>
                       <td className="px-6 py-4 text-xs text-slate-400">{fmtRel(s.updated_at)}</td>
                     </tr>
@@ -181,7 +205,7 @@ export function EstoqueView({
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
             <span className="text-sm text-slate-400">
               {totalCount === 0
                 ? '0 resultados'
@@ -191,7 +215,7 @@ export function EstoqueView({
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -199,7 +223,7 @@ export function EstoqueView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= totalPages}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Próximo
               </button>

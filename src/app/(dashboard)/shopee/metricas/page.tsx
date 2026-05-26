@@ -64,13 +64,35 @@ function NoConnectionState() {
   )
 }
 
+function parseIsoDateOnly(s: string | undefined): string | null {
+  if (!s) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  return m ? s : null
+}
+
+function customRange(fromIso: string, toIso: string): { current: { from: string; to: string }; previous: { from: string; to: string } } {
+  const from = new Date(fromIso)
+  const to = new Date(toIso)
+  const days = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1)
+  const prevTo = new Date(from)
+  prevTo.setDate(prevTo.getDate() - 1)
+  const prevFrom = new Date(prevTo)
+  prevFrom.setDate(prevFrom.getDate() - days + 1)
+  return {
+    current: { from: fromIso, to: toIso },
+    previous: { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) },
+  }
+}
+
 export default async function ShopeeMetricasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>
+  searchParams: Promise<{ period?: string; from?: string; to?: string }>
 }) {
   const sp = await searchParams
   const period = parsePeriod(sp.period)
+  const customFrom = parseIsoDateOnly(sp.from)
+  const customTo = parseIsoDateOnly(sp.to)
   const supabase = await createClient()
 
   const { data: conn } = await supabase
@@ -83,7 +105,10 @@ export default async function ShopeeMetricasPage({
 
   if (!conn) return <NoConnectionState />
 
-  const { current: cur, previous: prev } = periodRange(period)
+  const isCustom = !!(customFrom && customTo)
+  const { current: cur, previous: prev } = isCustom
+    ? customRange(customFrom, customTo)
+    : periodRange(period)
 
   const [{ data: currentRows }, { data: previousRows }] = await Promise.all([
     supabase
@@ -107,6 +132,8 @@ export default async function ShopeeMetricasPage({
       current={(currentRows ?? []) as ShopeeDailyMetric[]}
       previous={(previousRows ?? []) as ShopeeDailyMetric[]}
       period={period}
+      customFrom={isCustom ? customFrom : null}
+      customTo={isCustom ? customTo : null}
       nickname={conn.nickname}
     />
   )

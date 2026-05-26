@@ -33,9 +33,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#0a0a0c] text-zinc-50">
       <Sidebar role={safeProfile.role} userName={safeProfile.full_name ?? safeProfile.email} />
-      <div className="flex h-screen flex-1 flex-col overflow-hidden md:ml-[240px]">
+      <div className="flex h-screen flex-1 flex-col overflow-hidden md:ml-[240px] bg-[#0a0a0c]">
         {children}
       </div>
     </div>

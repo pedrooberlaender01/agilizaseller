@@ -23,7 +23,7 @@ function NoConnectionState() {
     <>
       <TopBar title="Pedidos — Magazord" />
       <main className="flex flex-1 items-center justify-center p-margin">
-        <div className="glass-card flex max-w-md flex-col items-center gap-md rounded-2xl p-xl text-center">
+        <div className="flex max-w-md flex-col items-center gap-md rounded-2xl border border-zinc-800 bg-zinc-900/40 p-xl text-center">
           <span className="material-symbols-outlined text-4xl text-tertiary">link_off</span>
           <h2 className="text-h2 font-semibold text-on-surface">Sem conexão Magazord ativa</h2>
           <p className="text-sm text-on-surface-variant">
@@ -68,7 +68,10 @@ export default async function MagazordPedidosPage({
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
     .from('mag_orders')
-    .select('*, mag_order_items(count)', { count: 'exact' })
+    .select(
+      '*, mag_order_items(codigo_produto, codigo_derivacao, titulo, quantidade, valor_unitario, valor_desconto, valor_acrescimo, brinde, presente)',
+      { count: 'exact' },
+    )
     .eq('connection_id', conn.id)
     .gte('data_hora', periodCutoffIso(period))
 

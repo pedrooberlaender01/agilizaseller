@@ -23,15 +23,15 @@ function NoConnectionState() {
     <>
       <TopBar title="Pedidos — Shein" />
       <main className="flex flex-1 items-center justify-center p-margin">
-        <div className="glass-card flex max-w-md flex-col items-center gap-md rounded-2xl p-xl text-center">
-          <span className="material-symbols-outlined text-4xl text-tertiary">link_off</span>
-          <h2 className="text-h2 font-semibold text-on-surface">Sem conexão Shein ativa</h2>
-          <p className="text-sm text-on-surface-variant">
+        <div className="border border-zinc-800 bg-zinc-900/40 flex max-w-md flex-col items-center gap-md rounded-2xl p-xl text-center">
+          <span className="material-symbols-outlined text-4xl text-zinc-50">link_off</span>
+          <h2 className="text-h2 font-semibold text-zinc-50">Sem conexão Shein ativa</h2>
+          <p className="text-sm text-zinc-400">
             Configure a conexão Shein em Configurações para começar a sincronizar pedidos.
           </p>
           <Link
             href="/configuracoes"
-            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-tertiary px-4 py-2 text-sm font-medium text-on-tertiary transition-colors hover:bg-tertiary/90"
+            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100"
           >
             <span className="material-symbols-outlined text-[18px]">link</span>
             Ir para Configurações
@@ -69,7 +69,7 @@ export default async function SheinPedidosPage({
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
     .from('shein_orders')
-    .select('*, shein_order_items(count)', { count: 'exact' })
+    .select('*, shein_order_items(quantity, commission, service_charge, estimated_income, seller_price, product_name)', { count: 'exact' })
     .eq('connection_id', conn.id)
     .gte('order_time', periodCutoffIso(period))
 

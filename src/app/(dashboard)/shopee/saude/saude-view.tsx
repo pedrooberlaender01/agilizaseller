@@ -36,10 +36,10 @@ type Punishment = {
 type Tone = 'success' | 'warning' | 'error' | 'neutral'
 
 const toneClasses: Record<Tone, { text: string; bg: string; border: string; dot: string; cls: string; icon: string }> = {
-  success: { text: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/30', dot: 'bg-secondary', cls: 'bg-secondary/15 text-secondary border border-secondary/30',  icon: 'verified' },
-  warning: { text: 'text-tertiary',  bg: 'bg-tertiary/10',  border: 'border-tertiary/30',  dot: 'bg-tertiary',  cls: 'bg-tertiary/15 text-tertiary border border-tertiary/30',     icon: 'priority_high' },
-  error:   { text: 'text-error',     bg: 'bg-error/10',     border: 'border-error/30',     dot: 'bg-error',     cls: 'bg-error/15 text-error border border-error/30',             icon: 'warning' },
-  neutral: { text: 'text-outline',   bg: 'bg-outline/10',   border: 'border-outline/30',   dot: 'bg-outline',   cls: 'bg-outline/15 text-outline border border-outline/30',       icon: 'help' },
+  success: { text: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/30', dot: 'bg-secondary', cls: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',  icon: 'verified' },
+  warning: { text: 'text-zinc-50',  bg: 'bg-zinc-800/60',  border: 'border-zinc-50/30',  dot: 'bg-zinc-50',  cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/30',     icon: 'priority_high' },
+  error:   { text: 'text-error',     bg: 'bg-error/10',     border: 'border-error/30',     dot: 'bg-error',     cls: 'bg-rose-500/15 text-rose-300 border border-rose-500/30',             icon: 'warning' },
+  neutral: { text: 'text-zinc-500',   bg: 'bg-outline/10',   border: 'border-outline/30',   dot: 'bg-outline',   cls: 'bg-outline/15 text-zinc-500 border border-outline/30',       icon: 'help' },
 }
 
 function penaltyTone(n: number): Tone {
@@ -92,7 +92,7 @@ function StatusHeroCard({ snap }: { snap: ShopeeAccountHealth }) {
   const pTone = toneClasses[penaltyTone(snap.penalty_points)]
 
   return (
-    <div className="glass-card relative overflow-hidden p-lg">
+    <div className="border border-zinc-800 bg-zinc-900/40 relative overflow-hidden p-lg">
       <div className={cn('pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full blur-[80px]', tone.bg)} />
       <div className="relative z-10 flex flex-col gap-lg">
         <div className="flex items-center justify-between">
@@ -100,30 +100,30 @@ function StatusHeroCard({ snap }: { snap: ShopeeAccountHealth }) {
             <Icon name={tone.icon} className={tone.text} filled />
             <h3 className="text-base font-semibold text-white">Status Atual</h3>
           </div>
-          <span className="rounded-full border border-white/10 bg-surface-container px-3 py-1 text-[11px] text-outline">
+          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-[11px] text-zinc-500">
             {fmtSnapshotDate(snap.snapshot_at)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-md">
           <div className="flex flex-col">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-outline">Performance Rating</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Performance Rating</span>
             <span className={cn('mt-1 inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider', tone.cls)}>
               {ratingLabel(snap.overall_performance_rating)}
             </span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-outline">Penalty Points</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Penalty Points</span>
             <div className="mt-1 flex items-baseline gap-1">
               <span className={cn('text-[42px] font-bold leading-none', pTone.text)}>{snap.penalty_points}</span>
-              <span className="text-xs text-outline">/ 12</span>
+              <span className="text-xs text-zinc-500">/ 12</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-surface-container/40 p-3">
+        <div className="flex items-center gap-2 rounded-lg border border-zinc-800/60 bg-zinc-900/40 p-3">
           <span className={cn('h-2 w-2 animate-pulse rounded-full', tone.dot)} />
-          <span className="text-xs text-on-surface-variant">
+          <span className="text-xs text-zinc-400">
             {snap.penalty_points === 0
               ? 'Conta saudável. Sem pontos acumulados.'
               : `${snap.penalty_points} ponto(s) em vigor. Suspensão a partir de 12.`}
@@ -151,18 +151,18 @@ function MetricCard({
 }) {
   const t = toneClasses[tone]
   return (
-    <div className="glass-card relative flex flex-col justify-between overflow-hidden p-lg">
+    <div className="border border-zinc-800 bg-zinc-900/40 relative flex flex-col justify-between overflow-hidden p-lg">
       <div className={cn('pointer-events-none absolute right-0 top-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full blur-[40px]', t.bg)} />
       <div className="relative z-10 mb-4 flex items-start justify-between">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-outline">{label}</h3>
+        <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</h3>
         <Icon name={icon} size={14} className={t.text} filled />
       </div>
       <div className="relative z-10">
         <div className="mb-2 flex items-baseline gap-2">
           <span className={cn('text-[32px] font-bold leading-none', t.text)}>{value}</span>
-          {unit && <span className="text-sm text-outline">{unit}</span>}
+          {unit && <span className="text-sm text-zinc-500">{unit}</span>}
         </div>
-        <p className="text-xs text-outline">{hint}</p>
+        <p className="text-xs text-zinc-500">{hint}</p>
       </div>
     </div>
   )
@@ -184,18 +184,18 @@ function HistoryChart({
   }))
 
   return (
-    <div className="glass-card col-span-12 flex flex-col p-0">
+    <div className="border border-zinc-800 bg-zinc-900/40 col-span-12 flex flex-col p-0">
       <div className="flex flex-wrap items-center justify-between gap-md border-b border-white/8 p-lg">
         <div className="flex items-center gap-2">
-          <Icon name="show_chart" className="text-outline-variant" />
+          <Icon name="show_chart" className="text-zinc-600" />
           <h3 className="text-base font-semibold text-white">Histórico de Penalty Points</h3>
         </div>
         <div className="flex items-center gap-md">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-tertiary" />
-            <span className="text-xs text-outline">Penalty Points</span>
+            <div className="h-2 w-2 rounded-full bg-zinc-50" />
+            <span className="text-xs text-zinc-500">Penalty Points</span>
           </div>
-          <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
+          <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
             {([30, 60, 90] as PeriodDays[]).map((d) => (
               <button
                 key={d}
@@ -214,8 +214,8 @@ function HistoryChart({
       <div className="h-[260px] w-full p-lg pl-2">
         {chartData.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-            <Icon name="timeline" className="text-3xl text-outline-variant" />
-            <span className="text-sm text-outline">Sem snapshots no período.</span>
+            <Icon name="timeline" className="text-3xl text-zinc-600" />
+            <span className="text-sm text-zinc-500">Sem snapshots no período.</span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -274,9 +274,9 @@ function HistoryChart({
 
 function PunishmentsCard({ punishments }: { punishments: Punishment[] }) {
   return (
-    <div className="glass-card flex flex-col p-0">
+    <div className="border border-zinc-800 bg-zinc-900/40 flex flex-col p-0">
       <div className="flex items-center gap-2 border-b border-white/8 p-lg">
-        <Icon name="gavel" className="text-outline-variant" />
+        <Icon name="gavel" className="text-zinc-600" />
         <h3 className="text-base font-semibold text-white">Punições Ativas</h3>
       </div>
       <div className="flex flex-col gap-3 p-lg">
@@ -285,8 +285,8 @@ function PunishmentsCard({ punishments }: { punishments: Punishment[] }) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
               <Icon name="check_circle" className="text-secondary" size={24} filled />
             </div>
-            <span className="text-sm font-medium text-on-surface">Sem punições ativas</span>
-            <span className="text-xs text-outline">Conta operando sem restrições.</span>
+            <span className="text-sm font-medium text-zinc-50">Sem punições ativas</span>
+            <span className="text-xs text-zinc-500">Conta operando sem restrições.</span>
           </div>
         ) : (
           punishments.map((p, i) => (
@@ -294,15 +294,15 @@ function PunishmentsCard({ punishments }: { punishments: Punishment[] }) {
               <Icon name="warning" className="mt-0.5 text-error" filled />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-error">{p.type ?? 'Punição'}</p>
-                {p.description && <p className="mt-1 text-xs text-on-surface-variant">{p.description}</p>}
+                {p.description && <p className="mt-1 text-xs text-zinc-400">{p.description}</p>}
                 {(p.start_date || p.end_date) && (
-                  <p className="mt-1 font-mono text-[10px] text-outline">
+                  <p className="mt-1 font-mono text-[10px] text-zinc-500">
                     {p.start_date ?? '—'}
                     {p.end_date ? ` → ${p.end_date}` : ' (sem prazo)'}
                   </p>
                 )}
                 {!p.type && !p.description && (
-                  <pre className="mt-1 overflow-x-auto rounded bg-black/30 p-2 text-[10px] text-outline">
+                  <pre className="mt-1 overflow-x-auto rounded bg-black/30 p-2 text-[10px] text-zinc-500">
                     {JSON.stringify(p, null, 2)}
                   </pre>
                 )}
@@ -318,31 +318,31 @@ function PunishmentsCard({ punishments }: { punishments: Punishment[] }) {
 function EmptyStateView({ nickname }: { nickname: string | null }) {
   return (
     <main className="flex flex-1 items-center justify-center p-margin">
-      <div className="glass-card relative flex max-w-xl flex-col items-center gap-md overflow-hidden rounded-2xl p-xl text-center">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-tertiary/5 via-transparent to-error/5" />
-        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-tertiary/10 blur-[80px]" />
+      <div className="border border-zinc-800 bg-zinc-900/40 relative flex max-w-xl flex-col items-center gap-md overflow-hidden rounded-2xl p-xl text-center">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-zinc-50/5 via-transparent to-error/5" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-zinc-800/60 blur-[80px]" />
 
-        <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full border border-tertiary/30 bg-tertiary/10">
-          <Icon name="health_and_safety" className="text-tertiary" size={28} filled />
+        <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full border border-zinc-50/30 bg-zinc-800/60">
+          <Icon name="health_and_safety" className="text-zinc-50" size={28} filled />
         </div>
-        <h2 className="relative z-10 text-h2 font-semibold text-on-surface">
+        <h2 className="relative z-10 text-h2 font-semibold text-zinc-50">
           Saúde da conta Shopee não disponível ainda
         </h2>
-        <p className="relative z-10 max-w-md text-sm text-on-surface-variant">
-          {nickname && <>Conta <span className="font-mono text-on-surface">{nickname}</span> conectada. </>}
+        <p className="relative z-10 max-w-md text-sm text-zinc-400">
+          {nickname && <>Conta <span className="font-mono text-zinc-50">{nickname}</span> conectada. </>}
           Os dados de Account Health serão capturados após o app ser aprovado em Live e a loja real autorizar.
         </p>
-        <div className="relative z-10 mt-2 w-full rounded-xl border border-white/5 bg-surface-container/40 p-4 text-left">
+        <div className="relative z-10 mt-2 w-full rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 text-left">
           <div className="mb-2 flex items-center gap-2">
-            <Icon name="schedule" className="text-tertiary" size={16} />
-            <span className="text-xs font-medium uppercase tracking-wider text-tertiary">Status do Workflow</span>
+            <Icon name="schedule" className="text-zinc-50" size={16} />
+            <span className="text-xs font-medium uppercase tracking-wider text-zinc-50">Status do Workflow</span>
           </div>
-          <p className="text-xs leading-relaxed text-on-surface-variant">
-            <span className="font-mono text-on-surface">Shopee — Snapshot de Saúde</span> está bloqueado por permissões da
+          <p className="text-xs leading-relaxed text-zinc-400">
+            <span className="font-mono text-zinc-50">Shopee — Snapshot de Saúde</span> está bloqueado por permissões da
             Shopee Open Platform. App categoria <span className="font-mono">Seller Logistics</span> não tem acesso aos
             endpoints de <span className="font-mono">Account Health</span> (retorno 403/404).
           </p>
-          <p className="mt-2 text-xs text-outline">
+          <p className="mt-2 text-xs text-zinc-500">
             Status atual: aguardando categoria do app ser ajustada e aprovação Live.
           </p>
         </div>
@@ -394,18 +394,18 @@ export function SaudeView({
           <div>
             <h1 className="mb-1 flex items-center gap-sm text-[36px] font-bold leading-tight text-white">
               Saúde da Conta
-              <span className="text-outline font-normal">—</span>
-              <span className="text-tertiary">Shopee</span>
+              <span className="text-zinc-500 font-normal">—</span>
+              <span className="text-zinc-50">Shopee</span>
             </h1>
-            <p className="text-sm text-outline">
+            <p className="text-sm text-zinc-500">
               {nickname ? `Conta ${nickname} · ` : ''}performance, infrações e punições.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-full border border-white/10 bg-surface-container px-3 py-1 text-xs text-outline">
+            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs text-zinc-500">
               Última atualização: {fmtSnapshotDate(latest.snapshot_at)}
             </span>
-            <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-container-highest px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-white/5">
+            <button className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-800 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-white/5">
               <Icon name="download" size={14} />
               Exportar
             </button>

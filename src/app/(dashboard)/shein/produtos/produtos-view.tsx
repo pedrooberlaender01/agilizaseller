@@ -106,7 +106,7 @@ export function ProdutosView({
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+                className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-zinc-50/40 focus:ring-1 focus:ring-tertiary"
                 placeholder="Buscar SKU, SPU ou nome..."
               />
             </div>
@@ -114,7 +114,7 @@ export function ProdutosView({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-tertiary"
+                className="rounded-lg border border-zinc-800 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-zinc-50/40"
               >
                 <option value="">Todos status</option>
                 {statuses.map((s) => (
@@ -128,10 +128,10 @@ export function ProdutosView({
           </span>
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
+        <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Produto</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">SKU / SPU</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Categoria</th>
@@ -143,20 +143,24 @@ export function ProdutosView({
             <tbody className="text-sm text-slate-200">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-outline">
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-500">
                     Nenhum produto encontrado. Sync diário roda 04h BRT.
                   </td>
                 </tr>
               ) : (
                 products.map((p) => (
-                  <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                  <tr
+                    key={p.id}
+                    onClick={() => p.sku_code && router.push(`/shein/produtos/${encodeURIComponent(p.sku_code)}`)}
+                    className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {p.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
                         ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded bg-white/5 text-outline">
+                          <div className="flex h-10 w-10 items-center justify-center rounded bg-white/5 text-zinc-500">
                             <Icon name="image" size={16} />
                           </div>
                         )}
@@ -165,7 +169,7 @@ export function ProdutosView({
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-mono text-xs text-white">{p.sku_code || '—'}</p>
-                      {p.spu && <p className="mt-1 font-mono text-[10px] text-outline">{p.spu}</p>}
+                      {p.spu && <p className="mt-1 font-mono text-[10px] text-zinc-500">{p.spu}</p>}
                     </td>
                     <td className="px-6 py-4 text-xs text-slate-400">{p.category || '—'}</td>
                     <td className="px-6 py-4 text-xs text-slate-400">{p.status || '—'}</td>
@@ -177,7 +181,7 @@ export function ProdutosView({
             </tbody>
           </table>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
             <span className="text-sm text-slate-400">
               {totalCount === 0
                 ? '0 resultados'
@@ -187,7 +191,7 @@ export function ProdutosView({
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -195,7 +199,7 @@ export function ProdutosView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= totalPages}
-                className="rounded border border-white/10 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Próximo
               </button>

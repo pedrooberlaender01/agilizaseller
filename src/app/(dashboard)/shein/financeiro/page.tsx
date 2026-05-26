@@ -42,7 +42,7 @@ export default async function SheinFinanceiroPage({
       <>
         <TopBar title="Financeiro — Shein" />
         <main className="flex flex-1 items-center justify-center p-margin">
-          <p className="text-sm text-outline">Sem conexão Shein ativa.</p>
+          <p className="text-sm text-zinc-500">Sem conexão Shein ativa.</p>
         </main>
       </>
     )
@@ -50,7 +50,7 @@ export default async function SheinFinanceiroPage({
 
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
-    .from('shein_settlements')
+    .from('shein_settlements_enriched')
     .select('*', { count: 'exact' })
     .eq('connection_id', conn.id)
 
