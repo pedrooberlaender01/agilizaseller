@@ -67,6 +67,7 @@ export default async function ShopeeFinanceiroPage({
     .maybeSingle()
 
   if (!conn) return <NoConnectionState />
+  const connId = conn.id
 
   const { from, to } = periodRange(period)
 
@@ -78,7 +79,7 @@ export default async function ShopeeFinanceiroPage({
       const { data } = await supabase
         .from('shopee_wallet_transactions')
         .select('*')
-        .eq('connection_id', conn.id)
+        .eq('connection_id', connId)
         .gte('create_time', from)
         .lte('create_time', to)
         .order('create_time', { ascending: false })
