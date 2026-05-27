@@ -5,13 +5,14 @@ export type StatusMapping = {
   tone: StatusTone
 }
 
+// Codes confirmados pelo suporte Shein (queryType = order_status)
 const ORDER_STATUS: Record<string, StatusMapping> = {
-  '1': { label: 'Aguardando pagamento', tone: 'yellow' },
-  '3': { label: 'Confirmado', tone: 'blue' },
-  '4': { label: 'Processando', tone: 'blue' },
-  '5': { label: 'Enviado', tone: 'green' },
+  '1': { label: 'Aguardando processamento', tone: 'yellow' },
+  '2': { label: 'Endereço exportado', tone: 'blue' },
+  '4': { label: 'Coletado', tone: 'blue' },
+  '5': { label: 'Em trânsito', tone: 'green' },
   '6': { label: 'Entregue', tone: 'green' },
-  '7': { label: 'Cancelado', tone: 'red' },
+  '7': { label: 'Enviado (tracking)', tone: 'green' },
 }
 
 const INVOICE_STATUS: Record<string, StatusMapping> = {

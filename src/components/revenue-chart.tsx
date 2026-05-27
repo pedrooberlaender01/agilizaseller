@@ -26,6 +26,12 @@ const brl = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n)
 
+const brlCompact = (n: number) => {
+  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `R$ ${Math.round(n / 1_000)}k`
+  return `R$ ${Math.round(n)}`
+}
+
 const ticks = [1, 0.75, 0.5, 0.25, 0]
 
 export function RevenueChart({
@@ -65,12 +71,13 @@ export function RevenueChart({
         </div>
       </div>
 
-      <div className="relative flex min-h-[320px] min-w-0 flex-1 px-lg pb-lg pt-lg">
-        <div className="pointer-events-none absolute inset-x-lg top-lg bottom-[44px] flex flex-col justify-between">
+      <div className="relative flex min-h-[280px] sm:min-h-[320px] min-w-0 flex-1 px-3 sm:px-lg pb-10 sm:pb-lg pt-lg">
+        <div className="pointer-events-none absolute inset-x-3 sm:inset-x-lg top-lg bottom-[44px] flex flex-col justify-between">
           {ticks.map((t) => (
             <div key={t} className="flex items-center gap-2">
-              <span className="w-12 text-right font-mono-sm text-mono-sm text-slate-600">
-                {brl(max * t)}
+              <span className="w-10 sm:w-12 text-right font-mono text-[9px] sm:text-[11px] text-slate-600">
+                <span className="sm:hidden">{brlCompact(max * t)}</span>
+                <span className="hidden sm:inline">{brl(max * t)}</span>
               </span>
               <div className="h-px flex-1 bg-gradient-to-r from-white/0 via-white/10 to-white/0" />
             </div>
@@ -78,7 +85,7 @@ export function RevenueChart({
         </div>
 
         <div
-          className="relative ml-14 flex min-w-0 flex-1 items-end justify-between gap-1"
+          className="relative ml-12 sm:ml-14 flex min-w-0 flex-1 items-end justify-between gap-1"
           onMouseLeave={() => setHovered(null)}
         >
           {data.map((d, i) => {
@@ -133,7 +140,8 @@ export function RevenueChart({
 
                 <span
                   className={cn(
-                    'mt-2 font-mono text-[10px] tracking-tight transition-colors whitespace-nowrap',
+                    'mt-3 sm:mt-2 font-mono text-[9px] sm:text-[10px] tracking-tight transition-colors whitespace-nowrap',
+                    'origin-top-left -rotate-45 sm:rotate-0 translate-y-1 sm:translate-y-0',
                     active ? 'text-zinc-50' : 'text-zinc-500',
                     !showLabel && 'invisible',
                   )}

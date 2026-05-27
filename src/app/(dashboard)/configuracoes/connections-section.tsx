@@ -21,6 +21,8 @@ type Meta = {
 const MARKETPLACES_META: Meta[] = [
   { key: 'mercado_livre', name: 'Mercado Livre', icon: 'handshake',    iconBg: 'bg-[#FFF159]',                           iconColor: 'text-black', available: true },
   { key: 'shopee',        name: 'Shopee',        icon: 'shopping_bag', iconBg: 'bg-[#EE4D2D]',                           iconColor: 'text-white', available: true },
+  { key: 'shein',         name: 'Shein',         icon: 'storefront',   iconBg: 'bg-black border border-white/10',        iconColor: 'text-white', available: true },
+  { key: 'magazord',      name: 'Magazord',      icon: 'hub',           iconBg: 'bg-gradient-to-br from-indigo-500 to-indigo-700', iconColor: 'text-white', available: true },
   { key: 'tiktok_shop',   name: 'TikTok Shop',   icon: 'music_note',   iconBg: 'bg-black border border-white/10',        iconColor: 'text-white', available: false },
 ]
 

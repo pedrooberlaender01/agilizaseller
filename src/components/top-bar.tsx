@@ -21,9 +21,9 @@ export function TopBar({
       .toUpperCase() || 'U'
 
   return (
-    <header className="flex items-center justify-between h-16 px-8 sticky top-0 z-40 bg-[#0a0a0c]/95 backdrop-blur-md border-b border-zinc-800 font-sans text-sm antialiased w-full shrink-0">
+    <header className="flex items-center justify-between h-16 pl-16 pr-4 sm:pl-8 sm:pr-8 sticky top-0 z-40 bg-[#0a0a0c]/95 backdrop-blur-md border-b border-zinc-800 font-sans text-sm antialiased w-full shrink-0">
       <div className="flex items-center gap-4">
-        {title && <h1 className="text-lg font-semibold tracking-tight text-zinc-50">{title}</h1>}
+        {title && <h1 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-50 truncate max-w-[200px] sm:max-w-none">{title}</h1>}
         {showSearch && (
           <div className="relative hidden sm:block">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-[18px]">
@@ -41,13 +41,13 @@ export function TopBar({
         <button className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 transition-colors duration-150">
           <span className="material-symbols-outlined text-[20px]">notifications</span>
         </button>
-        <button className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 transition-colors duration-150">
+        <button className="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 transition-colors duration-150">
           <span className="material-symbols-outlined text-[20px]">settings</span>
         </button>
-        <button className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 transition-colors duration-150">
+        <button className="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 transition-colors duration-150">
           <span className="material-symbols-outlined text-[20px]">help_outline</span>
         </button>
-        <div className="w-px h-6 bg-zinc-800 mx-2" />
+        <div className="hidden sm:block w-px h-6 bg-zinc-800 mx-2" />
         <div className="flex items-center gap-3 pl-1">
           <div className="text-right hidden sm:block">
             <div className="text-sm font-semibold text-zinc-50 leading-tight">{userName}</div>

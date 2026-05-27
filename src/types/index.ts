@@ -64,7 +64,7 @@ export interface AccountHealth {
 
 export interface MarketplaceConnection {
   id: string
-  marketplace: 'mercado_livre' | 'shopee' | 'tiktok_shop'
+  marketplace: 'mercado_livre' | 'shopee' | 'tiktok_shop' | 'shein' | 'magazord'
   external_user_id: string
   nickname: string | null
   status: 'active' | 'expired' | 'disconnected' | 'error'
@@ -227,6 +227,97 @@ export interface ShopeeDailyMetric {
   avg_margin_pct: number | null
   items_with_cost_missing: number
   calculated_at: string
+  ads_spend_cents: number | null
+  ads_impressions: number | null
+  ads_clicks: number | null
+  ads_gmv_cents: number | null
+  ads_orders: number | null
+  net_revenue_cents: number | null
+  roas: number | null
+  acos: number | null
+}
+
+export interface ShopeeAdsBalance {
+  id: number
+  connection_id: string
+  snapshot_at: string
+  total_balance_cents: number
+  free_credit_cents: number | null
+  paid_credit_cents: number | null
+  raw: unknown
+  created_at: string
+}
+
+export interface ShopeeAdsCampaign {
+  id: number
+  connection_id: string
+  campaign_id: string
+  ad_type: string | null
+  campaign_status: string | null
+  campaign_name: string | null
+  campaign_budget_cents: number | null
+  daily_budget_cents: number | null
+  bidding_method: string | null
+  item_id: number | null
+  start_date: string | null
+  end_date: string | null
+  synced_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopeeAdsCampaignDailyPerformance {
+  id: number
+  connection_id: string
+  campaign_id: string
+  date: string
+  impressions: number | null
+  clicks: number | null
+  ctr: number | null
+  expense_cents: number | null
+  broad_gmv_cents: number | null
+  broad_order_count: number | null
+  broad_order_amount_cents: number | null
+  direct_gmv_cents: number | null
+  direct_order_count: number | null
+  direct_order_amount_cents: number | null
+  checkout_count: number | null
+  cpc_cents: number | null
+  roas: number | null
+  acos: number | null
+  cr: number | null
+  synced_at: string
+}
+
+export interface ShopeeWalletTransaction {
+  id: number
+  connection_id: string
+  transaction_id: string
+  transaction_type: string | null
+  status: string | null
+  amount_cents: number
+  current_balance_cents: number | null
+  create_time: string
+  order_sn: string | null
+  refund_sn: string | null
+  reason: string | null
+  wallet_type: string | null
+  synced_at: string
+}
+
+export interface ShopeePayout {
+  id: number
+  connection_id: string
+  payout_id: string
+  payout_amount_cents: number
+  payout_time: string
+  payout_period_start: string | null
+  payout_period_end: string | null
+  bank_account_masked: string | null
+  currency: string | null
+  status: string | null
+  total_orders: number | null
+  synced_at: string
 }
 
 export type ShopeeOrderStatus =

@@ -5,7 +5,17 @@ import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { saveProductCost } from '@/app/actions/shopee'
-import type { ShopeeItem } from '@/types'
+import type {
+  ShopeeItem,
+  ShopeeAdsBalance,
+  ShopeeAdsCampaign,
+  ShopeeAdsCampaignDailyPerformance,
+  ShopeeDailyMetric,
+} from '@/types'
+import type { Period } from '@/components/metrics-chart'
+import { AdsSection } from './ads-section'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 type ItemStatus = 'NORMAL' | 'UNLIST' | 'BANNED' | 'DELETED'
 type SortKey = 'bestseller' | 'low-stock' | 'high-price' | 'low-price'
@@ -295,7 +305,7 @@ function CostDrawer({ item, onClose }: { item: EnrichedItem; onClose: () => void
   }
 
   return (
-    <aside className="border border-zinc-800 bg-zinc-900/40 sticky top-[72px] hidden h-[calc(100vh-128px)] w-[380px] shrink-0 flex-col overflow-y-auto rounded-2xl shadow-2xl shadow-black/80 ring-1 ring-white/10 md:flex">
+    <aside className="fixed right-4 top-[80px] bottom-4 z-30 hidden w-[380px] flex-col overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900/95 shadow-2xl shadow-black/80 ring-1 ring-white/10 backdrop-blur-xl md:flex lg:w-[420px]">
       <div className="flex items-start justify-between border-b border-zinc-800 bg-zinc-800/30 p-lg">
         <div className="flex flex-col gap-1 pr-4">
           <span className="font-mono text-xs text-zinc-600">{item.item_sku ?? item.external_id}</span>
@@ -460,14 +470,62 @@ function CostDrawer({ item, onClose }: { item: EnrichedItem; onClose: () => void
   )
 }
 
+function TabsHeader({ tab }: { tab: 'anuncios' | 'ads' }) {
+  const sp = useSearchParams()
+  const buildHref = (target: 'anuncios' | 'ads') => {
+    const next = new URLSearchParams(sp.toString())
+    if (target === 'ads') next.set('tab', 'ads')
+    else next.delete('tab')
+    return `/shopee/anuncios${next.toString() ? `?${next.toString()}` : ''}`
+  }
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-1 w-fit">
+      <Link
+        href={buildHref('anuncios')}
+        scroll={false}
+        className={cn(
+          'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+          tab === 'anuncios' ? 'bg-zinc-50 text-zinc-900' : 'text-zinc-400 hover:text-zinc-50',
+        )}
+      >
+        <Icon name="sell" size={14} />
+        Anúncios
+      </Link>
+      <Link
+        href={buildHref('ads')}
+        scroll={false}
+        className={cn(
+          'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+          tab === 'ads' ? 'bg-zinc-50 text-zinc-900' : 'text-zinc-400 hover:text-zinc-50',
+        )}
+      >
+        <Icon name="campaign" size={14} />
+        Ads
+      </Link>
+    </div>
+  )
+}
+
 export function AnunciosView({
   items,
   costsBySku,
   shopExternalId,
+  tab,
+  adsBalance,
+  adsCampaigns,
+  adsPerformance,
+  adsDaily,
+  adsPeriod,
 }: {
   items: ShopeeItem[]
   costsBySku: Record<string, CostEntry>
   shopExternalId: string | null
+  tab: 'anuncios' | 'ads'
+  adsBalance: ShopeeAdsBalance | null
+  adsCampaigns: ShopeeAdsCampaign[]
+  adsPerformance: ShopeeAdsCampaignDailyPerformance[]
+  adsDaily: ShopeeDailyMetric[]
+  adsPeriod: Period
 }) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
@@ -534,11 +592,33 @@ export function AnunciosView({
 
   const selected = enriched.find((i) => i.id === selectedId) ?? null
 
+  const isAds = tab === 'ads'
+
+  if (isAds) {
+    return (
+      <>
+        <TopBar title="Anúncios — Shopee" />
+        <main className="flex flex-1 flex-col overflow-y-auto p-margin gap-gutter">
+          <TabsHeader tab={tab} />
+          <AdsSection
+            balance={adsBalance}
+            campaigns={adsCampaigns}
+            performance={adsPerformance}
+            daily={adsDaily}
+            items={items}
+            period={adsPeriod}
+          />
+        </main>
+      </>
+    )
+  }
+
   return (
     <>
       <TopBar title="Anúncios — Shopee" />
-      <main className="flex flex-1 items-start gap-gutter overflow-y-auto p-margin">
+      <main className={cn('flex flex-1 items-start gap-gutter overflow-y-auto p-margin transition-[padding] duration-200', selected && 'md:pr-[calc(380px+32px)] lg:pr-[calc(420px+32px)]')}>
         <div className="flex min-w-0 flex-1 flex-col gap-lg">
+          <TabsHeader tab={tab} />
           <div className="flex flex-wrap items-center justify-between gap-md rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-md backdrop-blur-sm">
             <div className="flex min-w-[300px] flex-1 flex-wrap items-center gap-sm">
               <div className="relative min-w-[220px] max-w-md flex-1">

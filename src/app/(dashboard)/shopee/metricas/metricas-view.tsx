@@ -37,6 +37,27 @@ const avg = (arr: ShopeeDailyMetric[], key: keyof ShopeeDailyMetric) => {
   return valid.reduce((a, x) => a + Number(x[key]), 0) / valid.length
 }
 
+// Repasse real Shopee (escrow). Fallback pro estimado quando net_real ausente (dias antigos).
+const lucroReal = (r: ShopeeDailyMetric): number => {
+  const net = r.net_revenue_cents ? Number(r.net_revenue_cents) / 100 : 0
+  return net > 0 ? net : Number(r.gross_profit) || 0
+}
+
+const sumLucroReal = (arr: ShopeeDailyMetric[]): number =>
+  arr.reduce((a, r) => a + lucroReal(r), 0)
+
+const margemReal = (r: ShopeeDailyMetric): number | null => {
+  const gross = Number(r.gross_revenue) || 0
+  if (gross <= 0) return null
+  return (lucroReal(r) / gross) * 100
+}
+
+const avgMargemReal = (arr: ShopeeDailyMetric[]): number => {
+  const vals = arr.map(margemReal).filter((v): v is number => v !== null)
+  if (vals.length === 0) return 0
+  return vals.reduce((a, v) => a + v, 0) / vals.length
+}
+
 type Trend = 'up' | 'down' | 'flat'
 
 function deltaPct(curr: number, prev: number): { delta: string; trend: Trend } {
@@ -112,7 +133,7 @@ function buildChartData(
     const cRow = curMap.get(curKey)
     cur.faturamento.push(cRow ? Number(cRow.gross_revenue) || 0 : 0)
     cur.pedidos.push(cRow ? Number(cRow.orders_count) || 0 : 0)
-    cur.lucro.push(cRow ? Number(cRow.gross_profit) || 0 : 0)
+    cur.lucro.push(cRow ? lucroReal(cRow) : 0)
 
     const dPrev = new Date(startPrev)
     dPrev.setDate(dPrev.getDate() + i)
@@ -120,7 +141,7 @@ function buildChartData(
     const pRow = prevMap.get(prevKey)
     prev.faturamento.push(pRow ? Number(pRow.gross_revenue) || 0 : 0)
     prev.pedidos.push(pRow ? Number(pRow.orders_count) || 0 : 0)
-    prev.lucro.push(pRow ? Number(pRow.gross_profit) || 0 : 0)
+    prev.lucro.push(pRow ? lucroReal(pRow) : 0)
   }
 
   return { dates, current: cur, previous: prev }
@@ -129,7 +150,7 @@ function buildChartData(
 function buildDistribution(rows: ShopeeDailyMetric[]) {
   const buckets = { great: 0, good: 0, warn: 0, low: 0, loss: 0 }
   rows.forEach((r) => {
-    const m = r.avg_margin_pct
+    const m = margemReal(r)
     if (m === null) return
     if (m > 30) buckets.great++
     else if (m >= 20) buckets.good++
@@ -215,24 +236,24 @@ export function MetricasView({
 
   const faturamento = sum(current, 'gross_revenue')
   const pedidos = sum(current, 'orders_count')
-  const lucroBruto = sum(current, 'gross_profit')
+  const lucroBruto = sumLucroReal(current)
   const ticketMedio = pedidos > 0 ? faturamento / pedidos : 0
-  const margemMedia = avg(current, 'avg_margin_pct')
+  const margemMedia = avgMargemReal(current)
   const cancelados = sum(current, 'orders_cancelled_count')
   const taxaCancel = pedidos > 0 ? (cancelados / pedidos) * 100 : 0
 
   const prevFat = sum(previous, 'gross_revenue')
   const prevPed = sum(previous, 'orders_count')
-  const prevLucro = sum(previous, 'gross_profit')
+  const prevLucro = sumLucroReal(previous)
   const prevTicket = prevPed > 0 ? prevFat / prevPed : 0
-  const prevMargem = avg(previous, 'avg_margin_pct')
+  const prevMargem = avgMargemReal(previous)
   const prevCancel = sum(previous, 'orders_cancelled_count')
   const prevTaxaCancel = prevPed > 0 ? (prevCancel / prevPed) * 100 : 0
 
   const kpis = [
     { label: 'Faturamento Bruto', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat),     icon: 'payments',                iconClass: 'text-zinc-50',             valueClass: 'text-zinc-50' },
     { label: 'Pedidos',           value: fmtNum(pedidos),         ...deltaPct(pedidos, prevPed),         icon: 'shopping_cart',           iconClass: 'text-primary',              valueClass: 'text-zinc-50' },
-    { label: 'Lucro Bruto',       value: fmtBrlInt(lucroBruto),   ...deltaPct(lucroBruto, prevLucro),    icon: 'account_balance_wallet',  iconClass: 'text-secondary',            valueClass: 'text-secondary-fixed' },
+    { label: 'Lucro Líquido',     value: fmtBrlInt(lucroBruto),   ...deltaPct(lucroBruto, prevLucro),    icon: 'account_balance_wallet',  iconClass: 'text-secondary',            valueClass: 'text-secondary-fixed' },
     { label: 'Ticket Médio',      value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long',          iconClass: 'text-primary-fixed-dim',    valueClass: 'text-zinc-50' },
     { label: 'Margem Média',      value: fmtPct(margemMedia),     ...deltaPct(margemMedia, prevMargem),  icon: 'pie_chart',               iconClass: 'text-emerald-400',  valueClass: 'text-zinc-50' },
     { label: 'Cancelamentos',     value: fmtPct(taxaCancel),      ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart',  iconClass: 'text-error',                valueClass: 'text-zinc-50' },
@@ -378,9 +399,11 @@ export function MetricasView({
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {dailyRows.map((r) => {
-                        const tone = toneFor(r.avg_margin_pct)
+                        const margem = margemReal(r)
+                        const tone = toneFor(margem)
                         const cancelTone = r.orders_cancelled_count > 0 ? 'text-error' : 'text-zinc-400'
-                        const lucroTone = r.gross_profit > 0 ? 'text-secondary' : 'text-zinc-400'
+                        const lucro = lucroReal(r)
+                        const lucroTone = lucro > 0 ? 'text-secondary' : 'text-zinc-400'
                         return (
                           <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
                             <td className="px-lg py-3 text-zinc-50">{fmtShortDate(r.date)}</td>
@@ -389,7 +412,7 @@ export function MetricasView({
                             <td className="px-md py-3 text-zinc-50 text-right font-mono-sm">{fmtBrl(r.gross_revenue)}</td>
                             <td className="px-md py-3 text-zinc-400 text-right font-mono-sm">{fmtBrl(r.total_commission)}</td>
                             <td className="px-md py-3 text-zinc-400 text-right font-mono-sm">{fmtBrl(r.total_shipping_cost)}</td>
-                            <td className={cn('px-md py-3 text-right font-mono-sm', lucroTone)}>{fmtBrl(r.gross_profit)}</td>
+                            <td className={cn('px-md py-3 text-right font-mono-sm', lucroTone)}>{fmtBrl(lucro)}</td>
                             <td className="px-lg py-3 text-right">
                               <span
                                 className={cn(
@@ -397,7 +420,7 @@ export function MetricasView({
                                   margemBadge[tone],
                                 )}
                               >
-                                {r.avg_margin_pct !== null ? fmtPct(r.avg_margin_pct) : '—'}
+                                {margem !== null ? fmtPct(margem) : '—'}
                               </span>
                             </td>
                           </tr>

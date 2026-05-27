@@ -1,8 +1,33 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import type { ShopeeItem } from '@/types'
+import type {
+  ShopeeItem,
+  ShopeeAdsBalance,
+  ShopeeAdsCampaign,
+  ShopeeAdsCampaignDailyPerformance,
+  ShopeeDailyMetric,
+} from '@/types'
+import type { Period } from '@/components/metrics-chart'
 import { AnunciosView, type CostEntry } from './anuncios-view'
+
+function parseAdsPeriod(raw: string | undefined): Period {
+  if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes') return raw
+  return '30d'
+}
+
+function periodRange(period: Period): { from: string; to: string } {
+  const today = new Date()
+  const toStr = today.toISOString().slice(0, 10)
+  if (period === 'mes') {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { from: start.toISOString().slice(0, 10), to: toStr }
+  }
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+  const from = new Date(today)
+  from.setDate(from.getDate() - days + 1)
+  return { from: from.toISOString().slice(0, 10), to: toStr }
+}
 
 function NoConnectionState() {
   return (
@@ -59,7 +84,14 @@ type ProductRow = {
   product_costs: ProductCostJoin[] | null
 }
 
-export default async function ShopeeAnunciosPage() {
+export default async function ShopeeAnunciosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; period?: string }>
+}) {
+  const sp = await searchParams
+  const tab = sp.tab === 'ads' ? 'ads' : 'anuncios'
+  const adsPeriod = parseAdsPeriod(sp.period)
   const supabase = await createClient()
 
   const { data: conn } = await supabase
@@ -106,11 +138,50 @@ export default async function ShopeeAnunciosPage() {
     }
   }
 
+  const { from: adsFrom, to: adsTo } = periodRange(adsPeriod)
+  const [
+    { data: balanceRows },
+    { data: campaignRows },
+    { data: perfRows },
+    { data: dailyRows },
+  ] = await Promise.all([
+    supabase
+      .from('shopee_ads_balance')
+      .select('*')
+      .eq('connection_id', conn.id)
+      .order('snapshot_at', { ascending: false })
+      .limit(1),
+    supabase
+      .from('shopee_ads_campaigns')
+      .select('*')
+      .eq('connection_id', conn.id),
+    supabase
+      .from('shopee_ads_campaign_daily_performance')
+      .select('*')
+      .eq('connection_id', conn.id)
+      .gte('date', adsFrom)
+      .lte('date', adsTo)
+      .order('date', { ascending: true }),
+    supabase
+      .from('shopee_daily_metrics')
+      .select('*')
+      .eq('connection_id', conn.id)
+      .gte('date', adsFrom)
+      .lte('date', adsTo)
+      .order('date', { ascending: true }),
+  ])
+
   return (
     <AnunciosView
       items={items}
       costsBySku={costsBySku}
       shopExternalId={conn.external_user_id ?? null}
+      tab={tab}
+      adsBalance={(balanceRows?.[0] ?? null) as ShopeeAdsBalance | null}
+      adsCampaigns={(campaignRows ?? []) as ShopeeAdsCampaign[]}
+      adsPerformance={(perfRows ?? []) as ShopeeAdsCampaignDailyPerformance[]}
+      adsDaily={(dailyRows ?? []) as ShopeeDailyMetric[]}
+      adsPeriod={adsPeriod}
     />
   )
 }

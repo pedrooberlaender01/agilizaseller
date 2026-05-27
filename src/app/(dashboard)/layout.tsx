@@ -35,7 +35,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0a0c] text-zinc-50">
       <Sidebar role={safeProfile.role} userName={safeProfile.full_name ?? safeProfile.email} />
-      <div className="flex h-screen flex-1 flex-col overflow-hidden md:ml-[240px] bg-[#0a0a0c]">
+      <div className="dashboard-content flex h-screen w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0c] transition-[margin,width] duration-200">
         {children}
       </div>
     </div>

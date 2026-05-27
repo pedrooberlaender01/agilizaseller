@@ -13,7 +13,7 @@ const VALID_MKT = ['magazord', 'mercado_livre', 'shopee', 'shein'] as const
 type MarketplaceId = typeof VALID_MKT[number]
 
 function parsePeriod(raw: string | undefined): Period {
-  return raw === '7d' || raw === 'all' || raw === 'custom' ? raw : '30d'
+  return raw === '7d' || raw === '30d' || raw === 'custom' ? raw : 'all'
 }
 
 function parseMarketplaces(raw: string | undefined): MarketplaceId[] {
@@ -75,7 +75,7 @@ export default async function PedidosUnifiedPage({
     cutoff = startOfDay(customFrom)
     endAt = endOfDay(customTo)
   } else {
-    if (period === 'custom') period = '30d'
+    if (period === 'custom') period = 'all'
     cutoff = presetCutoff(period)
   }
 

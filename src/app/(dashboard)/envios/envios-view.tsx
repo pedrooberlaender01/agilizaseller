@@ -3,46 +3,75 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Icon } from '@/components/icon'
-import { MarketplaceLogo, marketplaceLabel } from '@/components/marketplace-logo'
+import { MarketplaceLogo } from '@/components/marketplace-logo'
 import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 import { cn } from '@/lib/utils'
-import { OrderDrawer } from './order-drawer'
 
 const PAGE_SIZE = 50
 
 type Period = '7d' | '30d' | 'all' | 'custom'
+type StatusClass = 'in_transit' | 'delivered' | 'problem' | 'pending'
 
-export type UnifiedOrder = {
-  marketplace: 'magazord' | 'mercado_livre' | 'shopee' | 'shein'
-  order_id: string
-  connection_id: string
+export type UnifiedShipment = {
+  id: string
+  marketplace: 'shopee'
+  order_id: string | null
   external_id: string | null
+  tracking_number: string | null
   status_code: string | null
-  status_text: string | null
-  status_class: 'paid' | 'cancelled' | 'pending' | 'other' | null
+  status_class: StatusClass
+  buyer_name: string | null
   total_amount: number | string | null
   currency: string | null
-  buyer_name: string | null
-  source_marketplace: string | null
-  order_date: string | null
-  uf: string | null
-  cidade: string | null
-  payment_method: string | null
+  ship_date: string | null
+  shipping_carrier: string | null
+  receiver_city: string | null
+  receiver_state: string | null
+  delivered_at: string | null
 }
 
-const MARKETPLACES: { id: UnifiedOrder['marketplace']; label: string }[] = [
-  { id: 'magazord',      label: 'Magazord' },
-  { id: 'mercado_livre', label: 'Mercado Livre' },
-  { id: 'shopee',        label: 'Shopee' },
-  { id: 'shein',         label: 'Shein' },
+const MARKETPLACES: { id: UnifiedShipment['marketplace']; label: string }[] = [
+  { id: 'shopee', label: 'Shopee' },
 ]
 
 const STATUS_FILTERS: { id: string; label: string; icon: string; tone: string }[] = [
-  { id: '',          label: 'Todos',      icon: 'list',         tone: 'text-zinc-50' },
-  { id: 'paid',      label: 'Aprovados',  icon: 'check_circle', tone: 'text-secondary' },
-  { id: 'pending',   label: 'Pendentes',  icon: 'schedule',     tone: 'text-tertiary' },
-  { id: 'cancelled', label: 'Cancelados', icon: 'cancel',       tone: 'text-error' },
+  { id: '',           label: 'Todos',       icon: 'list',           tone: 'text-zinc-50' },
+  { id: 'in_transit', label: 'Em trânsito', icon: 'local_shipping', tone: 'text-blue-300' },
+  { id: 'delivered',  label: 'Entregues',   icon: 'check_circle',   tone: 'text-emerald-300' },
+  { id: 'pending',    label: 'Pendentes',   icon: 'schedule',       tone: 'text-amber-300' },
+  { id: 'problem',    label: 'Problemas',   icon: 'error',          tone: 'text-rose-300' },
 ]
+
+const SHOPEE_LABEL: Record<string, string> = {
+  LOGISTICS_PICKUP_DONE: 'Em trânsito',
+  LOGISTICS_DELIVERY_PENDING: 'Saiu p/ entrega',
+  LOGISTICS_DELIVERY_DONE: 'Entregue',
+  LOGISTICS_FAILED: 'Falha',
+  LOGISTICS_PICKUP_RETRY: 'Retentando coleta',
+  LOGISTICS_PICKUP_FAILED: 'Falha na coleta',
+  LOGISTICS_DELIVERY_FAILED: 'Falha na entrega',
+  LOGISTICS_RTS: 'Retornando',
+  LOGISTICS_RETURNING: 'Em devolução',
+  LOGISTICS_RETURNED: 'Devolvido',
+  LOGISTICS_INVOICE_PENDING: 'NF pendente',
+  LOGISTICS_READY: 'Pronto p/ retirada',
+  LOGISTICS_REQUEST_CREATED: 'Coleta solicitada',
+  LOGISTICS_PICKUP_REQUESTED: 'Coleta agendada',
+}
+
+function prettyStatus(s: UnifiedShipment): string {
+  if (s.status_code && SHOPEE_LABEL[s.status_code]) return SHOPEE_LABEL[s.status_code]
+  return s.status_code ?? '—'
+}
+
+function statusBadgeClass(cls: StatusClass): string {
+  switch (cls) {
+    case 'delivered':  return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+    case 'in_transit': return 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+    case 'problem':    return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+    case 'pending':    return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+  }
+}
 
 const fmtCurrency = (n: number | string | null | undefined, currency = 'BRL') => {
   const v = Number(n ?? 0)
@@ -66,38 +95,6 @@ function fmtRelDate(iso: string | null): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
-const magSituacaoLabel: Record<string, string> = {
-  '1':  'Aguardando Pagto.',
-  '2':  'Cancelado Pagto.',
-  '3':  'Em Análise Pagto.',
-  '4':  'Aprovado',
-  '5':  'Aprovado e Integrado',
-  '6':  'NF Emitida',
-  '7':  'Transporte',
-  '8':  'Entregue',
-  '9':  'Fraude',
-  '14': 'Cancelado Análise',
-  '21': 'Devolvido Estoque',
-  '23': 'Faturamento Iniciado',
-  '26': 'NF Cancelada',
-}
-
-function prettyStatus(o: UnifiedOrder): string {
-  if (o.marketplace === 'magazord' && o.status_code && magSituacaoLabel[o.status_code]) {
-    return magSituacaoLabel[o.status_code]
-  }
-  return o.status_text ?? o.status_code ?? '—'
-}
-
-function statusBadgeClass(cls: UnifiedOrder['status_class']): string {
-  switch (cls) {
-    case 'paid':      return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-    case 'cancelled': return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-    case 'pending':   return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-    default:          return 'bg-outline/15 text-outline border border-outline/20'
-  }
-}
-
 function useDebounced<T>(value: T, delay: number): T {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -107,8 +104,8 @@ function useDebounced<T>(value: T, delay: number): T {
   return v
 }
 
-export function PedidosView({
-  orders,
+export function EnviosView({
+  shipments,
   totalCount,
   page,
   period,
@@ -119,7 +116,7 @@ export function PedidosView({
   status,
   search,
 }: {
-  orders: UnifiedOrder[]
+  shipments: UnifiedShipment[]
   totalCount: number
   page: number
   period: Period
@@ -142,7 +139,6 @@ export function PedidosView({
   const mktRef = useRef<HTMLDivElement>(null)
   const [statusOpen, setStatusOpen] = useState(false)
   const statusRef = useRef<HTMLDivElement>(null)
-  const [selectedOrder, setSelectedOrder] = useState<UnifiedOrder | null>(null)
 
   useEffect(() => {
     if (!popoverOpen) return
@@ -158,9 +154,7 @@ export function PedidosView({
   useEffect(() => {
     if (!mktOpen) return
     function onDoc(e: MouseEvent) {
-      if (mktRef.current && !mktRef.current.contains(e.target as Node)) {
-        setMktOpen(false)
-      }
+      if (mktRef.current && !mktRef.current.contains(e.target as Node)) setMktOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -169,9 +163,7 @@ export function PedidosView({
   useEffect(() => {
     if (!statusOpen) return
     function onDoc(e: MouseEvent) {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
-        setStatusOpen(false)
-      }
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -195,7 +187,7 @@ export function PedidosView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
-  function toggleMarketplace(id: UnifiedOrder['marketplace']) {
+  function toggleMarketplace(id: UnifiedShipment['marketplace']) {
     const cur = new Set(selectedMarketplaces)
     if (cur.has(id)) cur.delete(id)
     else cur.add(id)
@@ -232,7 +224,6 @@ export function PedidosView({
     next.set('from', fromIsoVal)
     next.set('to', toIsoVal)
     next.delete('page')
-    setPopoverOpen(false)
     startTransition(() => {
       router.replace(`?${next.toString()}`, { scroll: false })
     })
@@ -248,30 +239,27 @@ export function PedidosView({
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   const totals = useMemo(() => {
-    return orders.reduce(
-      (acc, o) => {
-        acc.gmv += Number(o.total_amount ?? 0)
-        if (o.status_class === 'cancelled') acc.cancel++
-        else if (o.status_class === 'paid') acc.paid++
+    return shipments.reduce(
+      (acc, s) => {
+        acc.gmv += Number(s.total_amount ?? 0)
         return acc
       },
-      { gmv: 0, paid: 0, cancel: 0 },
+      { gmv: 0 },
     )
-  }, [orders])
+  }, [shipments])
 
   const noFilter = selectedMarketplaces.length === 0
   const totalAll = Object.values(marketplaceCounts).reduce((s, n) => s + n, 0)
 
   return (
-    <>
     <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
       <div className="mb-lg flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-h2 font-semibold text-zinc-50">Pedidos consolidados</h2>
+          <h2 className="text-h2 font-semibold text-zinc-50">Envios consolidados</h2>
           <p className="mt-1 text-xs text-zinc-400">Todos os marketplaces em uma única visão.</p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-surface-container/60 px-3 py-1.5 backdrop-blur-md">
-          <span className="h-2 w-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(69,223,164,0.6)]" />
+        <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(69,223,164,0.6)]" />
           <span className="text-xs font-medium text-zinc-50">Dados em tempo real</span>
         </div>
       </div>
@@ -380,7 +368,7 @@ export function PedidosView({
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 py-2 pl-10 pr-4 text-sm text-zinc-50 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Buscar código ou comprador..."
+            placeholder="Buscar rastreio, código ou comprador..."
           />
         </div>
 
@@ -407,7 +395,7 @@ export function PedidosView({
               </button>
 
               {statusOpen && (
-                <div className="absolute left-0 top-full z-40 mt-2 w-[200px] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/60">
+                <div className="absolute left-0 top-full z-40 mt-2 w-[220px] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/60">
                   <div className="border-b border-zinc-800 px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-zinc-500">Status</p>
                   </div>
@@ -512,7 +500,7 @@ export function PedidosView({
             <p className="text-sm font-semibold text-zinc-50 tabular-nums">{fmtCurrency(totals.gmv)}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Pedidos</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Envios</p>
             <p className="text-sm font-semibold text-zinc-50 tabular-nums">{fmtInt(totalCount)}</p>
           </div>
         </div>
@@ -523,84 +511,77 @@ export function PedidosView({
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Marketplace</th>
-              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Código</th>
+              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Pedido</th>
+              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Transportadora</th>
               <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Comprador</th>
-              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Situação</th>
+              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Destino</th>
+              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Status</th>
               <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-zinc-400">Total</th>
-              <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">UF</th>
               <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-400">Data</th>
             </tr>
           </thead>
           <tbody className="text-sm text-zinc-50">
-            {orders.length === 0 ? (
+            {shipments.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-sm text-outline">
-                  Nenhum pedido encontrado.
+                <td colSpan={8} className="px-6 py-10 text-center text-zinc-500">
+                  Nenhum envio encontrado.
                 </td>
               </tr>
             ) : (
-              orders.map((o) => (
-                <tr
-                  key={`${o.marketplace}-${o.order_id}`}
-                  onClick={() => setSelectedOrder(o)}
-                  className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-zinc-900/60"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2.5">
-                      <MarketplaceLogo name={o.marketplace} size={28} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-zinc-50">{marketplaceLabel(o.marketplace)}</p>
-                        {o.source_marketplace && (
-                          <p className="mt-0.5 text-[10px] text-outline">via {o.source_marketplace}</p>
-                        )}
+              shipments.map((s) => {
+                const destino = [s.receiver_city, s.receiver_state].filter(Boolean).join(' / ') || '—'
+                return (
+                  <tr key={`${s.marketplace}-${s.id}`} className="border-b border-zinc-800/60 hover:bg-zinc-800/30">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <MarketplaceLogo name={s.marketplace} size={20} />
+                        <span className="text-xs font-medium capitalize text-zinc-50">{s.marketplace}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-xs text-zinc-50">{o.external_id ?? '—'}</td>
-                  <td className="px-6 py-4 text-xs">{o.buyer_name ?? '—'}</td>
-                  <td className="px-6 py-4">
-                    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium', statusBadgeClass(o.status_class))}>
-                      {prettyStatus(o)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right font-medium text-zinc-50">{fmtCurrency(o.total_amount, o.currency ?? 'BRL')}</td>
-                  <td className="px-6 py-4 font-mono text-[10px] text-zinc-400">{o.uf ?? '—'}</td>
-                  <td className="px-6 py-4 text-xs text-zinc-400">{fmtRelDate(o.order_date)}</td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-zinc-50">{s.external_id ?? '—'}</td>
+                    <td className="px-6 py-4 text-xs text-zinc-400">{s.shipping_carrier ?? '—'}</td>
+                    <td className="px-6 py-4 text-xs text-zinc-50">{s.buyer_name ?? '—'}</td>
+                    <td className="px-6 py-4 text-xs text-zinc-400">{destino}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn('inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium', statusBadgeClass(s.status_class))}>
+                        {prettyStatus(s)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono text-xs tabular-nums text-zinc-50">
+                      {fmtCurrency(s.total_amount, s.currency ?? 'BRL')}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-zinc-400">{fmtRelDate(s.delivered_at ?? s.ship_date)}</td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
+      </div>
 
-        <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-4">
-          <span className="text-sm text-zinc-400">
-            {totalCount === 0
-              ? '0 resultados'
-              : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} de ${fmtInt(totalCount)}`}
-          </span>
-          <div className="flex items-center gap-2">
+      {totalPages > 1 && (
+        <div className="mt-md flex items-center justify-between gap-3 text-xs text-zinc-400">
+          <p>
+            Página <span className="text-zinc-50">{page}</span> de <span className="text-zinc-50">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setPage(page - 1)}
-              disabled={page === 1}
-              className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-900/60 hover:text-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={page <= 1}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Anterior
+              <Icon name="chevron_left" size={16} />
             </button>
-            <span className="px-2 text-xs text-zinc-50">Página {page} de {totalPages}</span>
             <button
               onClick={() => setPage(page + 1)}
               disabled={page >= totalPages}
-              className="rounded border border-zinc-800 px-3 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-900/60 hover:text-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Próximo
+              <Icon name="chevron_right" size={16} />
             </button>
           </div>
         </div>
-      </div>
+      )}
     </main>
-    {selectedOrder && (
-      <OrderDrawer orderRow={selectedOrder} onClose={() => setSelectedOrder(null)} />
-    )}
-    </>
   )
 }
