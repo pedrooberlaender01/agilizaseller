@@ -4,9 +4,9 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import { mapOrderStatus, statusToneClass } from '@/lib/shein-status'
+import { CostEditor } from './cost-editor'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 const fmtBrl = (n: number | string | null | undefined, currency = 'BRL') => {
   const v = Number(n ?? 0)
@@ -30,6 +30,10 @@ type ProductRow = {
   status: string | null
   image_url: string | null
   updated_at: string | null
+  cost_price: number | string | null
+  packaging_cost: number | string | null
+  cost_notes: string | null
+  cost_updated_at: string | null
 }
 
 type StockRow = {
@@ -123,6 +127,13 @@ export default async function ProdutoDetalhePage({
   const totalServiceCharge = orderItems.reduce((s, r) => s + Number(r.service_charge ?? 0), 0)
   const totalEstimated = orderItems.reduce((s, r) => s + Number(r.estimated_income ?? 0), 0)
 
+  const costUnit = Number(p.cost_price ?? 0)
+  const packagingUnit = Number(p.packaging_cost ?? 0)
+  const totalCost = (costUnit + packagingUnit) * totalSold
+  const realProfit = totalEstimated - totalCost
+  const realMarginPct = totalRevenue > 0 ? (realProfit / totalRevenue) * 100 : null
+  const hasCost = p.cost_price != null
+
   return (
     <>
       <TopBar title={p.product_name || `SKU ${skuCode}`} />
@@ -183,7 +194,7 @@ export default async function ProdutoDetalhePage({
               </div>
             </div>
 
-            <div className="mt-md grid grid-cols-2 gap-4 md:grid-cols-3">
+            <div className="mt-md grid grid-cols-2 gap-4 md:grid-cols-5">
               <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-3">
                 <p className="text-[10px] uppercase tracking-wider text-slate-400">Receita bruta</p>
                 <p className="mt-1 text-base font-semibold text-white">{fmtBrl(totalRevenue)}</p>
@@ -196,9 +207,46 @@ export default async function ProdutoDetalhePage({
                 <p className="text-[10px] uppercase tracking-wider text-slate-400">Service</p>
                 <p className="mt-1 text-base font-semibold text-error">{fmtBrl(totalServiceCharge)}</p>
               </div>
+              <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">Custo total</p>
+                <p className={cn('mt-1 text-base font-semibold', hasCost ? 'text-error' : 'text-zinc-500')}>
+                  {hasCost ? fmtBrl(totalCost) : '—'}
+                </p>
+              </div>
+              <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">Lucro real</p>
+                <p className={cn(
+                  'mt-1 text-base font-semibold',
+                  !hasCost ? 'text-zinc-500' : realProfit >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                )}>
+                  {hasCost ? fmtBrl(realProfit) : '—'}
+                </p>
+                {hasCost && realMarginPct !== null && (
+                  <p className={cn(
+                    'mt-0.5 text-[10px]',
+                    realMarginPct >= 30 ? 'text-emerald-300' : realMarginPct >= 10 ? 'text-amber-300' : 'text-rose-300',
+                  )}>
+                    {realMarginPct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% margem
+                  </p>
+                )}
+              </div>
             </div>
+            {!hasCost && (
+              <p className="mt-2 text-[10px] text-zinc-500">
+                ℹ️ Lucro real precisa do custo unitário preenchido abaixo.
+              </p>
+            )}
           </div>
         </div>
+
+        <CostEditor
+          productId={p.id}
+          skuCode={p.sku_code ?? skuCode}
+          initialCostPrice={p.cost_price != null ? Number(p.cost_price) : null}
+          initialPackagingCost={p.packaging_cost != null ? Number(p.packaging_cost) : null}
+          initialCostNotes={p.cost_notes}
+          costUpdatedAt={p.cost_updated_at}
+        />
 
         {stocks.length > 0 && (
           <div className="border border-zinc-800 bg-zinc-900/40 mb-lg overflow-hidden rounded-2xl">

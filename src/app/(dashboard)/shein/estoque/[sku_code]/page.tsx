@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import { mapOrderStatus, statusToneClass } from '@/lib/shein-status'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 const fmtBrl = (n: number | string | null | undefined, currency = 'BRL') => {
   const v = Number(n ?? 0)

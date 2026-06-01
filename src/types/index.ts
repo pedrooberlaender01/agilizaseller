@@ -369,6 +369,16 @@ export interface ShopeeOrderMargin {
   roi_pct: number | null
   cost_missing: boolean
   is_estimated: boolean
+  commission_fee_real_cents: number | null
+  service_fee_real_cents: number | null
+  transaction_fee_real_cents: number | null
+  actual_shipping_fee_cents: number | null
+  shopee_shipping_rebate_cents: number | null
+  seller_voucher_cents: number | null
+  buyer_paid_amount_cents: number | null
+  escrow_amount_cents: number | null
+  net_amount_real_cents: number | null
+  escrow_synced_at: string | null
 }
 
 export interface ShopeeOrderItem {
@@ -421,4 +431,42 @@ export interface ShopeeAccountHealth {
   penalty_points: number
   listing_violation_count: number
   ongoing_punishment: any
+}
+
+export interface ShopeeReturnItem {
+  item_id?: number | string
+  model_id?: number | string
+  name?: string
+  amount?: number
+  item_price?: number
+  refund_amount?: number
+  sku?: string
+}
+
+export interface ShopeeReturn {
+  id: string
+  connection_id: string
+  return_sn: string
+  order_sn: string | null
+  return_status: string | null
+  reason: string | null
+  text_reason: string | null
+  return_solution: string | null
+  refund_amount_cents: number
+  currency: string | null
+  buyer_username: string | null
+  dispute_reason: string | null
+  dispute_status: string | null
+  evidence_urls: string[]
+  item_list: ShopeeReturnItem[]
+  tracking_number: string | null
+  shipping_carrier: string | null
+  needs_response_due_date: string | null
+  due_date: string | null
+  create_time: string | null
+  update_time: string | null
+  raw: unknown
+  synced_at: string
+  created_at: string
+  updated_at: string
 }

@@ -9,15 +9,26 @@ import { cn } from '@/lib/utils'
 const PAGE_SIZE = 50
 
 export type ProductRow = {
-  id: string
+  product_id: string
+  connection_id: string
   spu: string | null
   sku_code: string | null
   product_name: string | null
-  category: string | null
-  price: number | string | null
-  status: string | null
   image_url: string | null
-  updated_at: string | null
+  price: number | string | null
+  cost_price: number | string | null
+  packaging_cost: number | string | null
+  status: string | null
+  cost_updated_at: string | null
+  units_sold: number | string | null
+  orders_count: number | string | null
+  gross_revenue: number | string | null
+  total_commission: number | string | null
+  total_service: number | string | null
+  estimated_income: number | string | null
+  total_cost: number | string | null
+  real_profit: number | string | null
+  real_margin_pct: number | string | null
 }
 
 const fmtBrl = (n: number | string | null | undefined) => {
@@ -25,10 +36,20 @@ const fmtBrl = (n: number | string | null | undefined) => {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function fmtRel(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+function fmtPct(v: number | string | null | undefined): string {
+  if (v === null || v === undefined) return '—'
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '—'
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
+}
+
+function marginTone(pct: number | string | null | undefined): string {
+  if (pct === null || pct === undefined) return 'text-zinc-500'
+  const n = Number(pct)
+  if (!Number.isFinite(n)) return 'text-zinc-500'
+  if (n >= 30) return 'text-emerald-300'
+  if (n >= 10) return 'text-amber-300'
+  return 'text-rose-300'
 }
 
 function useDebounced<T>(value: T, delay: number): T {
@@ -47,6 +68,9 @@ export function ProdutosView({
   search,
   status,
   statuses,
+  costFilter,
+  sort,
+  stats,
 }: {
   products: ProductRow[]
   totalCount: number
@@ -54,6 +78,9 @@ export function ProdutosView({
   search: string
   status: string
   statuses: string[]
+  costFilter: string
+  sort: string
+  stats: { withCost: number; totalProducts: number }
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -86,6 +113,20 @@ export function ProdutosView({
     })
   }
 
+  function setCostFilter(v: string) {
+    pushParams((next) => {
+      if (!v) next.delete('cost')
+      else next.set('cost', v)
+    })
+  }
+
+  function setSort(v: string) {
+    pushParams((next) => {
+      if (!v || v === 'recent') next.delete('sort')
+      else next.set('sort', v)
+    })
+  }
+
   function setPage(n: number) {
     pushParams((next) => {
       if (n <= 1) next.delete('page')
@@ -94,14 +135,15 @@ export function ProdutosView({
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const coveragePct = stats.totalProducts > 0 ? (stats.withCost / stats.totalProducts) * 100 : 0
 
   return (
     <>
       <TopBar title="Produtos — Shein" />
       <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-[280px]">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-[260px]">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
               <input
                 value={searchInput}
@@ -122,10 +164,34 @@ export function ProdutosView({
                 ))}
               </select>
             )}
+            <select
+              value={costFilter}
+              onChange={(e) => setCostFilter(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-zinc-50/40"
+            >
+              <option value="">Todos custos</option>
+              <option value="missing">Sem custo</option>
+              <option value="set">Com custo</option>
+            </select>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-[#050507] px-3 py-2 text-sm text-white outline-none focus:border-zinc-50/40"
+            >
+              <option value="recent">Custo recente</option>
+              <option value="margin_desc">Margem ↓</option>
+              <option value="margin_asc">Margem ↑</option>
+              <option value="revenue">Receita ↓</option>
+            </select>
           </div>
-          <span className="text-xs font-medium text-slate-400">
-            {totalCount} {totalCount === 1 ? 'produto' : 'produtos'}
-          </span>
+          <div className="flex flex-col items-end gap-1 text-xs">
+            <span className="font-medium text-slate-300">{totalCount} {totalCount === 1 ? 'produto' : 'produtos'}</span>
+            <span className="text-zinc-500">
+              Cobertura custo: <span className={cn('font-medium', coveragePct >= 80 ? 'text-emerald-300' : coveragePct >= 40 ? 'text-amber-300' : 'text-rose-300')}>
+                {stats.withCost}/{stats.totalProducts} ({fmtPct(coveragePct)})
+              </span>
+            </span>
+          </div>
         </div>
 
         <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
@@ -133,50 +199,73 @@ export function ProdutosView({
             <thead>
               <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Produto</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">SKU / SPU</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Categoria</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Status</th>
+                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">SKU</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Preço</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Atualizado</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Custo</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Vendidos</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Receita</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Lucro real</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Margem</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-200">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-zinc-500">
-                    Nenhum produto encontrado. Sync diário roda 04h BRT.
+                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-zinc-500">
+                    Nenhum produto encontrado.
                   </td>
                 </tr>
               ) : (
-                products.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => p.sku_code && router.push(`/shein/produtos/${encodeURIComponent(p.sku_code)}`)}
-                    className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {p.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded bg-white/5 text-zinc-500">
-                            <Icon name="image" size={16} />
+                products.map((p) => {
+                  const hasCost = p.cost_price !== null && p.cost_price !== undefined
+                  const profit = Number(p.real_profit ?? 0)
+                  return (
+                    <tr
+                      key={p.product_id}
+                      onClick={() => p.sku_code && router.push(`/shein/produtos/${encodeURIComponent(p.sku_code)}`)}
+                      className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {p.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded bg-white/5 text-zinc-500">
+                              <Icon name="image" size={16} />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="line-clamp-2 max-w-[280px] text-sm text-slate-200">{p.product_name || '—'}</p>
+                            {p.status && (
+                              <span className={cn('mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium', p.status === 'ativo' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-zinc-700/40 text-zinc-400')}>
+                                {p.status}
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <span className="text-sm text-slate-200 line-clamp-2 max-w-[320px]">{p.product_name || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-mono text-xs text-white">{p.sku_code || '—'}</p>
-                      {p.spu && <p className="mt-1 font-mono text-[10px] text-zinc-500">{p.spu}</p>}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-400">{p.category || '—'}</td>
-                    <td className="px-6 py-4 text-xs text-slate-400">{p.status || '—'}</td>
-                    <td className="px-6 py-4 text-right font-medium text-white">{fmtBrl(p.price)}</td>
-                    <td className="px-6 py-4 text-xs text-slate-400">{fmtRel(p.updated_at)}</td>
-                  </tr>
-                ))
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-slate-300">{p.sku_code || '—'}</td>
+                      <td className="px-6 py-4 text-right text-xs text-white">{fmtBrl(p.price)}</td>
+                      <td className={cn('px-6 py-4 text-right text-xs', hasCost ? 'text-slate-300' : 'text-zinc-600')}>
+                        {hasCost ? fmtBrl(p.cost_price) : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs text-slate-300">
+                        {Number(p.units_sold ?? 0).toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs text-slate-300">{fmtBrl(p.gross_revenue)}</td>
+                      <td className={cn(
+                        'px-6 py-4 text-right text-xs font-medium',
+                        !hasCost ? 'text-zinc-600' : profit >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                      )}>
+                        {hasCost ? fmtBrl(p.real_profit) : '—'}
+                      </td>
+                      <td className={cn('px-6 py-4 text-right text-xs font-medium', hasCost ? marginTone(p.real_margin_pct) : 'text-zinc-600')}>
+                        {hasCost ? fmtPct(p.real_margin_pct) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

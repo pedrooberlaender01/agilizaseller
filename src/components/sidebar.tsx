@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { signOut } from '@/app/actions/auth'
 import { cn } from '@/lib/utils'
+import { MarketplaceLogo } from '@/components/marketplace-logo'
 
 type NavLink = { href: string; label: string; icon: string }
-type NavGroup = { label: string; icon: string; basePath: string; children: NavLink[]; disabled?: boolean }
+type NavGroup = { label: string; icon: string; basePath: string; children: NavLink[]; disabled?: boolean; brand?: string }
 type NavItem = NavLink | NavGroup
 
 const isGroup = (item: NavItem): item is NavGroup => 'children' in item
@@ -32,6 +33,7 @@ const baseNav: NavItem[] = [
   {
     label: 'Shopee',
     icon: 'storefront',
+    brand: 'shopee',
     basePath: '/shopee',
     children: [
       { href: '/shopee/metricas', label: 'Métricas', icon: 'monitoring' },
@@ -39,6 +41,7 @@ const baseNav: NavItem[] = [
       { href: '/shopee/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
       { href: '/shopee/envios', label: 'Envios', icon: 'local_shipping' },
       { href: '/shopee/financeiro', label: 'Financeiro', icon: 'payments' },
+      { href: '/shopee/devolucoes', label: 'Devoluções', icon: 'undo' },
       { href: '/shopee/saude', label: 'Saúde', icon: 'monitor_heart' },
     ],
   },
@@ -57,6 +60,7 @@ const baseNav: NavItem[] = [
   {
     label: 'Shein',
     icon: 'storefront',
+    brand: 'shein',
     basePath: '/shein',
     children: [
       { href: '/shein/metricas', label: 'Métricas', icon: 'monitoring' },
@@ -64,7 +68,9 @@ const baseNav: NavItem[] = [
       { href: '/shein/produtos', label: 'Produtos', icon: 'inventory_2' },
       { href: '/shein/estoque', label: 'Estoque', icon: 'warehouse' },
       { href: '/shein/envios', label: 'Envios', icon: 'local_shipping' },
+      { href: '/shein/devolucoes', label: 'Devoluções', icon: 'keyboard_return' },
       { href: '/shein/financeiro', label: 'Financeiro', icon: 'payments' },
+      { href: '/shein/saude', label: 'Saúde', icon: 'monitor_heart' },
     ],
   },
   { href: '/alertas', label: 'Alertas', icon: 'notifications_active' },
@@ -118,7 +124,11 @@ function NavGroupItem({ group, collapsed = false }: { group: NavGroup; collapsed
           aria-disabled="true"
           className="flex items-center justify-center rounded-lg px-2 py-2 text-zinc-600 opacity-50 cursor-not-allowed"
         >
+          {group.brand ? (
+          <MarketplaceLogo name={group.brand} size={20} />
+        ) : (
           <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        )}
         </div>
       )
     }
@@ -127,7 +137,11 @@ function NavGroupItem({ group, collapsed = false }: { group: NavGroup; collapsed
         aria-disabled="true"
         className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-zinc-600 opacity-50 cursor-not-allowed select-none"
       >
-        <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        {group.brand ? (
+          <MarketplaceLogo name={group.brand} size={20} />
+        ) : (
+          <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        )}
         <span className="flex-1 text-left font-medium">{group.label}</span>
         <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">em breve</span>
       </div>
@@ -144,7 +158,11 @@ function NavGroupItem({ group, collapsed = false }: { group: NavGroup; collapsed
           groupActive ? 'text-zinc-50 bg-zinc-800/70' : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40',
         )}
       >
-        <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        {group.brand ? (
+          <MarketplaceLogo name={group.brand} size={20} />
+        ) : (
+          <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        )}
       </Link>
     )
   }
@@ -161,7 +179,11 @@ function NavGroupItem({ group, collapsed = false }: { group: NavGroup; collapsed
             : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40',
         ].join(' ')}
       >
-        <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        {group.brand ? (
+          <MarketplaceLogo name={group.brand} size={20} />
+        ) : (
+          <span className="material-symbols-outlined text-[20px]">{group.icon}</span>
+        )}
         <span className="flex-1 text-left font-medium">{group.label}</span>
         <span
           className={`material-symbols-outlined text-base transition-transform ${

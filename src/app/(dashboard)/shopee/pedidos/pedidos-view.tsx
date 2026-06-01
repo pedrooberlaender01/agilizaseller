@@ -25,8 +25,17 @@ type Period = '7d' | '30d' | '90d'
 
 export type OrderRow = ShopeeOrder & {
   shopee_order_items: { count: number }[]
-  shopee_order_margins: Pick<ShopeeOrderMargin, 'gross_profit' | 'margin_pct' | 'cost_missing'>[]
+  shopee_order_margins: Pick<ShopeeOrderMargin, 'gross_profit' | 'margin_pct' | 'cost_missing' | 'net_amount_real_cents' | 'escrow_synced_at'>[]
   shopee_shipments: Pick<ShopeeShipment, 'logistics_status' | 'tracking_number'>[]
+}
+
+export type PedidosKpis = {
+  totalOrders: number
+  totalRevenue: number
+  netReal: number
+  avgTicket: number
+  cancelled: number
+  escrowSynced: number
 }
 
 const allStatuses: ShopeeOrderStatus[] = [
@@ -298,9 +307,77 @@ function OrderDrawer({
           </div>
         )}
 
+        {!loading && margin?.escrow_synced_at && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-secondary flex items-center gap-2">
+              <Icon name="verified" size={14} /> Repasse Real Shopee (Escrow)
+            </h4>
+            <div className="border border-secondary/30 bg-secondary/5 space-y-2 rounded-lg p-4">
+              {margin.buyer_paid_amount_cents != null && (
+                <div className="flex justify-between text-sm text-slate-300">
+                  <span>Comprador pagou</span>
+                  <span>{fmtBrl(Number(margin.buyer_paid_amount_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.commission_fee_real_cents != null && (
+                <div className="flex justify-between text-sm text-error">
+                  <span>Comissão real</span>
+                  <span>- {fmtBrl(Number(margin.commission_fee_real_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.service_fee_real_cents != null && Number(margin.service_fee_real_cents) > 0 && (
+                <div className="flex justify-between text-sm text-error">
+                  <span>Taxa de serviço</span>
+                  <span>- {fmtBrl(Number(margin.service_fee_real_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.transaction_fee_real_cents != null && Number(margin.transaction_fee_real_cents) > 0 && (
+                <div className="flex justify-between text-sm text-error">
+                  <span>Taxa de transação</span>
+                  <span>- {fmtBrl(Number(margin.transaction_fee_real_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.actual_shipping_fee_cents != null && Number(margin.actual_shipping_fee_cents) > 0 && (
+                <div className="flex justify-between text-sm text-error">
+                  <span>Frete cobrado</span>
+                  <span>- {fmtBrl(Number(margin.actual_shipping_fee_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.shopee_shipping_rebate_cents != null && Number(margin.shopee_shipping_rebate_cents) > 0 && (
+                <div className="flex justify-between text-sm text-secondary">
+                  <span>Subsídio frete Shopee</span>
+                  <span>+ {fmtBrl(Number(margin.shopee_shipping_rebate_cents) / 100)}</span>
+                </div>
+              )}
+              {margin.seller_voucher_cents != null && Number(margin.seller_voucher_cents) > 0 && (
+                <div className="flex justify-between text-sm text-error">
+                  <span>Cupom vendedor</span>
+                  <span>- {fmtBrl(Number(margin.seller_voucher_cents) / 100)}</span>
+                </div>
+              )}
+              <div className="my-2 border-t border-secondary/20" />
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-base font-semibold text-white">Vai cair na conta</span>
+                <span className="text-h2 font-semibold text-secondary">
+                  {margin.net_amount_real_cents != null
+                    ? fmtBrl(Number(margin.net_amount_real_cents) / 100)
+                    : margin.escrow_amount_cents != null
+                    ? fmtBrl(Number(margin.escrow_amount_cents) / 100)
+                    : '—'}
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Sincronizado {new Date(margin.escrow_synced_at).toLocaleString('pt-BR')}
+              </p>
+            </div>
+          </div>
+        )}
+
         {!loading && (
           <div className="space-y-3">
-            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Resumo Financeiro</h4>
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              Resumo Financeiro {margin?.escrow_synced_at && <span className="text-zinc-600">(estimado)</span>}
+            </h4>
             {margin?.cost_missing && (
               <div className="flex items-start gap-2 rounded-lg border border-zinc-50/30 bg-zinc-800/60 p-3 text-xs text-zinc-50">
                 <Icon name="warning" size={14} className="mt-0.5 shrink-0" />
@@ -400,6 +477,7 @@ export function PedidosView({
   period,
   statusList,
   search,
+  kpis,
 }: {
   orders: OrderRow[]
   totalCount: number
@@ -407,6 +485,7 @@ export function PedidosView({
   period: Period
   statusList: ShopeeOrderStatus[]
   search: string
+  kpis: PedidosKpis
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -484,10 +563,38 @@ export function PedidosView({
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
   const selected = orders.find((o) => o.id === selectedId) ?? null
 
+  const fmtBrlInt = (n: number) => `R$ ${Math.round(n).toLocaleString('pt-BR')}`
+  const fmtNum = (n: number) => n.toLocaleString('pt-BR')
+  const escrowPct = kpis.totalOrders > 0 ? (kpis.escrowSynced / kpis.totalOrders) * 100 : 0
+  const cancelPct = kpis.totalOrders > 0 ? (kpis.cancelled / kpis.totalOrders) * 100 : 0
+
   return (
     <>
       <TopBar title="Pedidos — Shopee" />
       <main className={cn('overflow-y-auto p-margin', selected && 'pr-[420px]', pending && 'opacity-70 transition-opacity')}>
+        {/* KPIs */}
+        <div className="mb-lg grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
+          {[
+            { label: 'Pedidos', value: fmtNum(kpis.totalOrders), icon: 'shopping_cart', tone: 'text-zinc-50' },
+            { label: 'Faturamento', value: fmtBrlInt(kpis.totalRevenue), icon: 'payments', tone: 'text-secondary' },
+            { label: 'Repasse Real', value: fmtBrlInt(kpis.netReal), icon: 'account_balance_wallet', tone: 'text-primary' },
+            { label: 'Ticket Médio', value: fmtBrlInt(kpis.avgTicket), icon: 'receipt_long', tone: 'text-zinc-50' },
+            { label: 'Escrow Sync', value: `${escrowPct.toFixed(0)}%`, icon: 'task_alt', tone: escrowPct > 80 ? 'text-secondary' : 'text-tertiary' },
+            { label: 'Cancelados', value: `${cancelPct.toFixed(1)}%`, icon: 'remove_shopping_cart', tone: cancelPct > 5 ? 'text-error' : 'text-zinc-50' },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">{kpi.label}</span>
+                <span className={cn('material-symbols-outlined text-lg', kpi.tone)}>{kpi.icon}</span>
+              </div>
+              <div className={cn('text-h2 font-semibold', kpi.tone)}>{kpi.value}</div>
+            </div>
+          ))}
+        </div>
+
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[260px]">

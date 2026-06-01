@@ -48,14 +48,27 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
   )
 }
 
+export type CostAgg = {
+  estimated: number
+  totalGross: number
+  coveredGross: number
+  coveredEstimated: number
+  coveredCost: number
+  coveredProfit: number
+  coveredUnits: number
+  uncoveredUnits: number
+}
+
 export function MetricasView({
   rows,
   period,
   nickname,
+  costAgg,
 }: {
   rows: DailyMetric[]
   period: Period
   nickname?: string | null
+  costAgg?: CostAgg
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -117,6 +130,60 @@ export function MetricasView({
           <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" />
           <StatCard label="Cancelados" value={`${fmtInt(totals.cancellations)} (${cancelRate.toFixed(1)}%)`} icon="cancel" tone="red" />
         </div>
+
+        {costAgg && (
+          <div className="mb-lg">
+            {(() => {
+              const coveragePct = costAgg.totalGross > 0 ? (costAgg.coveredGross / costAgg.totalGross) * 100 : 0
+              const realMarginPct = costAgg.coveredGross > 0 ? (costAgg.coveredProfit / costAgg.coveredGross) * 100 : 0
+              const profitTone = costAgg.coveredProfit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+              const marginTone = realMarginPct >= 30 ? 'text-emerald-300' : realMarginPct >= 10 ? 'text-amber-300' : 'text-rose-300'
+              const covTone = coveragePct >= 80 ? 'text-emerald-300' : coveragePct >= 40 ? 'text-amber-300' : 'text-rose-300'
+              return (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Lucro Real</span>
+                      <Icon name="account_balance_wallet" size={18} className="text-zinc-500" />
+                    </div>
+                    <p className={cn('mt-2 text-3xl font-semibold', profitTone)}>{fmtBrl(costAgg.coveredProfit)}</p>
+                    <p className="mt-1 text-[10px] text-zinc-500">SKUs c/ custo preenchido</p>
+                  </div>
+                  <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Margem Real</span>
+                      <Icon name="percent" size={18} className="text-zinc-500" />
+                    </div>
+                    <p className={cn('mt-2 text-3xl font-semibold', marginTone)}>
+                      {realMarginPct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                    </p>
+                    <p className="mt-1 text-[10px] text-zinc-500">Lucro / Receita coberta</p>
+                  </div>
+                  <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Custo Total</span>
+                      <Icon name="paid" size={18} className="text-zinc-500" />
+                    </div>
+                    <p className="mt-2 text-3xl font-semibold text-rose-300">{fmtBrl(costAgg.coveredCost)}</p>
+                    <p className="mt-1 text-[10px] text-zinc-500">{fmtInt(costAgg.coveredUnits)} unidades c/ custo</p>
+                  </div>
+                  <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Cobertura Custo</span>
+                      <Icon name="data_check" size={18} className="text-zinc-500" />
+                    </div>
+                    <p className={cn('mt-2 text-3xl font-semibold', covTone)}>
+                      {coveragePct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                    </p>
+                    <p className="mt-1 text-[10px] text-zinc-500">
+                      {fmtInt(costAgg.uncoveredUnits)} unid. sem custo
+                    </p>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )}
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2">
           <StatCard label="Itens Vendidos" value={fmtInt(totals.items)} icon="inventory_2" />

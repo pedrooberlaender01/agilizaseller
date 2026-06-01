@@ -26,6 +26,17 @@ const PRINT_STATUS: Record<string, StatusMapping> = {
   '2': { label: 'Exceção envio', tone: 'red' },
 }
 
+const RETURN_STATUS: Record<string, StatusMapping> = {
+  '1': { label: 'Fechada', tone: 'gray' },
+  '2': { label: 'Solicitada', tone: 'yellow' },
+  '3': { label: 'Cancelada', tone: 'red' },
+  '5': { label: 'Recebida', tone: 'blue' },
+  '6': { label: 'Entregue', tone: 'blue' },
+  '7': { label: 'Aguardando entrega', tone: 'yellow' },
+  '8': { label: 'Trânsito armazém SHEIN', tone: 'blue' },
+  '9': { label: 'Concluída', tone: 'green' },
+}
+
 const TONE_CLASSES: Record<StatusTone, string> = {
   yellow: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
   blue: 'bg-blue-500/15 text-blue-300 border border-blue-500/30',
@@ -53,6 +64,13 @@ export function mapPrintStatus(code: string | null | undefined): StatusMapping {
   const found = PRINT_STATUS[String(code).trim()]
   if (found) return found
   return { label: `Envio ${code}`, tone: 'gray' }
+}
+
+export function mapReturnStatus(code: string | number | null | undefined): StatusMapping {
+  if (code === null || code === undefined || code === '') return { label: '—', tone: 'gray' }
+  const found = RETURN_STATUS[String(code).trim()]
+  if (found) return found
+  return { label: `Devolução ${code}`, tone: 'gray' }
 }
 
 export function statusToneClass(tone: StatusTone): string {

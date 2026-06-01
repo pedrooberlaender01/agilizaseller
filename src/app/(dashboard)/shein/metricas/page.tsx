@@ -2,8 +2,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { MetricasView, type DailyMetric } from './metricas-view'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 type Period = '7d' | '30d' | '90d'
 
@@ -46,10 +45,19 @@ export default async function SheinMetricasPage({
     )
   }
 
-  const { data: rows, error } = await supabase.rpc('shein_metrics_realtime', {
-    p_connection_id: conn.id,
-    p_cutoff: periodCutoffIso(period),
-  })
+  const cutoff = periodCutoffIso(period)
+
+  const [{ data: rows, error }, marginAgg] = await Promise.all([
+    supabase.rpc('shein_metrics_realtime', {
+      p_connection_id: conn.id,
+      p_cutoff: cutoff,
+    }),
+    supabase
+      .from('shein_margins_enriched')
+      .select('quantity, seller_price, estimated_income, total_cost, real_profit, cost_price')
+      .eq('connection_id', conn.id)
+      .gte('order_time', cutoff),
+  ])
 
   if (error) {
     return (
@@ -62,11 +70,50 @@ export default async function SheinMetricasPage({
     )
   }
 
+  const marginRows = (marginAgg.data ?? []) as Array<{
+    quantity: number | null
+    seller_price: number | string | null
+    estimated_income: number | string | null
+    total_cost: number | string | null
+    real_profit: number | string | null
+    cost_price: number | string | null
+  }>
+
+  const costAgg = marginRows.reduce(
+    (acc, r) => {
+      const qty = Number(r.quantity ?? 0)
+      const gross = qty * Number(r.seller_price ?? 0)
+      acc.estimated += Number(r.estimated_income ?? 0)
+      acc.totalGross += gross
+      if (r.cost_price !== null && r.cost_price !== undefined) {
+        acc.coveredGross += gross
+        acc.coveredEstimated += Number(r.estimated_income ?? 0)
+        acc.coveredCost += Number(r.total_cost ?? 0)
+        acc.coveredProfit += Number(r.real_profit ?? 0)
+        acc.coveredUnits += qty
+      } else {
+        acc.uncoveredUnits += qty
+      }
+      return acc
+    },
+    {
+      estimated: 0,
+      totalGross: 0,
+      coveredGross: 0,
+      coveredEstimated: 0,
+      coveredCost: 0,
+      coveredProfit: 0,
+      coveredUnits: 0,
+      uncoveredUnits: 0,
+    },
+  )
+
   return (
     <MetricasView
       rows={(rows ?? []) as DailyMetric[]}
       period={period}
       nickname={conn.nickname}
+      costAgg={costAgg}
     />
   )
 }
