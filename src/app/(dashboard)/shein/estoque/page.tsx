@@ -2,6 +2,8 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { EstoqueView, type StockRow } from './estoque-view'
 
+export const revalidate = 60
+
 const PAGE_SIZE = 50
 
 export default async function SheinEstoquePage({

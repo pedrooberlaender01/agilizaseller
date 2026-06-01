@@ -4,8 +4,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -234,14 +233,6 @@ export default async function EnvioDetalhePage({
           </div>
         )}
 
-        <details className="border border-zinc-800 bg-zinc-900/40 rounded-2xl">
-          <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-white">Payload raw</summary>
-          <div className="border-t border-zinc-800 p-lg">
-            <pre className="overflow-x-auto font-mono text-[11px] text-slate-300">
-              {JSON.stringify(s.raw ?? {}, null, 2)}
-            </pre>
-          </div>
-        </details>
       </main>
     </>
   )

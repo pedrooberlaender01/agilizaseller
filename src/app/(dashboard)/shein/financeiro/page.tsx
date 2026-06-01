@@ -2,6 +2,8 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { FinanceiroView, type SettlementRow } from './financeiro-view'
 
+export const revalidate = 60
+
 const PAGE_SIZE = 50
 
 type Period = '7d' | '30d' | '90d' | 'all'

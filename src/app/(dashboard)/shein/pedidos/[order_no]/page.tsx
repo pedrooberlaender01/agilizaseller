@@ -6,8 +6,7 @@ import { cn } from '@/lib/utils'
 import { mapOrderStatus, mapInvoiceStatus, mapPrintStatus, statusToneClass } from '@/lib/shein-status'
 import { ExportAddressButton } from './export-button'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 const fmtBrl = (n: number | string | null | undefined, currency = 'BRL') => {
   const v = Number(n ?? 0)
@@ -296,14 +295,6 @@ export default async function PedidoDetalhePage({
           </div>
         )}
 
-        <details className="border border-zinc-800 bg-zinc-900/40 rounded-2xl">
-          <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-white">Payload raw</summary>
-          <div className="border-t border-zinc-800 p-lg">
-            <pre className="overflow-x-auto font-mono text-[11px] text-slate-300">
-              {JSON.stringify(order.raw ?? {}, null, 2)}
-            </pre>
-          </div>
-        </details>
       </main>
     </>
   )

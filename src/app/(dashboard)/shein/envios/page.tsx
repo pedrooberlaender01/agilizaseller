@@ -2,8 +2,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { EnviosView, type ShipmentRow } from './envios-view'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 const PAGE_SIZE = 50
 

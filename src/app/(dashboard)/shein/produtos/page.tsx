@@ -2,16 +2,20 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { ProdutosView, type ProductRow } from './produtos-view'
 
+export const revalidate = 60
+
 const PAGE_SIZE = 50
 
 export default async function SheinProdutosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; status?: string }>
+  searchParams: Promise<{ q?: string; page?: string; status?: string; cost?: string; sort?: string }>
 }) {
   const sp = await searchParams
   const search = (sp.q ?? '').trim()
   const statusFilter = (sp.status ?? '').trim()
+  const costFilter = (sp.cost ?? '').trim() // '', 'missing', 'set'
+  const sort = (sp.sort ?? 'recent').trim() // 'recent' | 'margin_desc' | 'margin_asc' | 'revenue'
   const page = Math.max(1, Number(sp.page ?? 1) || 1)
 
   const supabase = await createClient()
@@ -36,19 +40,24 @@ export default async function SheinProdutosPage({
 
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
-    .from('shein_products')
+    .from('shein_sku_margins')
     .select('*', { count: 'exact' })
     .eq('connection_id', conn.id)
 
   if (statusFilter) query = query.eq('status', statusFilter)
+  if (costFilter === 'missing') query = query.is('cost_price', null)
+  if (costFilter === 'set') query = query.not('cost_price', 'is', null)
   if (search) {
     const term = search.replace(/%/g, '')
     query = query.or(`sku_code.ilike.%${term}%,spu.ilike.%${term}%,product_name.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('updated_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+  if (sort === 'margin_desc') query = query.order('real_margin_pct', { ascending: false, nullsFirst: false })
+  else if (sort === 'margin_asc') query = query.order('real_margin_pct', { ascending: true, nullsFirst: false })
+  else if (sort === 'revenue') query = query.order('gross_revenue', { ascending: false, nullsFirst: false })
+  else query = query.order('cost_updated_at', { ascending: false, nullsFirst: true })
+
+  const { data, count } = await query.range(offset, offset + PAGE_SIZE - 1)
 
   const { data: statusRows } = await supabase
     .from('shein_products')
@@ -61,6 +70,18 @@ export default async function SheinProdutosPage({
     new Set((statusRows ?? []).map((r) => r.status as string)),
   ).sort()
 
+  // KPI footer: cobertura de custos
+  const { count: withCost } = await supabase
+    .from('shein_products')
+    .select('*', { count: 'exact', head: true })
+    .eq('connection_id', conn.id)
+    .not('cost_price', 'is', null)
+
+  const { count: totalProducts } = await supabase
+    .from('shein_products')
+    .select('*', { count: 'exact', head: true })
+    .eq('connection_id', conn.id)
+
   return (
     <ProdutosView
       products={(data ?? []) as ProductRow[]}
@@ -69,6 +90,12 @@ export default async function SheinProdutosPage({
       search={search}
       status={statusFilter}
       statuses={uniqueStatuses}
+      costFilter={costFilter}
+      sort={sort}
+      stats={{
+        withCost: withCost ?? 0,
+        totalProducts: totalProducts ?? 0,
+      }}
     />
   )
 }
