@@ -1,18 +1,30 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import type { ShopeeWalletTransaction, ShopeePayout } from '@/types'
+import type { ShopeeWalletTransaction, ShopeePayout, ShopeeDailyMetric } from '@/types'
 import type { Period } from '@/components/metrics-chart'
 import { FinanceiroView } from './financeiro-view'
 
-function parsePeriod(raw: string | undefined): Period {
-  if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes') return raw
+export type FinanceiroPeriod = Period | 'custom'
+
+function parsePeriod(raw: string | undefined): FinanceiroPeriod {
+  if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes' || raw === 'custom') return raw
   return '30d'
 }
 
-function periodRange(period: Period): { from: string; to: string } {
+function parseIsoDateOnly(s: string | undefined): string | null {
+  if (!s) return null
+  return /^(\d{4})-(\d{2})-(\d{2})$/.test(s) ? s : null
+}
+
+function periodRange(period: FinanceiroPeriod, customFrom: string | null, customTo: string | null): { from: string; to: string } {
   const today = new Date()
   const toStr = today.toISOString()
+  if (period === 'custom' && customFrom && customTo) {
+    const f = new Date(customFrom + 'T00:00:00')
+    const t = new Date(customTo + 'T23:59:59')
+    return { from: f.toISOString(), to: t.toISOString() }
+  }
   if (period === 'mes') {
     const start = new Date(today.getFullYear(), today.getMonth(), 1)
     return { from: start.toISOString(), to: toStr }
@@ -51,10 +63,12 @@ function NoConnectionState() {
 export default async function ShopeeFinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; type?: string }>
+  searchParams: Promise<{ period?: string; type?: string; from?: string; to?: string }>
 }) {
   const sp = await searchParams
   const period = parsePeriod(sp.period)
+  const customFrom = parseIsoDateOnly(sp.from)
+  const customTo = parseIsoDateOnly(sp.to)
   const typeFilter = sp.type || 'all'
   const supabase = await createClient()
 
@@ -69,7 +83,7 @@ export default async function ShopeeFinanceiroPage({
   if (!conn) return <NoConnectionState />
   const connId = conn.id
 
-  const { from, to } = periodRange(period)
+  const { from, to } = periodRange(period, customFrom, customTo)
 
   // Supabase JS hard cap 1000/query → paginar manual
   async function fetchAllTransactions(): Promise<ShopeeWalletTransaction[]> {
@@ -91,7 +105,10 @@ export default async function ShopeeFinanceiroPage({
     return all
   }
 
-  const [txRows, { data: payoutRows }, { data: latestTx }] = await Promise.all([
+  const fromDate = from.slice(0, 10)
+  const toDate = to.slice(0, 10)
+
+  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }] = await Promise.all([
     fetchAllTransactions(),
     supabase
       .from('shopee_payouts')
@@ -106,6 +123,13 @@ export default async function ShopeeFinanceiroPage({
       .not('current_balance_cents', 'is', null)
       .order('create_time', { ascending: false })
       .limit(1),
+    supabase
+      .from('shopee_daily_metrics')
+      .select('*')
+      .eq('connection_id', conn.id)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true }),
   ])
 
   return (
@@ -117,7 +141,10 @@ export default async function ShopeeFinanceiroPage({
           ? Number(latestTx[0].current_balance_cents)
           : null
       }
+      dailyMetrics={(dailyRows ?? []) as ShopeeDailyMetric[]}
       period={period}
+      customFrom={period === 'custom' ? customFrom : null}
+      customTo={period === 'custom' ? customTo : null}
       typeFilter={typeFilter}
       nickname={conn.nickname}
     />

@@ -1,143 +1,36 @@
-# Agiliza Seller Painel — Deploy
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Painel Next.js 16 + Supabase. Funciona 100% identico ao codigo principal.
+## Getting Started
 
-## Por que Vercel e nao GitHub Pages
-
-GitHub Pages serve so estaticos. Este app usa:
-
-- **Server Actions** (`'use server'`) — login, salvar custos, CSV, admin de usuarios.
-- **Supabase SSR** com cookies HttpOnly — sessao segura, nao acessivel via JS.
-- **Middleware `proxy.ts`** — guard de rotas antes do render.
-- **Service role admin** — criar/deletar usuarios (NUNCA pode rodar no browser).
-
-Static export quebra tudo isso. Vercel roda Next.js completo, free tier, deploy em 5 min.
-
-## Stack
-
-- Next.js 16.2 (App Router, Turbopack)
-- React 19
-- Supabase (auth + Postgres + RLS)
-- Tailwind v4
-- Recharts
-- TypeScript
-
-## Setup — passo a passo
-
-### 1. Criar repositorio GitHub
+First, run the development server:
 
 ```bash
-# Na pasta deploy-vercel/, inicializar git
-git init
-git add .
-git commit -m "Inicial"
-
-# Criar repo vazio em github.com/new (ex: agiliza-painel)
-git remote add origin https://github.com/SEU_USUARIO/agiliza-painel.git
-git branch -M main
-git push -u origin main
-```
-
-> Alternativa: arrastar conteudo desta pasta no GitHub via interface web.
-
-### 2. Conectar Vercel
-
-1. Acessar [vercel.com/new](https://vercel.com/new)
-2. Login com GitHub
-3. **Import** o repo `agiliza-painel`
-4. Framework: **Next.js** (auto-detectado)
-5. **NAO deployar ainda** — falta env vars
-
-### 3. Configurar variaveis de ambiente
-
-No painel Vercel → Settings → Environment Variables. Copiar do `.env.example`:
-
-| Nome | Valor | Onde achar |
-|------|-------|------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` | Supabase → Settings → API → Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` (longo) | Supabase → Settings → API → anon public |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` (longo, sensivel) | Supabase → Settings → API → service_role |
-
-> `service_role` so precisa se for usar `/admin/usuarios`. Sem ela, admin quebra mas resto funciona.
-
-Marcar todos pros 3 ambientes: **Production**, **Preview**, **Development**.
-
-### 4. Deploy
-
-Clicar **Deploy**. Aguardar ~2 min. URL fica tipo `agiliza-painel.vercel.app`.
-
-### 5. Configurar dominio do Supabase
-
-Supabase → Authentication → URL Configuration:
-- **Site URL**: `https://agiliza-painel.vercel.app`
-- **Redirect URLs**: adicionar `https://agiliza-painel.vercel.app/**`
-
-Senao login redireciona pra localhost.
-
-### 6. Criar usuario admin inicial
-
-Supabase → Authentication → Users → Add user → Create new user.
-
-Pegar `user_id`, rodar no SQL Editor:
-
-```sql
-update profiles set role = 'admin' where id = 'USER_ID_AQUI';
-```
-
-Depois login no painel com esse e-mail.
-
-## Rodar local
-
-```bash
-npm install
-cp .env.example .env.local
-# editar .env.local com chaves reais
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Abrir [localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Estrutura
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-```
-src/
-  app/
-    (auth)/login/         # tela login
-    (dashboard)/          # rotas autenticadas
-      dashboard/          # home
-      shopee/             # pedidos, anuncios, envios, saude, metricas
-      mercado-livre/      # idem (mockado)
-      magazord/           # estoque, fiscal, metricas, pedidos, produtos
-      shein/              # estoque, financeiro, metricas, pedidos, produtos
-      admin/usuarios/     # gestao usuarios (admin only)
-      configuracoes/      # conexoes marketplace
-      alertas/
-    actions/              # server actions (auth, shopee, connections)
-  lib/supabase/           # clients (server, client, admin)
-  components/             # sidebar, top-bar, charts, icons
-  proxy.ts                # middleware (route guard)
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Custos
+## Learn More
 
-Vercel Hobby (free):
-- 100 GB bandwidth/mes
-- Builds ilimitados
-- Dominio `.vercel.app` gratis
-- Custom dominio gratis (so DNS)
+To learn more about Next.js, take a look at the following resources:
 
-Supera free → upgrade Pro $20/mes. Pra este painel, free sobra.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Troubleshooting
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-**Build falha por env vars faltando**
-Conferir Vercel → Settings → Environment Variables. As 2 `NEXT_PUBLIC_*` sao obrigatorias.
+## Deploy on Vercel
 
-**Login funciona mas redireciona pra localhost**
-Configurar Supabase Site URL e Redirect URLs (passo 5).
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-**`/admin/usuarios` da erro 500**
-Falta `SUPABASE_SERVICE_ROLE_KEY` no Vercel. Adicionar e redeployar.
-
-**Pagina branca apos login**
-Conferir RLS na tabela `profiles`. User precisa ter linha em `profiles` com `role`.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

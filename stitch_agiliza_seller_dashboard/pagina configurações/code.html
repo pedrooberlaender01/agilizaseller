@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza Seller - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#eec131",
+                        "inverse-surface": "#d4e4fa",
+                        "inverse-on-surface": "#233143",
+                        "secondary-container": "#00bd85",
+                        "primary-container": "#4d8eff",
+                        "on-background": "#d4e4fa",
+                        "surface-container-lowest": "#010f1f",
+                        "on-tertiary-container": "#4f3d00",
+                        "on-surface-variant": "#c2c6d6",
+                        "outline-variant": "#424754",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#273647",
+                        "surface": "#051424",
+                        "on-secondary-fixed": "#002114",
+                        "on-primary": "#002e6a",
+                        "on-error": "#690005",
+                        "primary-fixed": "#d8e2ff",
+                        "primary": "#adc6ff",
+                        "secondary": "#45dfa4",
+                        "on-primary-container": "#00285d",
+                        "outline": "#8c909f",
+                        "on-secondary-container": "#00452e",
+                        "surface-tint": "#adc6ff",
+                        "secondary-fixed-dim": "#45dfa4",
+                        "tertiary-container": "#d0a60d",
+                        "on-tertiary-fixed": "#241a00",
+                        "surface-container-low": "#0d1c2d",
+                        "error": "#ffb4ab",
+                        "surface-variant": "#273647",
+                        "primary-fixed-dim": "#adc6ff",
+                        "background": "#051424",
+                        "secondary-fixed": "#68fcbf",
+                        "inverse-primary": "#005ac2",
+                        "on-primary-fixed": "#001a42",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "on-secondary": "#003825",
+                        "surface-dim": "#051424",
+                        "tertiary-fixed": "#ffe08d",
+                        "surface-bright": "#2c3a4c",
+                        "on-surface": "#d4e4fa",
+                        "on-secondary-fixed-variant": "#005137",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#1c2b3c",
+                        "on-tertiary": "#3d2f00",
+                        "on-primary-fixed-variant": "#004395",
+                        "surface-container": "#122131",
+                        "tertiary": "#eec131"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin": "40px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "gutter": "24px",
+                        "xl": "32px"
+                    },
+                    "fontFamily": {
+                        "h1": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "h2": ["Inter"],
+                        "display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "h3": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h1": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "mono-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "h2": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "h3": ["16px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen">
+<!-- JSON Component: SideNavBar -->
+<nav class="fixed left-0 h-full w-[240px] border-r border-white/10 bg-[#0d1117]/80 backdrop-blur-xl shadow-2xl shadow-black/50 flex flex-col h-screen fixed left-0 top-0 z-40 font-['Inter'] antialiased text-slate-200">
+<div class="p-6 border-b border-white/10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-[#3b82f6] flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<div>
+<h1 class="text-xl font-black tracking-tighter text-[#3b82f6]">Agiliza</h1>
+<p class="text-xs text-slate-400 font-medium">Mission Control</p>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
+<!-- Inactive Tab -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md">Metrics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+<span class="font-label-md text-label-md">Ads</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-label-md text-label-md">Alerts</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#3b82f6] bg-white/5 border-l-2 border-[#3b82f6] font-semibold hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- JSON Component: TopNavBar -->
+<header class="flex items-center justify-between px-6 sticky top-0 w-[calc(100%-240px)] ml-[240px] z-30 h-[56px] border-b border-white/10 bg-[#0a0a0f]/60 backdrop-blur-md font-['Inter'] text-sm font-medium">
+<div class="flex items-center gap-4">
+<span class="text-slate-200 text-lg font-semibold tracking-tight">Configurações</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+</button>
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</button>
+<div class="ml-4 w-8 h-8 rounded-full overflow-hidden border border-white/10 cursor-pointer">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A close up portrait of a professional individual looking directly at the camera with a neutral, confident expression. The lighting is studio quality, soft and even, highlighting facial features naturally against a clean, out-of-focus background. The mood is modern, corporate, and approachable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqX7J1OTue0KLl64b_plnQgdjVb9hXAr2Qr7FNMOAVmpVSb0iDgXbp5wZpEW-m9IKNPZiMSEuJeq47fdBP_w4IL2r9B1IsVlDPDDPZpQwvgnJf71i1PBtUe5ge3ySUIRsSeyGjU5zb39e_Iwtx3r5hBcMrVqueC2bWI6uYZzCrdit1eqOUYVF57kr-WNeqEqrK1vplBL_de3Pim0nIxx2-fwI1nszIs3oqBMXXbW6zFSRgZIQX7SrdCgCk0KpiCrCpqdcdHMv3MyM"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[240px] p-margin max-w-7xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Inner Anchor Nav -->
+<div class="lg:col-span-3">
+<div class="sticky top-[calc(56px+40px)] flex flex-col gap-2">
+<a class="px-4 py-2 rounded-lg text-primary bg-primary/10 font-label-md text-label-md border-l-2 border-primary transition-colors flex items-center gap-2" href="#conexoes">
+<span class="material-symbols-outlined text-[18px]" data-icon="cable">cable</span>
+                        Conexões
+                    </a>
+<a class="px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center gap-2" href="#perfil">
+<span class="material-symbols-outlined text-[18px]" data-icon="person">person</span>
+                        Perfil
+                    </a>
+<a class="px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center gap-2" href="#dados">
+<span class="material-symbols-outlined text-[18px]" data-icon="database">database</span>
+                        Dados da Demonstração
+                    </a>
+</div>
+</div>
+<!-- Settings Sections -->
+<div class="lg:col-span-9 flex flex-col gap-margin">
+<!-- SECTION 1: Conexões -->
+<section class="scroll-mt-[100px]" id="conexoes">
+<h2 class="font-h2 text-h2 text-on-surface mb-lg">Conexões de Plataforma</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Mercado Livre (Connected) -->
+<div class="bg-surface-container-high/70 backdrop-blur-[16px] border border-outline-variant/30 rounded-xl p-lg flex flex-col justify-between">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-[#FFF159] flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-black font-bold" data-icon="handshake">handshake</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3 text-on-surface">Mercado Livre</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Conectado como Agiliza_Oficial</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary block"></span>
+                                    Ativo
+                                </span>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/20 pt-4 mt-auto">
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Última sinc: Há 2 min</span>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 rounded bg-surface border border-outline-variant hover:bg-surface-container transition-colors text-error font-label-md text-label-md">
+                                        Desconectar
+                                    </button>
+<button class="px-3 py-1.5 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+                                        Sincronizar agora
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Shopee (Disabled) -->
+<div class="bg-surface-container-low/50 border border-outline-variant/10 rounded-xl p-lg flex flex-col justify-between opacity-70 cursor-not-allowed">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-[#EE4D2D] flex items-center justify-center grayscale">
+<span class="material-symbols-outlined text-white" data-icon="shopping_bag">shopping_bag</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3 text-on-surface">Shopee</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Integração em desenvolvimento</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-variant text-on-surface-variant border border-outline-variant/20">
+                                    Em breve
+                                </span>
+</div>
+</div>
+<!-- TikTok Shop (Disabled) -->
+<div class="bg-surface-container-low/50 border border-outline-variant/10 rounded-xl p-lg flex flex-col justify-between opacity-70 cursor-not-allowed">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-black flex items-center justify-center grayscale border border-white/10">
+<span class="material-symbols-outlined text-white" data-icon="music_note">music_note</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3 text-on-surface">TikTok Shop</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Integração em desenvolvimento</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-variant text-on-surface-variant border border-outline-variant/20">
+                                    Em breve
+                                </span>
+</div>
+</div>
+</div>
+</section>
+<hr class="border-outline-variant/20"/>
+<!-- SECTION 2: Perfil -->
+<section class="scroll-mt-[100px]" id="perfil">
+<h2 class="font-h2 text-h2 text-on-surface mb-lg">Perfil do Usuário</h2>
+<div class="bg-surface-container-high/70 backdrop-blur-[16px] border border-outline-variant/30 rounded-xl p-lg flex flex-col md:flex-row gap-xl items-start">
+<div class="flex flex-col items-center gap-4">
+<div class="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/30 p-1 relative group cursor-pointer">
+<img alt="User Avatar Large" class="w-full h-full rounded-full object-cover" data-alt="A close up portrait of a professional individual looking directly at the camera with a neutral, confident expression. The lighting is studio quality, soft and even, highlighting facial features naturally against a clean, out-of-focus background. The mood is modern, corporate, and approachable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE2JUnySNlJTv8uZfK0u3QGkpeLJ5zhpskUzwHC82mtW4PntJUEPEh1YAN4U4tIlimvWxiEqh1euIzokwsfPDYxgAYZFAYyju6-Cgl1_sez1oVvUOE7FoiriisCgjLZoGIACEezi4cBXO2T25UZp3EhOhbz_Y8-SOPMAL5G2QSLRTzgwa5FcBYJPCAPyfhPD2E1Htjg2C7X3oNRlDtAgt7L31-GGtWpcY-ad2TXCXDGBdLuNpHoblOydFnl6hS4ElGPm2gjdmQitc"/>
+<div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white" data-icon="photo_camera">photo_camera</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-primary bg-primary/10 px-3 py-1 rounded-full">Administrador</span>
+</div>
+<div class="flex-1 w-full space-y-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wide">Nome Completo</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/50 focus:border-primary rounded-lg px-4 py-2 font-body-md text-on-surface outline-none transition-colors" type="text" value="João Silva"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wide">E-mail (Login)</label>
+<div class="relative">
+<input class="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-2 font-body-md text-on-surface-variant cursor-not-allowed" disabled="" type="email" value="joao.silva@agiliza.com"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline-variant text-[20px]" data-icon="lock">lock</span>
+</div>
+<p class="mt-1 font-mono-sm text-mono-sm text-outline-variant">O e-mail de login não pode ser alterado diretamente.</p>
+</div>
+<div class="pt-4 flex justify-end">
+<button class="px-6 py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+                                    Salvar Alterações
+                                </button>
+</div>
+</div>
+</div>
+</section>
+<hr class="border-outline-variant/20"/>
+<!-- SECTION 3: Dados da Demonstração -->
+<section class="scroll-mt-[100px] mb-margin" id="dados">
+<h2 class="font-h2 text-h2 text-on-surface mb-lg">Controle de Dados</h2>
+<div class="bg-surface-container-high/70 backdrop-blur-[16px] border border-tertiary/50 rounded-xl p-lg relative overflow-hidden">
+<!-- Subtle background glow for warning area -->
+<div class="absolute -right-20 -top-20 w-40 h-40 bg-tertiary/10 blur-[50px] rounded-full pointer-events-none"></div>
+<div class="flex items-start gap-4 relative z-10">
+<span class="material-symbols-outlined text-tertiary text-[32px] mt-1" data-icon="warning">warning</span>
+<div class="flex-1">
+<h3 class="font-h3 text-h3 text-on-surface mb-2">Ambiente de Demonstração</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 max-w-2xl">
+                                    Esta conta está operando em modo de demonstração. Você pode forçar a regeneração do conjunto de dados fictícios para testar diferentes cenários, ou limpar completamente o banco para simular uma conta vazia.
+                                </p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="px-4 py-2 rounded border border-tertiary/50 text-tertiary font-label-md text-label-md hover:bg-tertiary/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="refresh">refresh</span>
+                                        Regenerar dados de teste
+                                    </button>
+<button class="px-4 py-2 rounded bg-error/10 border border-error/50 text-error font-label-md text-label-md hover:bg-error hover:text-on-error transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete_forever">delete_forever</span>
+                                        Limpar todos os dados
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- MODAL (Overlay) - Example implementation, initially hidden via CSS but kept visible for the static design prompt requirement -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+<div class="bg-surface-container-highest border border-outline-variant/30 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 relative overflow-hidden">
+<!-- Modal ambient glow -->
+<div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-error to-transparent opacity-50"></div>
+<div class="flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4 border border-error/20">
+<span class="material-symbols-outlined text-error text-[32px]" data-icon="link_off">link_off</span>
+</div>
+<h3 class="font-h2 text-h2 text-on-surface mb-2">Desconectar Mercado Livre?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">
+                    Ao desconectar esta integração, os pedidos, anúncios e mensagens deixarão de ser sincronizados imediatamente. Esta ação não pode ser desfeita.
+                </p>
+<div class="flex w-full gap-3">
+<button class="flex-1 px-4 py-2 rounded border border-outline-variant text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-colors">
+                        Cancelar
+                    </button>
+<button class="flex-1 px-4 py-2 rounded bg-error text-on-error font-label-md text-label-md hover:bg-error/90 transition-colors shadow-lg shadow-error/20">
+                        Sim, desconectar
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

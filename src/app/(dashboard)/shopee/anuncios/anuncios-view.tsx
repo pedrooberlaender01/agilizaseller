@@ -516,6 +516,8 @@ export function AnunciosView({
   adsPerformance,
   adsDaily,
   adsPeriod,
+  adsCustomFrom,
+  adsCustomTo,
 }: {
   items: ShopeeItem[]
   costsBySku: Record<string, CostEntry>
@@ -525,7 +527,9 @@ export function AnunciosView({
   adsCampaigns: ShopeeAdsCampaign[]
   adsPerformance: ShopeeAdsCampaignDailyPerformance[]
   adsDaily: ShopeeDailyMetric[]
-  adsPeriod: Period
+  adsPeriod: Period | 'custom'
+  adsCustomFrom: string | null
+  adsCustomTo: string | null
 }) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
@@ -607,6 +611,8 @@ export function AnunciosView({
             daily={adsDaily}
             items={items}
             period={adsPeriod}
+            customFrom={adsCustomFrom}
+            customTo={adsCustomTo}
           />
         </main>
       </>

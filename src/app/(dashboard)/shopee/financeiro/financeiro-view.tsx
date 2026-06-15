@@ -1,16 +1,18 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useMemo, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { TopBar } from '@/components/top-bar'
+import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 import { cn } from '@/lib/utils'
-import type { ShopeeWalletTransaction, ShopeePayout } from '@/types'
+import type { ShopeeWalletTransaction, ShopeePayout, ShopeeDailyMetric } from '@/types'
 import type { Period } from '@/components/metrics-chart'
 
-const periods: { key: Period; label: string }[] = [
+export type FinanceiroPeriod = Period | 'custom'
+
+const periods: { key: FinanceiroPeriod; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
   { key: 'mes', label: 'Este Mês' },
 ]
 
@@ -99,24 +101,71 @@ export function FinanceiroView({
   transactions,
   payouts,
   latestBalanceCents,
+  dailyMetrics,
   period,
+  customFrom,
+  customTo,
   typeFilter,
   nickname,
 }: {
   transactions: ShopeeWalletTransaction[]
   payouts: ShopeePayout[]
   latestBalanceCents: number | null
-  period: Period
+  dailyMetrics: ShopeeDailyMetric[]
+  period: FinanceiroPeriod
+  customFrom: string | null
+  customTo: string | null
   typeFilter: string
   nickname: string | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const datePickerRef = useRef<HTMLDivElement | null>(null)
 
-  function setPeriod(p: Period) {
+  useEffect(() => {
+    if (!showDatePicker) return
+    function onDown(e: MouseEvent) {
+      if (!datePickerRef.current) return
+      if (!datePickerRef.current.contains(e.target as Node)) setShowDatePicker(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showDatePicker])
+
+  type ViewMode = 'overview' | 'transacoes' | 'saques' | 'payouts'
+  const rawView = searchParams.get('view') as ViewMode | null
+  const view: ViewMode =
+    rawView === 'transacoes' || rawView === 'saques' || rawView === 'payouts' || rawView === 'overview'
+      ? rawView
+      : 'overview'
+
+  function setView(v: ViewMode) {
+    const sp = new URLSearchParams(searchParams.toString())
+    if (v === 'overview') sp.delete('view')
+    else sp.set('view', v)
+    startTransition(() => router.replace(`?${sp.toString()}`, { scroll: false }))
+  }
+
+  const withdrawalCount = transactions.filter(t => t.transaction_type === 'WITHDRAWAL_CREATED').length
+
+  function setPeriod(p: FinanceiroPeriod) {
     const sp = new URLSearchParams(searchParams.toString())
     sp.set('period', p)
+    if (p !== 'custom') {
+      sp.delete('from')
+      sp.delete('to')
+    }
+    startTransition(() => router.replace(`?${sp.toString()}`, { scroll: false }))
+  }
+
+  function applyCustomRange(from: string, to: string) {
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.set('period', 'custom')
+    sp.set('from', from)
+    sp.set('to', to)
+    setShowDatePicker(false)
     startTransition(() => router.replace(`?${sp.toString()}`, { scroll: false }))
   }
 
@@ -148,7 +197,10 @@ export function FinanceiroView({
   return (
     <>
       <TopBar title="Financeiro — Shopee" />
-      <main className={cn('flex flex-1 flex-col gap-gutter overflow-y-auto p-margin', pending && 'opacity-70 pointer-events-none')}>
+      <main
+        className={cn('flex flex-1 flex-col gap-gutter overflow-y-auto p-margin', pending && 'opacity-70 pointer-events-none')}
+        style={showDatePicker ? { paddingBottom: '560px' } : undefined}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-h1 text-h1 text-zinc-50 flex items-center gap-sm">
@@ -160,25 +212,141 @@ export function FinanceiroView({
               {nickname ? `Conta ${nickname}` : 'Conta Shopee ativa'} · fluxo de caixa real da carteira.
             </p>
           </div>
-          <div className="flex items-center rounded-lg p-1 border border-zinc-800 bg-zinc-900/60">
-            {periods.map((p) => {
-              const active = period === p.key
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => setPeriod(p.key)}
-                  className={cn(
-                    'px-4 py-1.5 rounded-md font-label-md text-label-md transition-colors',
-                    active ? 'bg-zinc-50 text-zinc-900 shadow-sm' : 'text-zinc-400 hover:text-zinc-50',
-                  )}
-                >
-                  {p.label}
-                </button>
-              )
-            })}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center rounded-lg p-1 border border-zinc-800 bg-zinc-900/60">
+              {periods.map((p) => {
+                const active = period === p.key
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setPeriod(p.key)}
+                    className={cn(
+                      'px-4 py-1.5 rounded-md font-label-md text-label-md transition-colors',
+                      active ? 'bg-zinc-50 text-zinc-900 shadow-sm' : 'text-zinc-400 hover:text-zinc-50',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div ref={datePickerRef} className="relative z-30">
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(v => !v)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                  period === 'custom'
+                    ? 'bg-primary text-on-primary border-primary'
+                    : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-50',
+                )}
+              >
+                <span className="material-symbols-outlined text-[14px]">event</span>
+                {period === 'custom' && customFrom && customTo
+                  ? `${fmtDateBRShort(customFrom)} → ${fmtDateBRShort(customTo)}`
+                  : 'Personalizado'}
+              </button>
+              {showDatePicker && (
+                <DateRangePopover
+                  from={customFrom}
+                  to={customTo}
+                  onApply={applyCustomRange}
+                  onClose={() => setShowDatePicker(false)}
+                  align="right"
+                />
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 border-b border-zinc-800">
+          {[
+            { key: 'overview' as const, label: 'Visão Geral', icon: 'dashboard', badge: null as number | null },
+            { key: 'transacoes' as const, label: 'Transações', icon: 'receipt_long', badge: transactions.length },
+            { key: 'saques' as const, label: 'Saques Bancários', icon: 'account_balance', badge: withdrawalCount },
+            { key: 'payouts' as const, label: 'Repasses', icon: 'paid', badge: payouts.length || null },
+          ].map((t) => {
+            const active = view === t.key
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setView(t.key)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+                  active
+                    ? 'border-primary text-zinc-50'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                )}
+              >
+                <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+                {t.label}
+                {t.badge != null && t.badge > 0 && (
+                  <span className={cn(
+                    'inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-[10px] font-mono font-semibold',
+                    active ? 'bg-primary/20 text-primary' : 'bg-zinc-800 text-zinc-400',
+                  )}>
+                    {t.badge.toLocaleString('pt-BR')}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {view === 'overview' && (<>
+        {/* Lucro Bruto Macro — fórmula João: Vendas − Taxas Shopee − Ads */}
+        {(() => {
+          const vendas = dailyMetrics.reduce((a, m) => a + (Number(m.gross_revenue) || 0), 0)
+          const taxas = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission) || 0) + (Number(m.total_shipping_cost) || 0), 0)
+          const ads = dailyMetrics.reduce((a, m) => a + (Number(m.ads_spend_cents) || 0), 0) / 100
+          const lucroBruto = vendas - taxas - ads
+          const margemBruta = vendas > 0 ? (lucroBruto / vendas) * 100 : 0
+          if (dailyMetrics.length === 0) return null
+          return (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03) 50%, rgba(248,113,113,0.04))',
+                border: '1px solid #27272a',
+                borderRadius: '14px',
+                padding: '20px 24px',
+              }}
+            >
+              <div className="flex items-start justify-between flex-wrap gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-semibold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[14px] text-emerald-400">savings</span>
+                    Lucro Bruto Macro — Shopee
+                  </div>
+                  <div className={cn('font-h1 text-h1 mt-2', lucroBruto >= 0 ? 'text-secondary' : 'text-error')}>
+                    {lucroBruto >= 0 ? '+' : ''}{fmtBrlInt(lucroBruto)}
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-1">
+                    Vendas − Taxas Marketplace − Investimento Ads · margem {margemBruta.toFixed(1).replace('.', ',')}%
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 min-w-[440px]">
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Vendas</div>
+                    <div className="text-zinc-50 font-h3 text-h3 mt-1">{fmtBrlInt(vendas)}</div>
+                  </div>
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Taxas Shopee</div>
+                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(taxas)}</div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">comissão + frete</div>
+                  </div>
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Ads</div>
+                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(ads)}</div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">{vendas > 0 ? `${((ads / vendas) * 100).toFixed(1)}%` : '—'} das vendas</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
@@ -251,6 +419,9 @@ export function FinanceiroView({
           )}
         </div>
 
+        </>)}
+
+        {view === 'transacoes' && (<>
         {/* Resumo por tipo */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col overflow-hidden">
           <div className="p-lg border-b border-white/10">
@@ -379,6 +550,141 @@ export function FinanceiroView({
           )}
         </div>
 
+        </>)}
+
+        {view === 'saques' && (<>
+        {/* Saques Bancários (Shopee Pay → Conta Lucas/Santander) */}
+        {(() => {
+          const withdrawals = transactions.filter(t => t.transaction_type === 'WITHDRAWAL_CREATED')
+          const completions = transactions.filter(t => t.transaction_type === 'WITHDRAWAL_COMPLETED')
+          if (withdrawals.length === 0) return null
+          const completionByWithdrawalId = new Map<string, ShopeeWalletTransaction>()
+          for (const c of completions) {
+            const raw = c.raw as { withdrawal_id?: number | string } | null
+            const wid = raw?.withdrawal_id != null ? String(raw.withdrawal_id) : null
+            if (wid) completionByWithdrawalId.set(wid, c)
+          }
+          const totalSacado = withdrawals.reduce((a, t) => a + Math.abs(Number(t.amount_cents) || 0), 0) / 100
+          const maxSaque = withdrawals.reduce((m, t) => Math.max(m, Math.abs(Number(t.amount_cents) || 0)), 0) / 100
+          const ultimoSaque = withdrawals[0]
+          const mediaSaques = withdrawals.length > 0 ? totalSacado / withdrawals.length : 0
+
+          return (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col overflow-hidden">
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(59,130,246,0.06), rgba(16,185,129,0.04))',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  padding: '20px 24px',
+                }}
+              >
+                <div className="flex items-start justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-semibold flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[14px] text-primary">account_balance</span>
+                      Saques Bancários
+                    </div>
+                    <h3 className="font-h3 text-h3 text-zinc-50 mt-1">Transferências Shopee Pay → Conta</h3>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Saques sincronizados via wallet API. Cruzar withdrawal_id com extrato Santander.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 min-w-[480px]">
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-md">
+                      <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Total Sacado</div>
+                      <div className="text-primary font-h3 text-h3 mt-1">{fmtBrlInt(totalSacado)}</div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-md">
+                      <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Saques</div>
+                      <div className="text-zinc-50 font-h3 text-h3 mt-1">{fmtNum(withdrawals.length)}</div>
+                      <div className="text-[10px] text-zinc-600 mt-0.5">média {fmtBrlInt(mediaSaques)}</div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-md">
+                      <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Maior Saque</div>
+                      <div className="text-zinc-50 font-h3 text-h3 mt-1">{fmtBrlInt(maxSaque)}</div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-md">
+                      <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Último Saque</div>
+                      <div className="text-zinc-50 font-h3 text-h3 mt-1">
+                        {fmtBrlInt(Math.abs(Number(ultimoSaque.amount_cents) || 0) / 100)}
+                      </div>
+                      <div className="text-[10px] text-zinc-600 mt-0.5">{fmtShortDate(ultimoSaque.create_time)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                <table className="w-full text-left font-label-md text-label-md whitespace-nowrap border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-10">
+                    <tr>
+                      <th className="bg-zinc-950 px-lg py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] border-b border-white/10">Data Solicitação</th>
+                      <th className="bg-zinc-950 px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right border-b border-white/10">Valor</th>
+                      <th className="bg-zinc-950 px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right border-b border-white/10">Saldo Após</th>
+                      <th className="bg-zinc-950 px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] border-b border-white/10">Withdrawal ID</th>
+                      <th className="bg-zinc-950 px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] border-b border-white/10">Carteira</th>
+                      <th className="bg-zinc-950 px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] border-b border-white/10">Conclusão</th>
+                      <th className="bg-zinc-950 px-lg py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] border-b border-white/10">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {withdrawals.map((w) => {
+                      const raw = w.raw as { withdrawal_id?: number | string; transaction_fee?: number } | null
+                      const wid = raw?.withdrawal_id != null ? String(raw.withdrawal_id) : null
+                      const fee = (raw?.transaction_fee ?? 0) as number
+                      const valor = Math.abs(Number(w.amount_cents) || 0) / 100
+                      const completion = wid ? completionByWithdrawalId.get(wid) : undefined
+                      return (
+                        <tr key={w.id} className="hover:bg-white/[0.02]">
+                          <td className="px-lg py-2 text-zinc-400 text-xs">{fmtDate(w.create_time)}</td>
+                          <td className="px-md py-2 text-right font-mono-sm text-primary font-semibold">
+                            R$ {fmtBrl(valor)}
+                          </td>
+                          <td className="px-md py-2 text-right font-mono-sm text-zinc-400">
+                            {w.current_balance_cents != null ? `R$ ${fmtBrl(Number(w.current_balance_cents) / 100)}` : '—'}
+                          </td>
+                          <td className="px-md py-2">
+                            {wid ? (
+                              <button
+                                type="button"
+                                onClick={() => navigator.clipboard.writeText(wid)}
+                                className="group inline-flex items-center gap-1 font-mono text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                                title="Copiar withdrawal_id pra cruzar com extrato Santander"
+                              >
+                                <span>{wid}</span>
+                                <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">content_copy</span>
+                              </button>
+                            ) : '—'}
+                          </td>
+                          <td className="px-md py-2 text-zinc-500 text-xs">{w.wallet_type || '—'}</td>
+                          <td className="px-md py-2 text-zinc-500 text-xs">
+                            {completion ? fmtDate(completion.create_time) : '—'}
+                          </td>
+                          <td className="px-lg py-2">
+                            <span className={cn(
+                              'inline-block px-2 py-0.5 rounded text-[10px] font-semibold border',
+                              completion
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+                            )}>
+                              {completion ? 'Concluído' : (w.status || 'Solicitado')}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-3 border-t border-white/10 text-center text-[10px] text-zinc-600">
+                💡 BR API não retorna banco destino. Cruzar withdrawal_id + valor + data com extrato Santander.
+              </div>
+            </div>
+          )
+        })()}
+
+        </>)}
+
+        {view === 'payouts' && (<>
         {/* Payouts (se houver) */}
         {payouts.length > 0 && (
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col overflow-hidden">
@@ -418,6 +724,17 @@ export function FinanceiroView({
             </table>
           </div>
         )}
+        {payouts.length === 0 && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-xl flex flex-col items-center gap-md text-center">
+            <span className="material-symbols-outlined text-4xl text-zinc-600">paid</span>
+            <h3 className="font-h3 text-h3 text-zinc-50">Nenhum repasse registrado</h3>
+            <p className="text-sm text-zinc-500 max-w-md">
+              Endpoint <code className="font-mono text-xs">get_payout_detail</code> retorna <em>&quot;only applicable for cross boarder shop&quot;</em> em loja BR.
+              Use a aba <strong>Saques Bancários</strong> pra ver transferências reais Shopee Pay → Conta.
+            </p>
+          </div>
+        )}
+        </>)}
       </main>
     </>
   )

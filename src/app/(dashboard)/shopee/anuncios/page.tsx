@@ -10,15 +10,26 @@ import type {
 } from '@/types'
 import type { Period } from '@/components/metrics-chart'
 import { AnunciosView, type CostEntry } from './anuncios-view'
+export type { Period }
 
-function parseAdsPeriod(raw: string | undefined): Period {
-  if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes') return raw
+export type AdsPeriod = Period | 'custom'
+
+function parseAdsPeriod(raw: string | undefined): AdsPeriod {
+  if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes' || raw === 'custom') return raw
   return '30d'
 }
 
-function periodRange(period: Period): { from: string; to: string } {
+function parseIsoDateOnly(s: string | undefined): string | null {
+  if (!s) return null
+  return /^(\d{4})-(\d{2})-(\d{2})$/.test(s) ? s : null
+}
+
+function periodRange(period: AdsPeriod, customFrom: string | null, customTo: string | null): { from: string; to: string } {
   const today = new Date()
   const toStr = today.toISOString().slice(0, 10)
+  if (period === 'custom' && customFrom && customTo) {
+    return { from: customFrom, to: customTo }
+  }
   if (period === 'mes') {
     const start = new Date(today.getFullYear(), today.getMonth(), 1)
     return { from: start.toISOString().slice(0, 10), to: toStr }
@@ -87,11 +98,13 @@ type ProductRow = {
 export default async function ShopeeAnunciosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; period?: string }>
+  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string }>
 }) {
   const sp = await searchParams
   const tab = sp.tab === 'ads' ? 'ads' : 'anuncios'
   const adsPeriod = parseAdsPeriod(sp.period)
+  const adsCustomFrom = parseIsoDateOnly(sp.from)
+  const adsCustomTo = parseIsoDateOnly(sp.to)
   const supabase = await createClient()
 
   const { data: conn } = await supabase
@@ -138,7 +151,7 @@ export default async function ShopeeAnunciosPage({
     }
   }
 
-  const { from: adsFrom, to: adsTo } = periodRange(adsPeriod)
+  const { from: adsFrom, to: adsTo } = periodRange(adsPeriod, adsCustomFrom, adsCustomTo)
   const [
     { data: balanceRows },
     { data: campaignRows },
@@ -182,6 +195,8 @@ export default async function ShopeeAnunciosPage({
       adsPerformance={(perfRows ?? []) as ShopeeAdsCampaignDailyPerformance[]}
       adsDaily={(dailyRows ?? []) as ShopeeDailyMetric[]}
       adsPeriod={adsPeriod}
+      adsCustomFrom={adsPeriod === 'custom' ? adsCustomFrom : null}
+      adsCustomTo={adsPeriod === 'custom' ? adsCustomTo : null}
     />
   )
 }

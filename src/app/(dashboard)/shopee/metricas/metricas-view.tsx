@@ -23,6 +23,7 @@ const fmtBrlInt = (n: number) =>
   `R$ ${Math.round(n).toLocaleString('pt-BR')}`
 const fmtNum = (n: number) => Math.round(n).toLocaleString('pt-BR')
 const fmtPct = (n: number) => `${n.toFixed(1).replace('.', ',')}%`
+const fmtRoas = (n: number) => `${n.toFixed(2).replace('.', ',')}x`
 const fmtShortDate = (iso: string) => {
   const [, m, d] = iso.split('-')
   return `${d}/${m}`
@@ -234,29 +235,68 @@ export function MetricasView({
     })
   }
 
+  const sumCents = (arr: ShopeeDailyMetric[], key: keyof ShopeeDailyMetric): number =>
+    arr.reduce((a, x) => a + (Number(x[key]) || 0), 0) / 100
+
   const faturamento = sum(current, 'gross_revenue')
   const pedidos = sum(current, 'orders_count')
-  const lucroBruto = sumLucroReal(current)
+  const totalComissao = sum(current, 'total_commission')
+  const totalFrete = sum(current, 'total_shipping_cost')
+  const taxasShopee = totalComissao + totalFrete
+  const lucroEscrow = sumLucroReal(current)
+  const adsSpend = sumCents(current, 'ads_spend_cents')
+  const adsGmv = sumCents(current, 'ads_gmv_cents')
+  const adsOrders = sum(current, 'ads_orders')
+  const adsImpressions = sum(current, 'ads_impressions')
+  const adsClicks = sum(current, 'ads_clicks')
+  // Lucro Bruto Macro (fórmula João): Vendas − Taxas Marketplace − Ads. Sem COGS.
+  const lucroBrutoMacro = faturamento - taxasShopee - adsSpend
+  const lucroLiquido = lucroEscrow - adsSpend
   const ticketMedio = pedidos > 0 ? faturamento / pedidos : 0
   const margemMedia = avgMargemReal(current)
+  const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0
   const cancelados = sum(current, 'orders_cancelled_count')
   const taxaCancel = pedidos > 0 ? (cancelados / pedidos) * 100 : 0
+  const roasGlobal = adsSpend > 0 ? adsGmv / adsSpend : 0
+  const acosGlobal = adsGmv > 0 ? (adsSpend / adsGmv) * 100 : 0
+  const pctVendasAds = faturamento > 0 ? (adsGmv / faturamento) * 100 : 0
+  const ctrGlobal = adsImpressions > 0 ? (adsClicks / adsImpressions) * 100 : 0
 
   const prevFat = sum(previous, 'gross_revenue')
   const prevPed = sum(previous, 'orders_count')
-  const prevLucro = sumLucroReal(previous)
+  const prevComissao = sum(previous, 'total_commission')
+  const prevFrete = sum(previous, 'total_shipping_cost')
+  const prevTaxasShopee = prevComissao + prevFrete
+  const prevLucroEscrow = sumLucroReal(previous)
+  const prevAdsSpend = sumCents(previous, 'ads_spend_cents')
+  const prevAdsGmv = sumCents(previous, 'ads_gmv_cents')
+  const prevAdsOrders = sum(previous, 'ads_orders')
+  const prevLucroBrutoMacro = prevFat - prevTaxasShopee - prevAdsSpend
+  const prevLucroLiquido = prevLucroEscrow - prevAdsSpend
   const prevTicket = prevPed > 0 ? prevFat / prevPed : 0
   const prevMargem = avgMargemReal(previous)
   const prevCancel = sum(previous, 'orders_cancelled_count')
   const prevTaxaCancel = prevPed > 0 ? (prevCancel / prevPed) * 100 : 0
+  const prevRoas = prevAdsSpend > 0 ? prevAdsGmv / prevAdsSpend : 0
+  const prevAcos = prevAdsGmv > 0 ? (prevAdsSpend / prevAdsGmv) * 100 : 0
+  const prevPctVendasAds = prevFat > 0 ? (prevAdsGmv / prevFat) * 100 : 0
 
   const kpis = [
-    { label: 'Faturamento Bruto', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat),     icon: 'payments',                iconClass: 'text-zinc-50',             valueClass: 'text-zinc-50' },
-    { label: 'Pedidos',           value: fmtNum(pedidos),         ...deltaPct(pedidos, prevPed),         icon: 'shopping_cart',           iconClass: 'text-primary',              valueClass: 'text-zinc-50' },
-    { label: 'Lucro Líquido',     value: fmtBrlInt(lucroBruto),   ...deltaPct(lucroBruto, prevLucro),    icon: 'account_balance_wallet',  iconClass: 'text-secondary',            valueClass: 'text-secondary-fixed' },
-    { label: 'Ticket Médio',      value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long',          iconClass: 'text-primary-fixed-dim',    valueClass: 'text-zinc-50' },
-    { label: 'Margem Média',      value: fmtPct(margemMedia),     ...deltaPct(margemMedia, prevMargem),  icon: 'pie_chart',               iconClass: 'text-emerald-400',  valueClass: 'text-zinc-50' },
-    { label: 'Cancelamentos',     value: fmtPct(taxaCancel),      ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart',  iconClass: 'text-error',                valueClass: 'text-zinc-50' },
+    { label: 'Faturamento Bruto', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat),     icon: 'payments',                iconClass: 'text-zinc-50',             valueClass: 'text-zinc-50',           sub: undefined as string | undefined },
+    { label: 'Pedidos',           value: fmtNum(pedidos),         ...deltaPct(pedidos, prevPed),         icon: 'shopping_cart',           iconClass: 'text-primary',              valueClass: 'text-zinc-50',           sub: undefined },
+    { label: 'Lucro Bruto Macro', value: fmtBrlInt(lucroBrutoMacro), ...deltaPct(lucroBrutoMacro, prevLucroBrutoMacro), icon: 'account_balance_wallet', iconClass: 'text-secondary',            valueClass: 'text-secondary-fixed',   sub: `vendas − taxas ${fmtBrlInt(taxasShopee)} − Ads ${fmtBrlInt(adsSpend)}` },
+    { label: 'Ticket Médio',      value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long',          iconClass: 'text-primary-fixed-dim',    valueClass: 'text-zinc-50',           sub: undefined },
+    { label: 'Margem Líquida',    value: fmtPct(margemLiquida),   ...deltaPct(margemLiquida, faturamento > 0 ? (prevLucroLiquido / prevFat) * 100 : 0), icon: 'pie_chart', iconClass: 'text-emerald-400', valueClass: 'text-zinc-50', sub: `Bruta ${fmtPct(margemMedia)}` },
+    { label: 'Cancelamentos',     value: fmtPct(taxaCancel),      ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart',  iconClass: 'text-error',                valueClass: 'text-zinc-50',           sub: undefined },
+  ]
+
+  const adsKpis = [
+    { label: 'Gasto em Ads',      value: fmtBrlInt(adsSpend),        ...deltaPct(adsSpend, prevAdsSpend),     icon: 'payments',       iconClass: 'text-error',     valueClass: 'text-error',          invert: true,  sub: `média ${fmtBrlInt(current.length > 0 ? adsSpend / current.length : 0)}/dia` },
+    { label: 'GMV via Ads',       value: fmtBrlInt(adsGmv),          ...deltaPct(adsGmv, prevAdsGmv),         icon: 'shopping_cart',  iconClass: 'text-primary',   valueClass: 'text-primary',        invert: false, sub: `${fmtNum(adsOrders)} pedidos via Ads` },
+    { label: 'ROAS Global',       value: fmtRoas(roasGlobal),        ...deltaPct(roasGlobal, prevRoas),       icon: 'trending_up',    iconClass: 'text-secondary', valueClass: 'text-secondary-fixed', invert: false, sub: 'retorno / investido' },
+    { label: 'ACOS Global',       value: fmtPct(acosGlobal),         ...deltaPct(acosGlobal, prevAcos),       icon: 'pie_chart',      iconClass: 'text-tertiary',  valueClass: 'text-zinc-50',        invert: true,  sub: 'custo / vendas Ads' },
+    { label: '% Vendas via Ads',  value: fmtPct(pctVendasAds),       ...deltaPct(pctVendasAds, prevPctVendasAds), icon: 'campaign',  iconClass: 'text-primary-fixed', valueClass: 'text-zinc-50',      invert: false, sub: `de R$ ${fmtBrl(adsGmv / 1000)}k em ${fmtBrlInt(faturamento)}` },
+    { label: 'Pedidos via Ads',   value: fmtNum(adsOrders),          ...deltaPct(adsOrders, prevAdsOrders),   icon: 'inventory',      iconClass: 'text-zinc-50',   valueClass: 'text-zinc-50',        invert: false, sub: pedidos > 0 ? `${fmtPct((adsOrders / pedidos) * 100)} do total · CTR ${fmtPct(ctrGlobal)}` : undefined },
   ]
 
   const dailyRows = [...current].reverse().slice(0, 5)
@@ -356,6 +396,9 @@ export function MetricasView({
                     </span>
                   </div>
                   <div className={cn('font-h2 text-h2', kpi.valueClass)}>{kpi.value}</div>
+                  {kpi.sub && (
+                    <div className="text-[10px] text-zinc-500 font-mono leading-tight">{kpi.sub}</div>
+                  )}
                   <div
                     className={cn(
                       'flex items-center gap-1 font-label-md text-label-md',
@@ -370,6 +413,55 @@ export function MetricasView({
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Linha Ads — investimento + retorno, impacta Lucro Líquido acima */}
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-semibold mt-1">
+              <span className="material-symbols-outlined text-[14px] text-tertiary">campaign</span>
+              Shopee Ads
+              <span className="flex-1 h-px bg-zinc-800" />
+              <a
+                href="/shopee/anuncios?tab=ads"
+                className="text-[10px] text-zinc-400 hover:text-zinc-50 flex items-center gap-1 normal-case tracking-normal"
+              >
+                Ver painel completo
+                <span className="material-symbols-outlined text-[12px]">arrow_outward</span>
+              </a>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
+              {adsKpis.map((kpi) => {
+                const goodUp = !kpi.invert
+                const trendColor =
+                  kpi.trend === 'flat' ? 'text-zinc-500'
+                  : (kpi.trend === 'up' && goodUp) || (kpi.trend === 'down' && !goodUp) ? 'text-secondary'
+                  : 'text-error'
+                return (
+                  <div
+                    key={kpi.label}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden hover:bg-zinc-900/70 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">
+                        {kpi.label}
+                      </span>
+                      <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>
+                        {kpi.icon}
+                      </span>
+                    </div>
+                    <div className={cn('font-h2 text-h2', kpi.valueClass)}>{kpi.value}</div>
+                    {kpi.sub && (
+                      <div className="text-[10px] text-zinc-500 font-mono leading-tight">{kpi.sub}</div>
+                    )}
+                    <div className={cn('flex items-center gap-1 font-label-md text-label-md', trendColor)}>
+                      <span className="material-symbols-outlined text-[14px]">
+                        {kpi.trend === 'up' ? 'trending_up' : kpi.trend === 'down' ? 'trending_down' : 'trending_flat'}
+                      </span>
+                      <span>{kpi.delta}</span>
+                      <span className="text-zinc-500 ml-1 text-[10px]">vs ant.</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <MetricsChart period={period} data={chartData} />
@@ -393,17 +485,20 @@ export function MetricasView({
                         <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Fat. (R$)</th>
                         <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Comissão (R$)</th>
                         <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Frete (R$)</th>
+                        <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Ads (R$)</th>
                         <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Lucro (R$)</th>
                         <th className="px-lg py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Margem</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {dailyRows.map((r) => {
-                        const margem = margemReal(r)
-                        const tone = toneFor(margem)
+                        const adsSpendDay = (Number(r.ads_spend_cents) || 0) / 100
+                        const lucroEscrowDay = lucroReal(r)
+                        const lucro = lucroEscrowDay - adsSpendDay
+                        const margemPctDay = r.gross_revenue > 0 ? (lucro / Number(r.gross_revenue)) * 100 : null
+                        const tone = toneFor(margemPctDay)
                         const cancelTone = r.orders_cancelled_count > 0 ? 'text-error' : 'text-zinc-400'
-                        const lucro = lucroReal(r)
-                        const lucroTone = lucro > 0 ? 'text-secondary' : 'text-zinc-400'
+                        const lucroTone = lucro > 0 ? 'text-secondary' : 'text-error'
                         return (
                           <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
                             <td className="px-lg py-3 text-zinc-50">{fmtShortDate(r.date)}</td>
@@ -412,6 +507,9 @@ export function MetricasView({
                             <td className="px-md py-3 text-zinc-50 text-right font-mono-sm">{fmtBrl(r.gross_revenue)}</td>
                             <td className="px-md py-3 text-zinc-400 text-right font-mono-sm">{fmtBrl(r.total_commission)}</td>
                             <td className="px-md py-3 text-zinc-400 text-right font-mono-sm">{fmtBrl(r.total_shipping_cost)}</td>
+                            <td className={cn('px-md py-3 text-right font-mono-sm', adsSpendDay > 0 ? 'text-error' : 'text-zinc-500')}>
+                              {adsSpendDay > 0 ? fmtBrl(adsSpendDay) : '—'}
+                            </td>
                             <td className={cn('px-md py-3 text-right font-mono-sm', lucroTone)}>{fmtBrl(lucro)}</td>
                             <td className="px-lg py-3 text-right">
                               <span
@@ -420,7 +518,7 @@ export function MetricasView({
                                   margemBadge[tone],
                                 )}
                               >
-                                {margem !== null ? fmtPct(margem) : '—'}
+                                {margemPctDay !== null ? fmtPct(margemPctDay) : '—'}
                               </span>
                             </td>
                           </tr>

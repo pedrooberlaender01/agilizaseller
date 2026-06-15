@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
@@ -141,6 +142,15 @@ export function FinanceiroView({
           <div>
             <h2 className="text-h2 font-semibold text-white">Liquidações</h2>
             {nickname && <p className="mt-1 text-xs text-slate-400">Conexão: {nickname}</p>}
+            <div className="mt-3 inline-flex gap-2 rounded-lg border border-zinc-800 bg-[#050507] p-1 text-xs">
+              <span className="rounded bg-white/10 px-3 py-1 font-medium text-white">Settlements</span>
+              <Link
+                href="/shein/financeiro/saques"
+                className="rounded px-3 py-1 font-medium text-slate-400 transition-colors hover:text-white"
+              >
+                Saques
+              </Link>
+            </div>
           </div>
           <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
             {(['7d', '30d', '90d', 'all'] as Period[]).map((p) => (

@@ -270,6 +270,7 @@ export interface ShopeeAdsCampaignDailyPerformance {
   id: number
   connection_id: string
   campaign_id: string
+  ad_type: 'manual' | 'auto' | 'all_cpc' | string
   date: string
   impressions: number | null
   clicks: number | null
@@ -286,6 +287,9 @@ export interface ShopeeAdsCampaignDailyPerformance {
   roas: number | null
   acos: number | null
   cr: number | null
+  direct_conversion_rate: number | null
+  broad_conversion_rate: number | null
+  cost_per_conversion_cents: number | null
   synced_at: string
 }
 
@@ -302,6 +306,7 @@ export interface ShopeeWalletTransaction {
   refund_sn: string | null
   reason: string | null
   wallet_type: string | null
+  raw: unknown
   synced_at: string
 }
 
@@ -466,6 +471,19 @@ export interface ShopeeReturn {
   create_time: string | null
   update_time: string | null
   raw: unknown
+  detail_raw: unknown
+  detail_synced_at: string | null
+  seller_proof_status: string | null
+  seller_compensation_status: string | null
+  negotiation: {
+    counter_limit?: number | null
+    offer_due_date?: number | null
+    latest_solution?: string | null
+    negotiation_status?: string | null
+    latest_offer_amount?: number | null
+    latest_offer_creator?: string | null
+  } | null
+  activity_history: unknown
   synced_at: string
   created_at: string
   updated_at: string

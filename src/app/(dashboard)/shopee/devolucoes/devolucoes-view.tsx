@@ -978,6 +978,102 @@ export function DevolucoesView({
                 </div>
               )}
 
+              {/* Seller Proof + Compensation (via get_return_detail) */}
+              {(selected.seller_proof_status || selected.seller_compensation_status) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {selected.seller_proof_status && (
+                    <div className={cn(
+                      'rounded-lg border p-md',
+                      selected.seller_proof_status === 'NOT_NEEDED'
+                        ? 'border-zinc-700 bg-zinc-900/40'
+                        : 'border-blue-500/30 bg-blue-500/5',
+                    )}>
+                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">verified_user</span>
+                        Evidência do Vendedor
+                      </div>
+                      <div className={cn(
+                        'text-sm font-semibold',
+                        selected.seller_proof_status === 'NOT_NEEDED' ? 'text-zinc-300' : 'text-blue-400',
+                      )}>
+                        {selected.seller_proof_status === 'NOT_NEEDED'
+                          ? 'Não necessária'
+                          : selected.seller_proof_status === 'PENDING'
+                          ? 'Pendente — anexar provas'
+                          : selected.seller_proof_status === 'SUBMITTED'
+                          ? 'Submetida'
+                          : selected.seller_proof_status === 'REJECTED'
+                          ? 'Rejeitada'
+                          : selected.seller_proof_status === 'APPROVED'
+                          ? 'Aprovada'
+                          : selected.seller_proof_status}
+                      </div>
+                    </div>
+                  )}
+                  {selected.seller_compensation_status && (
+                    <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-md">
+                      <div className="text-[10px] text-purple-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">payments</span>
+                        Compensação
+                      </div>
+                      <div className="text-sm text-zinc-50 font-semibold">
+                        {selected.seller_compensation_status}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Negociação detalhada */}
+              {selected.negotiation && (selected.negotiation.latest_offer_amount != null || selected.negotiation.latest_solution) && (
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">handshake</span>
+                    Negociação
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {selected.negotiation.latest_solution && (
+                      <div className="col-span-2">
+                        <span className="text-zinc-500">Última proposta:</span>{' '}
+                        <span className="text-zinc-50">{selected.negotiation.latest_solution}</span>
+                      </div>
+                    )}
+                    {selected.negotiation.latest_offer_amount != null && (
+                      <div>
+                        <span className="text-zinc-500">Valor:</span>{' '}
+                        <span className="text-zinc-50 font-mono">R$ {fmtBrl(Number(selected.negotiation.latest_offer_amount))}</span>
+                      </div>
+                    )}
+                    {selected.negotiation.latest_offer_creator && (
+                      <div>
+                        <span className="text-zinc-500">Por:</span>{' '}
+                        <span className="text-zinc-50">{selected.negotiation.latest_offer_creator}</span>
+                      </div>
+                    )}
+                    {selected.negotiation.counter_limit != null && (
+                      <div>
+                        <span className="text-zinc-500">Contra-ofertas restantes:</span>{' '}
+                        <span className="text-zinc-50 font-mono">{selected.negotiation.counter_limit}</span>
+                      </div>
+                    )}
+                    {selected.negotiation.offer_due_date != null && selected.negotiation.offer_due_date > 0 && (
+                      <div>
+                        <span className="text-zinc-500">Prazo:</span>{' '}
+                        <span className="text-zinc-50">{fmtDate(new Date(selected.negotiation.offer_due_date * 1000).toISOString())}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Sync detail badge */}
+              {selected.detail_synced_at && (
+                <div className="text-[10px] text-zinc-600 text-center flex items-center justify-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">cloud_done</span>
+                  Detalhes enriquecidos em {fmtDate(selected.detail_synced_at)}
+                </div>
+              )}
+
               {/* Items */}
               {Array.isArray(selected.item_list) && selected.item_list.length > 0 && (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden">

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza Seller - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ffb4ab",
+                      "on-secondary-container": "#00452e",
+                      "surface-container-lowest": "#010f1f",
+                      "tertiary-fixed": "#ffe08d",
+                      "secondary-fixed": "#68fcbf",
+                      "on-primary-container": "#00285d",
+                      "background": "#051424",
+                      "surface-variant": "#273647",
+                      "primary": "#adc6ff",
+                      "secondary-container": "#00bd85",
+                      "on-secondary": "#003825",
+                      "inverse-on-surface": "#233143",
+                      "error-container": "#93000a",
+                      "on-secondary-fixed-variant": "#005137",
+                      "surface": "#051424",
+                      "secondary": "#45dfa4",
+                      "secondary-fixed-dim": "#45dfa4",
+                      "surface-container-low": "#0d1c2d",
+                      "on-secondary-fixed": "#002114",
+                      "on-primary-fixed": "#001a42",
+                      "primary-fixed": "#d8e2ff",
+                      "outline-variant": "#424754",
+                      "on-surface": "#d4e4fa",
+                      "outline": "#8c909f",
+                      "tertiary-fixed-dim": "#eec131",
+                      "inverse-primary": "#005ac2",
+                      "surface-bright": "#2c3a4c",
+                      "surface-container": "#122131",
+                      "on-primary-fixed-variant": "#004395",
+                      "surface-container-high": "#1c2b3c",
+                      "inverse-surface": "#d4e4fa",
+                      "on-tertiary": "#3d2f00",
+                      "on-primary": "#002e6a",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-error-container": "#ffdad6",
+                      "surface-dim": "#051424",
+                      "surface-tint": "#adc6ff",
+                      "on-tertiary-fixed": "#241a00",
+                      "tertiary-container": "#d0a60d",
+                      "surface-container-highest": "#273647",
+                      "on-surface-variant": "#c2c6d6",
+                      "on-error": "#690005",
+                      "on-background": "#d4e4fa",
+                      "on-tertiary-fixed-variant": "#584400",
+                      "tertiary": "#eec131",
+                      "primary-container": "#4d8eff",
+                      "on-tertiary-container": "#4f3d00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "8px",
+                      "xl": "32px",
+                      "lg": "24px",
+                      "margin": "40px",
+                      "xs": "4px",
+                      "gutter": "24px",
+                      "md": "16px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "mono-sm": [
+                              "Inter"
+                      ],
+                      "h3": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "h1": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "h2": [
+                              "Inter"
+                      ],
+                      "display": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "mono-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "h3": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h1": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "h2": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-[#0a0a0f] min-h-screen flex items-center justify-center relative overflow-hidden font-body-lg text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background Orbs -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+<div class="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/3 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
+<!-- Vignette -->
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_#0a0a0f_100%)] pointer-events-none z-0"></div>
+<!-- Login Card -->
+<div class="relative z-10 w-full max-w-[400px] bg-[#161b22]/95 backdrop-blur-[16px] border border-white/10 rounded-xl p-lg shadow-2xl mx-4">
+<!-- Header -->
+<div class="flex flex-col items-center mb-lg text-center">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[#3b82f6] text-[28px]" style="font-variation-settings: 'FILL' 1;">insert_chart</span>
+<h1 class="text-[22px] font-bold text-white tracking-tight leading-none">Agiliza Seller</h1>
+</div>
+<p class="font-body-md text-on-surface-variant text-body-md">Painel de inteligência para marketplaces</p>
+</div>
+<!-- Divider -->
+<div class="h-px w-full bg-white/5 mb-lg"></div>
+<!-- Form -->
+<form class="flex flex-col gap-md">
+<!-- Full Name Input -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant" for="fullName">Nome completo</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">person</span>
+<input class="w-full h-[44px] bg-[#050507] border border-white/10 rounded-lg pl-[40px] pr-3 font-body-md text-body-md text-white placeholder-outline focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-colors outline-none" id="fullName" placeholder="Seu nome completo" type="text"/>
+</div>
+</div>
+<!-- Email Input -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant" for="email">E-mail</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">mail</span>
+<input class="w-full h-[44px] bg-[#050507] border border-white/10 rounded-lg pl-[40px] pr-3 font-body-md text-body-md text-white placeholder-outline focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-colors outline-none" id="email" placeholder="seu@email.com" type="email"/>
+</div>
+</div>
+<!-- Submit Button -->
+<button class="w-full h-[44px] bg-[#3b82f6] hover:bg-blue-600 active:scale-[0.98] transition-all rounded-lg font-h3 text-h3 text-white mt-2 flex items-center justify-center" type="button">
+                Entrar no painel
+            </button>
+</form>
+<!-- Footer -->
+<div class="mt-lg pt-md border-t border-white/5 flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+<span class="font-mono-sm text-mono-sm">Ambiente de demonstração — dados fictícios</span>
+</div>
+</div>
+</body></html>
