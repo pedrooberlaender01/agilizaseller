@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza - Alertas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#45dfa4",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8c909f",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#005137",
+                        "inverse-surface": "#d4e4fa",
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container": "#122131",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-fixed": "#001a42",
+                        "surface": "#051424",
+                        "on-secondary": "#003825",
+                        "on-primary-container": "#00285d",
+                        "surface-container-highest": "#273647",
+                        "secondary": "#45dfa4",
+                        "primary": "#adc6ff",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#002114",
+                        "tertiary-container": "#d0a60d",
+                        "tertiary": "#eec131",
+                        "primary-container": "#4d8eff",
+                        "on-background": "#d4e4fa",
+                        "background": "#051424",
+                        "on-primary": "#002e6a",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-surface": "#d4e4fa",
+                        "inverse-on-surface": "#233143",
+                        "secondary-fixed": "#68fcbf",
+                        "inverse-primary": "#005ac2",
+                        "on-tertiary": "#3d2f00",
+                        "surface-dim": "#051424",
+                        "on-tertiary-fixed": "#241a00",
+                        "outline-variant": "#424754",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#010f1f",
+                        "tertiary-fixed-dim": "#eec131",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-container": "#00452e",
+                        "on-primary-fixed-variant": "#004395",
+                        "tertiary-fixed": "#ffe08d",
+                        "surface-variant": "#273647",
+                        "secondary-container": "#00bd85",
+                        "on-tertiary-container": "#4f3d00",
+                        "on-surface-variant": "#c2c6d6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "sm": "8px",
+                        "xl": "32px",
+                        "margin": "40px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter"],
+                        "display": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1": ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h2": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "h3": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "h1": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "mono-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0a0f;
+            color: #d4e4fa;
+        }
+        .glass-panel {
+            background-color: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-on-surface font-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav class="flex flex-col h-screen fixed left-0 top-0 z-40 w-[240px] border-r border-white/10 shadow-2xl shadow-black/50 bg-[#0d1117]/80 backdrop-blur-xl font-['Inter'] antialiased text-slate-200">
+<div class="p-6 border-b border-white/10">
+<h1 class="text-xl font-black tracking-tighter text-[#3b82f6]">Agiliza</h1>
+<p class="font-label-md text-slate-400 mt-1">Mission Control</p>
+</div>
+<div class="flex-1 py-4 overflow-y-auto">
+<ul class="space-y-1 px-3">
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md">Metrics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">shopping_cart</span>
+<span class="font-body-md">Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">inventory_2</span>
+<span class="font-body-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">campaign</span>
+<span class="font-body-md">Ads</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">assessment</span>
+<span class="font-body-md">Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-[#3b82f6] bg-white/5 border-l-2 border-[#3b82f6] font-semibold active:scale-[0.98] transition-transform justify-between" href="#">
+<div class="flex items-center">
+<span class="material-symbols-outlined mr-3">notifications</span>
+<span class="font-body-md">Alerts</span>
+</div>
+<span class="bg-[#3b82f6] text-white font-label-md px-2 py-0.5 rounded-full text-xs">3</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 duration-200 active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="ml-[240px] flex flex-col min-h-screen w-[calc(100%-240px)]">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-6 sticky top-0 z-30 h-[56px] border-b border-white/10 bg-[#0a0a0f]/60 backdrop-blur-md font-['Inter'] text-sm font-medium">
+<div class="flex items-center">
+<span class="text-[#3b82f6] font-bold text-lg hidden">Agiliza Seller</span>
+</div>
+<div class="flex items-center space-x-2 text-slate-400">
+<button class="hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<button class="hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none relative">
+<span class="material-symbols-outlined">notifications_active</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="ml-4 pl-4 border-l border-white/10">
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-white/20" data-alt="A small circular avatar image of a professional person, representing a user profile picture in a sleek dark-mode web application. The lighting is soft and corporate." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgYK8vEkp8Tb76lnWhGUfeLxwUcjBpNXvISQoVIljxe2rp7McqO7ceqOYkKkctoPxAJ4ubtB29jgMe0FTjYM5reuJlN25obEpKjwQMw34rPMoXTE7Gyv8oOa_yQKDY_8Gr-AFSE30J-otDnQ_53Om7ODsWdQGeOk-cfHgiFXCKMCvMIdPvHGSq5-5uNAyFpS-QggAOcmAzPoS0TmS4VJ7c3KOt25d7YQL2OUOM-J_HnbtS_yAAjEfrvLAlaR96UTEFdFbdiQMTfuM"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-margin overflow-y-auto">
+<div class="flex justify-between items-end mb-xl">
+<div>
+<h2 class="font-display text-display text-white mb-2">Alerts &amp; Notifications</h2>
+<p class="font-body-lg text-slate-400">Monitor and resolve system anomalies and business events.</p>
+</div>
+</div>
+<!-- Summary Cards Bento -->
+<div class="grid grid-cols-4 gap-gutter mb-xl">
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-slate-400 uppercase tracking-wider">Total Ativos</span>
+<span class="material-symbols-outlined text-slate-400" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</div>
+<div class="font-display text-display text-white">8</div>
+</div>
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between h-[120px] border-l-2 border-l-error">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-error uppercase tracking-wider">Críticos</span>
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+</div>
+<div class="font-display text-display text-white">2</div>
+</div>
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between h-[120px] border-l-2 border-l-tertiary">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-tertiary uppercase tracking-wider">Avisos</span>
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="font-display text-display text-white">4</div>
+</div>
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between h-[120px] border-l-2 border-l-primary">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-primary uppercase tracking-wider">Informações</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+</div>
+<div class="font-display text-display text-white">2</div>
+</div>
+</div>
+<!-- Toolbar -->
+<div class="glass-panel rounded-xl p-md mb-lg flex items-center justify-between">
+<div class="flex items-center space-x-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="bg-[#050507] border border-white/10 rounded-lg pl-10 pr-4 py-2 font-body-md text-white placeholder-slate-500 focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none w-[280px] transition-colors" placeholder="Buscar alertas..." type="text"/>
+</div>
+<select class="bg-[#050507] border border-white/10 rounded-lg px-4 py-2 font-body-md text-white focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none appearance-none pr-8">
+<option>Severidade: Todas</option>
+<option>Crítico</option>
+<option>Aviso</option>
+<option>Info</option>
+</select>
+<select class="bg-[#050507] border border-white/10 rounded-lg px-4 py-2 font-body-md text-white focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none appearance-none pr-8">
+<option>Status: Não Lidos</option>
+<option>Todos</option>
+<option>Lidos</option>
+</select>
+</div>
+<button class="font-label-md text-slate-300 border border-white/10 hover:bg-white/5 px-4 py-2 rounded-lg transition-colors flex items-center">
+<span class="material-symbols-outlined mr-2 text-[18px]">done_all</span>
+                    Marcar todos como lidos
+                </button>
+</div>
+<!-- Alert List -->
+<div class="space-y-xl">
+<!-- Group: HOJE -->
+<div>
+<h3 class="font-label-md text-slate-500 uppercase tracking-widest mb-md pl-2">Hoje</h3>
+<div class="space-y-sm">
+<!-- Item 1: Critical/Unread/Expanded -->
+<div class="glass-panel rounded-xl p-lg relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-start justify-between">
+<div class="flex items-start">
+<div class="mt-1 mr-4 relative">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#3b82f6] rounded-full border-2 border-[#0d1117]"></span>
+</div>
+<div>
+<h4 class="font-h3 text-white mb-1 flex items-center">
+                                            Prazo de entrega vencido
+                                            <span class="font-mono-sm text-slate-400 ml-sm">há 1h</span>
+</h4>
+<p class="font-body-md text-slate-300 mb-4 max-w-3xl leading-relaxed">
+                                            O pedido #48291 para "Cliente VIP SA" excedeu o prazo de postagem de 24 horas estipulado pela plataforma. Risco de penalização na métrica de envio rápido.
+                                        </p>
+<div class="flex space-x-sm">
+<button class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-label-md px-4 py-2 rounded-lg transition-colors">
+                                                Resolver
+                                            </button>
+<button class="bg-transparent border border-white/10 text-white hover:bg-white/5 font-label-md px-4 py-2 rounded-lg transition-colors">
+                                                Marcar lido
+                                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2: Critical/Unread -->
+<div class="glass-panel rounded-xl p-md relative overflow-hidden flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-center">
+<div class="mr-4 relative">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#3b82f6] rounded-full border-2 border-[#0d1117]"></span>
+</div>
+<h4 class="font-h3 text-white">Estoque zerado: Cabo USB-C 2m</h4>
+</div>
+<span class="font-mono-sm text-slate-400">há 3h</span>
+</div>
+</div>
+</div>
+<!-- Group: ONTEM -->
+<div>
+<h3 class="font-label-md text-slate-500 uppercase tracking-widest mb-md pl-2">Ontem</h3>
+<div class="space-y-sm">
+<!-- Item 3: Warning/Read -->
+<div class="glass-panel rounded-xl p-md relative overflow-hidden flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer opacity-80">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary"></div>
+<div class="flex items-center">
+<div class="mr-4">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 0;">warning</span>
+</div>
+<h4 class="font-body-lg text-slate-300">Margem abaixo de 10%: Carregador Wireless</h4>
+</div>
+<span class="font-mono-sm text-slate-500">Ontem, 14:30</span>
+</div>
+</div>
+</div>
+<!-- Group: ESTA SEMANA -->
+<div>
+<h3 class="font-label-md text-slate-500 uppercase tracking-widest mb-md pl-2">Esta Semana</h3>
+<div class="space-y-sm">
+<!-- Item 4: Info/Read -->
+<div class="glass-panel rounded-xl p-md relative overflow-hidden flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer opacity-80">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex items-center">
+<div class="mr-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 0;">info</span>
+</div>
+<h4 class="font-body-lg text-slate-300">Sync de pedidos concluído</h4>
+</div>
+<span class="font-mono-sm text-slate-500">Segunda, 08:00</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

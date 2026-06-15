@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza Seller - Orders</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#45dfa4",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8c909f",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#005137",
+                        "inverse-surface": "#d4e4fa",
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container": "#122131",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-fixed": "#001a42",
+                        "surface": "#051424",
+                        "on-secondary": "#003825",
+                        "on-primary-container": "#00285d",
+                        "surface-container-highest": "#273647",
+                        "secondary": "#45dfa4",
+                        "primary": "#adc6ff",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#002114",
+                        "tertiary-container": "#d0a60d",
+                        "tertiary": "#eec131",
+                        "primary-container": "#4d8eff",
+                        "on-background": "#d4e4fa",
+                        "background": "#051424",
+                        "on-primary": "#002e6a",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-surface": "#d4e4fa",
+                        "inverse-on-surface": "#233143",
+                        "secondary-fixed": "#68fcbf",
+                        "inverse-primary": "#005ac2",
+                        "on-tertiary": "#3d2f00",
+                        "surface-dim": "#051424",
+                        "on-tertiary-fixed": "#241a00",
+                        "outline-variant": "#424754",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#010f1f",
+                        "tertiary-fixed-dim": "#eec131",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-container": "#00452e",
+                        "on-primary-fixed-variant": "#004395",
+                        "tertiary-fixed": "#ffe08d",
+                        "surface-variant": "#273647",
+                        "secondary-container": "#00bd85",
+                        "on-tertiary-container": "#4f3d00",
+                        "on-surface-variant": "#c2c6d6",
+                        
+                        // Adding required brand colors from prompt that aren't mapped directly to standard material tokens
+                        "brand-bg": "#0a0a0f",
+                        "brand-surface": "#0d1117",
+                        "brand-accent": "#3b82f6",
+                        "brand-input": "#050507"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "card": "16px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "xl": "32px",
+                        "margin": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter"],
+                        "display": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1": ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "h3": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "mono-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0a0a0f; color: #d4e4fa; }
+        .glass-panel {
+            background-color: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .table-row-hover:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .drawer-glow {
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="font-['Inter'] antialiased min-h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="flex flex-col h-screen fixed left-0 top-0 z-40 bg-[#0d1117]/80 backdrop-blur-xl fixed left-0 h-full w-[240px] border-r border-white/10 border-r border-white/10 shadow-2xl shadow-black/50">
+<div class="p-6">
+<h1 class="text-xl font-black tracking-tighter text-[#3b82f6]">Agiliza</h1>
+<p class="font-label-md text-label-md text-slate-400 mt-1">Mission Control</p>
+</div>
+<div class="flex-1 px-4 space-y-1 mt-4">
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-body-md text-body-md">Metrics</span>
+</a>
+<!-- Active -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#3b82f6] bg-white/5 border-l-2 border-[#3b82f6] font-semibold hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+<span class="font-body-md text-body-md">Orders</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">inventory_2</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">campaign</span>
+<span class="font-body-md text-body-md">Ads</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">assessment</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+<span class="font-body-md text-body-md">Alerts</span>
+</a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform mt-8 border-t border-white/10 pt-4" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-[240px] flex flex-col h-screen relative">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-6 sticky top-0 w-full z-30 bg-[#0a0a0f]/60 backdrop-blur-md h-[56px] border-b border-white/10">
+<div class="flex items-center gap-4">
+<h2 class="font-h2 text-h2 text-white">Pedidos — Mercado Livre</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden ml-4">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image with a solid electric blue background and the letter U in white, representing a user profile picture in a dark-themed UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBovXStJLECLLZkgoaUqwzykRlg5gE8Q5i0Y2RrnL9f5ZVtMl8jMV8zdNwUxsKGJM1--6yEie7xbi3PBWjOs2JbCpWyp7aPg5yxGWeN3U9t1X3yDU-6rLtKDEonePdB0U4Z5_I_C8ReN9GRs9moJ7ZfRJ_xZ23OwjX3j6kzdNidVMZYyduV66D4ZS6_XLdzuEh3OjplR4W6eQUky4pzXMioBcVyWSC8DRL1auz95yNHFSpKtLc_CAMxRJM3p0yzjv6I6LmQJOC7mDE"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-margin relative">
+<!-- Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-lg">
+<div class="flex items-center gap-4">
+<!-- Search -->
+<div class="relative w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full bg-[#050507] border border-white/10 rounded-lg pl-10 pr-4 py-2 font-body-md text-body-md text-white focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none transition-colors" placeholder="Buscar pedido, cliente..." type="text"/>
+</div>
+<!-- Filters -->
+<select class="bg-[#050507] border border-white/10 rounded-lg px-4 py-2 font-body-md text-body-md text-white focus:border-[#3b82f6] outline-none appearance-none pr-8 relative">
+<option>Status: Todos</option>
+<option>Pago</option>
+<option>Pendente</option>
+</select>
+<!-- Period Selector -->
+<div class="flex bg-[#050507] border border-white/10 rounded-lg p-1">
+<button class="px-3 py-1 rounded font-label-md text-label-md text-slate-400 hover:text-white transition-colors">7 dias</button>
+<button class="px-3 py-1 rounded font-label-md text-label-md bg-white/10 text-white">30 dias</button>
+<button class="px-3 py-1 rounded font-label-md text-label-md text-slate-400 hover:text-white transition-colors">90 dias</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-slate-400">1.847 pedidos encontrados</span>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg font-label-md text-label-md text-white hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        Exportar CSV
+                    </button>
+</div>
+</div>
+<!-- Active Filters Row -->
+<div class="flex gap-2 mb-lg">
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 font-label-md text-label-md text-slate-200">
+                    Status: Pago
+                    <span class="material-symbols-outlined text-[14px] cursor-pointer hover:text-white">close</span>
+</div>
+</div>
+<!-- Orders Table Card -->
+<div class="glass-panel rounded-card overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-white/10">
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">ID DO PEDIDO</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">COMPRADOR</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">ITENS</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">TOTAL</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">LUCRO</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">MARGEM</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">STATUS</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">ENVIO</th>
+<th class="py-4 px-6 font-label-md text-label-md text-slate-400 uppercase tracking-wider">DATA</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-slate-200">
+<!-- Row 1 (Active/Selected) -->
+<tr class="border-b border-white/5 table-row-hover bg-white/5 cursor-pointer">
+<td class="py-4 px-6 text-[#3b82f6] font-mono">2000000123456789</td>
+<td class="py-4 px-6">TECH_GADGETS_BR</td>
+<td class="py-4 px-6">2 itens</td>
+<td class="py-4 px-6 font-medium">R$ 284,90</td>
+<td class="py-4 px-6 font-medium text-secondary-fixed-dim">R$ 71,20</td>
+<td class="py-4 px-6 text-secondary-fixed-dim">25,0%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Pago</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-[#3b82f6]/10 text-[#3b82f6] font-label-md">Em trânsito</span></td>
+<td class="py-4 px-6 text-slate-400">Hoje, 14:30</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-white/5 table-row-hover cursor-pointer">
+<td class="py-4 px-6 font-mono text-slate-300">2000000123456790</td>
+<td class="py-4 px-6">MARIA_SILVA_99</td>
+<td class="py-4 px-6">1 item</td>
+<td class="py-4 px-6 font-medium">R$ 150,00</td>
+<td class="py-4 px-6 font-medium text-secondary-fixed-dim">R$ 45,00</td>
+<td class="py-4 px-6 text-secondary-fixed-dim">30,0%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Pago</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-white/10 text-slate-300 font-label-md">Preparando</span></td>
+<td class="py-4 px-6 text-slate-400">Hoje, 12:15</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-white/5 table-row-hover bg-white/[0.02] cursor-pointer">
+<td class="py-4 px-6 font-mono text-slate-300">2000000123456791</td>
+<td class="py-4 px-6">GAMER_PRO_STORE</td>
+<td class="py-4 px-6">4 itens</td>
+<td class="py-4 px-6 font-medium">R$ 1.250,00</td>
+<td class="py-4 px-6 font-medium text-secondary-fixed-dim">R$ 250,00</td>
+<td class="py-4 px-6 text-secondary-fixed-dim">20,0%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Pago</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-surface-container-highest text-slate-300 border border-white/10 font-label-md">Aguardando</span></td>
+<td class="py-4 px-6 text-slate-400">Ontem, 18:45</td>
+</tr>
+<!-- Row 4 -->
+<tr class="border-b border-white/5 table-row-hover cursor-pointer">
+<td class="py-4 px-6 font-mono text-slate-300">2000000123456792</td>
+<td class="py-4 px-6">JOAO_SOUZA_12</td>
+<td class="py-4 px-6">1 item</td>
+<td class="py-4 px-6 font-medium">R$ 89,90</td>
+<td class="py-4 px-6 font-medium text-secondary-fixed-dim">R$ 15,00</td>
+<td class="py-4 px-6 text-secondary-fixed-dim">16,6%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Pago</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Entregue</span></td>
+<td class="py-4 px-6 text-slate-400">Ontem, 10:20</td>
+</tr>
+<!-- Row 5 -->
+<tr class="border-b border-white/5 table-row-hover bg-white/[0.02] cursor-pointer">
+<td class="py-4 px-6 font-mono text-slate-300">2000000123456793</td>
+<td class="py-4 px-6">CASA_DECOR_SP</td>
+<td class="py-4 px-6">3 itens</td>
+<td class="py-4 px-6 font-medium">R$ 450,00</td>
+<td class="py-4 px-6 font-medium text-secondary-fixed-dim">R$ 112,50</td>
+<td class="py-4 px-6 text-secondary-fixed-dim">25,0%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-secondary-fixed-dim/10 text-secondary-fixed-dim font-label-md">Pago</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-[#3b82f6]/10 text-[#3b82f6] font-label-md">Em trânsito</span></td>
+<td class="py-4 px-6 text-slate-400">02/11/2023</td>
+</tr>
+<!-- Row 6 -->
+<tr class="border-b border-white/5 table-row-hover cursor-pointer">
+<td class="py-4 px-6 font-mono text-slate-300">2000000123456794</td>
+<td class="py-4 px-6">LUCAS_FERNANDES</td>
+<td class="py-4 px-6">1 item</td>
+<td class="py-4 px-6 font-medium">R$ 120,00</td>
+<td class="py-4 px-6 font-medium text-error">R$ -5,00</td>
+<td class="py-4 px-6 text-error">-4,1%</td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-error/10 text-error font-label-md">Cancelado</span></td>
+<td class="py-4 px-6"><span class="px-2 py-1 rounded-full bg-surface-container-highest text-slate-400 border border-white/10 font-label-md">Cancelado</span></td>
+<td class="py-4 px-6 text-slate-400">01/11/2023</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="px-6 py-4 flex items-center justify-between border-t border-white/10">
+<span class="font-body-md text-body-md text-slate-400">Mostrando 1-6 de 1.847</span>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-50 font-label-md">Anterior</button>
+<button class="w-8 h-8 rounded bg-[#3b82f6] text-white font-label-md flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded hover:bg-white/5 text-slate-300 font-label-md flex items-center justify-center">2</button>
+<button class="w-8 h-8 rounded hover:bg-white/5 text-slate-300 font-label-md flex items-center justify-center">3</button>
+<span class="text-slate-400">...</span>
+<button class="px-3 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 font-label-md">Próximo</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Drawer Overlay (simulated by positioning drawer) -->
+<!-- Drawer Panel -->
+<aside class="fixed right-0 top-0 h-screen w-[380px] bg-[#0d1117] border-l border-white/10 z-50 drawer-glow flex flex-col overflow-y-auto">
+<!-- Drawer Header -->
+<div class="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0d1117]/90 backdrop-blur-md z-10">
+<div>
+<h3 class="font-h3 text-h3 text-white">Pedido #2000000123456789</h3>
+<p class="font-body-md text-body-md text-slate-400 mt-1">Hoje, 14:30 • Mercado Livre</p>
+</div>
+<button class="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-6 space-y-6 flex-1">
+<!-- Status Bar -->
+<div class="flex items-center gap-4 bg-white/5 p-4 rounded-lg border border-white/10">
+<div class="w-10 h-10 rounded-full bg-[#3b82f6]/20 flex items-center justify-center text-[#3b82f6]">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-[#3b82f6] uppercase tracking-wider">Em trânsito</p>
+<p class="font-body-md text-body-md text-slate-300">Previsão de entrega: Amanhã</p>
+<p class="font-mono-sm text-mono-sm text-slate-400 mt-1">BR123456789ML</p>
+</div>
+</div>
+<!-- Buyer Info -->
+<div class="space-y-3">
+<h4 class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Comprador</h4>
+<div class="glass-panel p-4 rounded-lg">
+<p class="font-body-md text-body-md text-white font-medium">TECH_GADGETS_BR</p>
+<p class="font-body-md text-body-md text-slate-300">Carlos Eduardo Silva</p>
+<p class="font-body-md text-body-md text-slate-400 mt-2">Rua das Flores, 123 - Apto 45<br/>São Paulo, SP - 01234-567</p>
+</div>
+</div>
+<!-- Items List -->
+<div class="space-y-3">
+<h4 class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Itens (2)</h4>
+<div class="glass-panel rounded-lg divide-y divide-white/10">
+<div class="p-4 flex gap-4">
+<div class="w-12 h-12 bg-white/5 rounded border border-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">headphones</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-white">Fone Bluetooth Pro</p>
+<p class="font-body-md text-body-md text-slate-400">SKU: FBP-001 • Qtd: 1</p>
+</div>
+<p class="font-body-md text-body-md text-white font-medium">R$ 250,00</p>
+</div>
+<div class="p-4 flex gap-4">
+<div class="w-12 h-12 bg-white/5 rounded border border-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">cable</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-white">Cabo USB-C Trançado</p>
+<p class="font-body-md text-body-md text-slate-400">SKU: CAB-002 • Qtd: 1</p>
+</div>
+<p class="font-body-md text-body-md text-white font-medium">R$ 34,90</p>
+</div>
+</div>
+</div>
+<!-- Financial Breakdown -->
+<div class="space-y-3">
+<h4 class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Resumo Financeiro</h4>
+<div class="glass-panel p-4 rounded-lg space-y-2">
+<div class="flex justify-between font-body-md text-body-md text-slate-300">
+<span>Subtotal Itens</span>
+<span>R$ 284,90</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-slate-300">
+<span>Frete Cobrado</span>
+<span>R$ 15,00</span>
+</div>
+<div class="my-2 border-t border-white/10"></div>
+<div class="flex justify-between font-body-md text-body-md text-error">
+<span>Taxa Mercado Livre (16%)</span>
+<span>- R$ 45,58</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-error">
+<span>Custo do Frete</span>
+<span>- R$ 18,00</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-error">
+<span>Impostos (DAS)</span>
+<span>- R$ 15,12</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-error">
+<span>Custo do Produto (CMV)</span>
+<span>- R$ 150,00</span>
+</div>
+<div class="my-2 border-t border-white/10"></div>
+<div class="flex justify-between items-center pt-1">
+<span class="font-h3 text-h3 text-white">Lucro Líquido</span>
+<div class="text-right">
+<span class="font-h2 text-h2 text-secondary-fixed-dim">R$ 71,20</span>
+<p class="font-label-md text-label-md text-secondary-fixed-dim">Margem: 25,0%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Footer Actions -->
+<div class="p-6 border-t border-white/10 bg-[#0d1117] flex gap-3">
+<button class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-body-md text-body-md py-2 rounded-lg transition-colors">
+                    Imprimir Etiqueta
+                </button>
+<button class="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-body-md text-body-md py-2 rounded-lg transition-colors shadow-lg shadow-[#3b82f6]/20">
+                    Ver no ML
+                </button>
+</div>
+</aside>
+</div>
+</body></html>

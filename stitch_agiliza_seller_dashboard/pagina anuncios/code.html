@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza Seller - Listings</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Glassmorphism utility overrides if needed beyond tailwind */
+        .glass-panel {
+            background-color: rgba(18, 33, 49, 0.7); /* surface-container */
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        /* Custom Scrollbar for Drawer */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+<!-- Tailwind Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed-dim": "#45dfa4",
+                        "on-tertiary-fixed-variant": "#584400",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8c909f",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#005137",
+                        "inverse-surface": "#d4e4fa",
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container": "#122131",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-fixed": "#001a42",
+                        "surface": "#051424",
+                        "on-secondary": "#003825",
+                        "on-primary-container": "#00285d",
+                        "surface-container-highest": "#273647",
+                        "secondary": "#45dfa4",
+                        "primary": "#adc6ff",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#002114",
+                        "tertiary-container": "#d0a60d",
+                        "tertiary": "#eec131",
+                        "primary-container": "#4d8eff",
+                        "on-background": "#d4e4fa",
+                        "background": "#051424",
+                        "on-primary": "#002e6a",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-surface": "#d4e4fa",
+                        "inverse-on-surface": "#233143",
+                        "secondary-fixed": "#68fcbf",
+                        "inverse-primary": "#005ac2",
+                        "on-tertiary": "#3d2f00",
+                        "surface-dim": "#051424",
+                        "on-tertiary-fixed": "#241a00",
+                        "outline-variant": "#424754",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#010f1f",
+                        "tertiary-fixed-dim": "#eec131",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-container": "#00452e",
+                        "on-primary-fixed-variant": "#004395",
+                        "tertiary-fixed": "#ffe08d",
+                        "surface-variant": "#273647",
+                        "secondary-container": "#00bd85",
+                        "on-tertiary-container": "#4f3d00",
+                        "on-surface-variant": "#c2c6d6"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        xs: "4px",
+                        sm: "8px",
+                        md: "16px",
+                        lg: "24px",
+                        xl: "32px",
+                        gutter: "24px",
+                        margin: "40px"
+                    },
+                    fontFamily: {
+                        h2: ["Inter"],
+                        display: ["Inter"],
+                        h3: ["Inter"],
+                        h1: ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        h2: ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        display: ["36px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        h3: ["16px", { lineHeight: "24px", fontWeight: "600" }],
+                        h1: ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "mono-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.01em", fontWeight: "500" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen">
+<!-- SHARED COMPONENT: SideNavBar -->
+<nav class="flex flex-col h-screen fixed left-0 top-0 z-40 fixed left-0 h-full w-[240px] border-r border-white/10 bg-[#0d1117]/80 backdrop-blur-xl shadow-2xl shadow-black/50">
+<!-- Brand Header -->
+<div class="flex items-center gap-sm p-lg border-b border-white/10">
+<div class="w-8 h-8 rounded bg-[#3b82f6] flex items-center justify-center">
+<span class="material-symbols-outlined text-white font-bold" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xl font-black tracking-tighter text-[#3b82f6]">Agiliza</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-xs opacity-70">Mission Control</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-xs p-md flex-1 overflow-y-auto">
+<!-- Dashboard -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Dashboard</span>
+</a>
+<!-- Metrics -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Metrics</span>
+</a>
+<!-- Orders -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Orders</span>
+</a>
+<!-- Inventory -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Inventory</span>
+</a>
+<!-- Ads (ACTIVE) -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-[#3b82f6] bg-white/5 border-l-2 border-[#3b82f6] font-semibold hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="campaign" style="font-variation-settings: 'FILL' 1;">campaign</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Ads</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Reports</span>
+</a>
+<!-- Alerts -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Alerts</span>
+</a>
+</div>
+<!-- Settings (Bottom) -->
+<div class="p-md border-t border-white/10 mt-auto">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-slate-400 hover:text-white transition-colors hover:bg-white/5 hover:text-white transition-all duration-200 active:scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] antialiased text-slate-200 text-sm">Settings</span>
+</a>
+</div>
+</nav>
+<!-- SHARED COMPONENT: TopNavBar -->
+<header class="flex items-center justify-between px-6 sticky top-0 w-[calc(100%-240px)] ml-[240px] z-30 h-[56px] border-b border-white/10 bg-[#0a0a0f]/60 backdrop-blur-md">
+<!-- Left Side: Product Name & Search -->
+<div class="flex items-center gap-lg">
+<span class="font-['Inter'] text-sm font-medium text-slate-200">Agiliza Seller</span>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-slate-400 text-sm" data-icon="search">search</span>
+<input class="bg-black/20 border border-white/10 rounded-full pl-9 pr-4 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-1 focus:ring-[#3b82f6] outline-none w-64 transition-all" placeholder="Global search..." type="text"/>
+</div>
+</div>
+<!-- Right Side: Actions & Profile -->
+<div class="flex items-center gap-sm">
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+</button>
+<button class="text-slate-400 hover:bg-white/5 rounded-full p-2 transition-all focus:ring-1 focus:ring-[#3b82f6] outline-none flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-white/10 ml-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#3b82f6] transition-all">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A highly detailed close-up portrait of a professional e-commerce manager. The lighting is soft and modern, casting a gentle glow on the face against a dark, minimalist background. The aesthetic matches a high-tech corporate environment, with sharp focus and cinematic color grading in cool tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGUAnt2t70wpEXR3YPMxbJkGffdbPO5nzFzvh8u8X-LV-rVgY4DYIG649r9jSgJPucct5sT_vkzCbC9K7rUEG91k34PwUosgeKIs9eepralNZrv_NLsVu3W29R-riL8_HYyf8XCZEe8HKnx1FMuU1b7f_4ipMTmFgPiEY2VUlBncwSr1bH9LWFiF5hB1DdQky9duno82OIwQMG5reQhiNVvZ-k4ifBVVi1jSBnDqBRn_XB7Yd09DhqpgldXyLd1MJ5G0p3djKTQho"/>
+</div>
+</div>
+</header>
+<!-- MAIN CONTENT CANVAS -->
+<main class="ml-[240px] flex p-margin gap-gutter items-start min-h-[calc(100vh-56px)]">
+<!-- Center Grid Area -->
+<div class="flex-1 flex flex-col gap-lg min-w-0">
+<!-- Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-md bg-surface-container/40 p-md rounded-xl border border-white/5 backdrop-blur-sm">
+<div class="flex items-center gap-sm flex-1 min-w-[300px]">
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm" data-icon="search">search</span>
+<input class="w-full bg-surface-container border border-white/10 rounded-lg pl-9 pr-3 py-2 font-body-md text-body-md text-on-surface placeholder-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Buscar por título ou SKU" type="text"/>
+</div>
+<select class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-primary outline-none appearance-none pr-8 relative cursor-pointer">
+<option>Status: Todos</option>
+<option>Ativos</option>
+<option>Pausados</option>
+</select>
+<select class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-primary outline-none appearance-none pr-8 cursor-pointer">
+<option>Tipo: Todos</option>
+<option>Clássico</option>
+<option>Premium</option>
+</select>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-body-md text-body-md text-on-surface-variant hidden xl:inline-block">32 anúncios</span>
+<div class="flex items-center bg-surface-container rounded-lg border border-white/10 p-1">
+<button class="p-1 rounded bg-white/10 text-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="grid_view" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+</button>
+<button class="p-1 rounded text-outline hover:text-on-surface transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" data-icon="view_list">view_list</span>
+</button>
+</div>
+<select class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-primary outline-none appearance-none pr-8 cursor-pointer">
+<option>Mais vendidos</option>
+<option>Maior estoque</option>
+<option>Menor estoque</option>
+</select>
+<button class="bg-[#3b82f6] hover:bg-[#2563eb] text-white font-label-md text-label-md px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20">
+<span class="material-symbols-outlined text-sm" data-icon="add_circle">add_circle</span>
+                        Cadastrar custos em massa
+                    </button>
+</div>
+</div>
+<!-- Product Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+<!-- Card 1 (Active/Selected state matching drawer) -->
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer border-primary/50 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
+<div class="absolute inset-0 bg-primary/5 opacity-100 pointer-events-none"></div>
+<!-- Image & Badges -->
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="headphones">headphones</span>
+<div class="absolute top-2 left-2 flex gap-1 flex-wrap">
+<span class="bg-secondary-container/20 text-secondary border border-secondary/30 rounded px-1.5 py-0.5 font-label-md text-[10px] uppercase tracking-wider backdrop-blur-sm">Ativo</span>
+<span class="bg-tertiary-container/20 text-tertiary border border-tertiary/30 rounded px-1.5 py-0.5 font-label-md text-[10px] uppercase tracking-wider backdrop-blur-sm">Ouro Pro</span>
+</div>
+</div>
+<!-- Details -->
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-on-surface line-clamp-2 group-hover:text-primary transition-colors">Fone Bluetooth TWS Pro com Cancelamento de Ruído</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: TWS-PRO-BLK-01</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline">Preço Venda</span>
+<span class="font-h2 text-h2 text-on-surface">R$ 189,90</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-label-md text-label-md text-outline">Margem</span>
+<span class="font-body-md text-body-md text-secondary font-medium">21,1%</span>
+</div>
+</div>
+<div class="flex justify-between items-center bg-black/20 rounded py-1.5 px-2">
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-md text-[11px]">142 vendas</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-[11px]">12 em estoque</span>
+</div>
+</div>
+</div>
+<!-- Card 2 (No Cost Warning) -->
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer hover:border-white/20 transition-all duration-300 group hover:-translate-y-1">
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="watch">watch</span>
+<div class="absolute top-2 left-2 flex gap-1 flex-wrap">
+<span class="bg-secondary-container/20 text-secondary border border-secondary/30 rounded px-1.5 py-0.5 font-label-md text-[10px] uppercase tracking-wider backdrop-blur-sm">Ativo</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-on-surface line-clamp-2 group-hover:text-primary transition-colors">Smartwatch Fitness Tracker M5 Preto</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: SMW-M5-BLK</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline">Preço Venda</span>
+<span class="font-h2 text-h2 text-on-surface">R$ 95,00</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-label-md text-label-md text-outline">Margem</span>
+<span class="font-body-md text-body-md text-error flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span> Sem custo
+                            </span>
+</div>
+</div>
+<div class="flex justify-between items-center bg-black/20 rounded py-1.5 px-2">
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-md text-[11px]">89 vendas</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-[11px]">45 em estoque</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer hover:border-white/20 transition-all duration-300 group hover:-translate-y-1">
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="cable">cable</span>
+<div class="absolute top-2 left-2 flex gap-1 flex-wrap">
+<span class="bg-surface-container-highest text-outline border border-outline/30 rounded px-1.5 py-0.5 font-label-md text-[10px] uppercase tracking-wider backdrop-blur-sm">Pausado</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-outline line-clamp-2">Cabo USB-C Rápido 2 Metros Nylon Reforçado</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: CBL-USBC-2M</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5 opacity-70">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline">Preço Venda</span>
+<span class="font-h2 text-h2 text-on-surface">R$ 29,90</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-label-md text-label-md text-outline">Margem</span>
+<span class="font-body-md text-body-md text-secondary font-medium">35,2%</span>
+</div>
+</div>
+<div class="flex justify-between items-center bg-black/20 rounded py-1.5 px-2 opacity-70">
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-md text-[11px]">412 vendas</span>
+</div>
+<div class="flex items-center gap-1 text-error">
+<span class="material-symbols-outlined text-[14px]" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-[11px]">0 em estoque</span>
+</div>
+</div>
+</div>
+<!-- Repeat standard cards for layout filling -->
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer hover:border-white/20 transition-all duration-300 group hover:-translate-y-1 hidden md:flex">
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="keyboard">keyboard</span>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-on-surface line-clamp-2 group-hover:text-primary transition-colors">Teclado Mecânico Gamer Switch Azul RGB</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: KBD-MEC-RGB</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5">
+<div class="flex flex-col">
+<span class="font-h2 text-h2 text-on-surface">R$ 249,00</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-body-md text-body-md text-secondary font-medium">18,5%</span>
+</div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer hover:border-white/20 transition-all duration-300 group hover:-translate-y-1 hidden lg:flex">
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="mouse">mouse</span>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-on-surface line-clamp-2 group-hover:text-primary transition-colors">Mouse Gamer 10000 DPI Ergonômico</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: MSE-GMR-10K</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5">
+<div class="flex flex-col">
+<span class="font-h2 text-h2 text-on-surface">R$ 129,90</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-body-md text-body-md text-secondary font-medium">24,0%</span>
+</div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex flex-col gap-md cursor-pointer hover:border-white/20 transition-all duration-300 group hover:-translate-y-1 hidden lg:flex">
+<div class="h-32 bg-surface-container-highest rounded-lg relative overflow-hidden flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-4xl text-outline-variant opacity-50" data-icon="speaker">speaker</span>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-h3 text-h3 text-on-surface line-clamp-2 group-hover:text-primary transition-colors">Caixa de Som Bluetooth Portátil 20W</h3>
+<span class="font-mono-sm text-mono-sm text-outline-variant">SKU: SPK-BT-20W</span>
+</div>
+<div class="flex items-end justify-between mt-auto pt-2 border-t border-white/5">
+<div class="flex flex-col">
+<span class="font-h2 text-h2 text-on-surface">R$ 159,00</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-body-md text-body-md text-error flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span> Sem custo
+                            </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Detail Drawer (Open) -->
+<aside class="w-[380px] shrink-0 sticky top-[72px] h-[calc(100vh-56px-64px)] glass-panel rounded-2xl overflow-y-auto flex flex-col shadow-2xl shadow-black/80 ring-1 ring-white/10 hidden md:flex">
+<!-- Drawer Header -->
+<div class="p-lg border-b border-white/10 flex justify-between items-start bg-surface-container-highest/30">
+<div class="flex flex-col gap-1 pr-4">
+<span class="font-mono-sm text-mono-sm text-outline-variant">TWS-PRO-BLK-01</span>
+<h2 class="font-h2 text-h2 text-on-surface leading-tight">Fone Bluetooth TWS Pro</h2>
+</div>
+<button class="text-outline hover:text-white transition-colors bg-black/20 p-1 rounded-full">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div class="p-lg flex flex-col gap-lg">
+<!-- Drawer Image Area -->
+<div class="h-48 bg-surface-container-highest rounded-xl flex items-center justify-center border border-white/5 overflow-hidden relative">
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent pointer-events-none"></div>
+<span class="material-symbols-outlined text-6xl text-outline-variant opacity-30" data-icon="headphones">headphones</span>
+<div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs font-mono-sm text-outline">No Image</div>
+</div>
+<!-- Info Rows -->
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center py-2 border-b border-white/5">
+<span class="font-body-md text-body-md text-outline">Preço de Venda</span>
+<span class="font-h3 text-h3 text-primary">R$ 189,90</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-white/5">
+<span class="font-body-md text-body-md text-outline">Categoria</span>
+<span class="font-body-md text-body-md text-on-surface">Eletrônicos &gt; Áudio</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-white/5">
+<span class="font-body-md text-body-md text-outline">Performance</span>
+<div class="flex gap-4">
+<span class="font-body-md text-body-md text-on-surface"><span class="text-outline mr-1">V:</span>142</span>
+<span class="font-body-md text-body-md text-on-surface"><span class="text-outline mr-1">E:</span>12</span>
+</div>
+</div>
+</div>
+<!-- Cost Editor Section -->
+<div class="bg-[#050507] rounded-xl p-md border border-white/10 flex flex-col gap-4 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-[#3b82f6]"></div>
+<h3 class="font-h3 text-h3 text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="edit_document">edit_document</span>
+                        Composição de Custo
+                    </h3>
+<div class="grid grid-cols-2 gap-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-outline">Custo Unitário (R$)</label>
+<input class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none w-full transition-colors text-right" type="text" value="85,00"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-outline">Embalagem (R$)</label>
+<input class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none w-full transition-colors text-right" type="text" value="2,50"/>
+</div>
+<div class="flex flex-col gap-1 col-span-2">
+<label class="font-label-md text-label-md text-outline">Imposto / Simples (%)</label>
+<input class="bg-surface-container border border-white/10 rounded-lg px-3 py-2 font-body-md text-body-md text-on-surface focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] outline-none w-full transition-colors text-right" type="text" value="6,5"/>
+</div>
+</div>
+<button class="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-label-md text-label-md py-2.5 rounded-lg transition-colors mt-2">
+                        Salvar custo
+                    </button>
+</div>
+<!-- Breakdown & Margin -->
+<div class="bg-surface-container-highest/40 rounded-xl p-md border border-white/5 flex flex-col gap-sm">
+<div class="flex justify-between items-center text-sm">
+<span class="text-outline">Taxa Marketplace (16%)</span>
+<span class="text-error-container font-mono-sm">- R$ 30,38</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-outline">Custo Fixo Venda</span>
+<span class="text-error-container font-mono-sm">- R$ 6,00</span>
+</div>
+<div class="flex justify-between items-center text-sm border-b border-white/5 pb-2">
+<span class="text-outline">Impostos (6,5%)</span>
+<span class="text-error-container font-mono-sm">- R$ 12,34</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="font-h3 text-h3 text-on-surface">Lucro Líquido</span>
+<div class="flex flex-col items-end">
+<span class="font-h3 text-h3 text-secondary">R$ 40,08</span>
+<span class="font-label-md text-label-md text-secondary bg-secondary/10 px-2 py-0.5 rounded mt-1">Margem: 21,1%</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</body></html>

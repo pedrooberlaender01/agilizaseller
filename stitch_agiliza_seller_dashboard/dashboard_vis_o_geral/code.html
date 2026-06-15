@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agiliza Seller - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ffb4ab",
+                      "on-secondary-container": "#00452e",
+                      "surface-container-lowest": "#010f1f",
+                      "tertiary-fixed": "#ffe08d",
+                      "secondary-fixed": "#68fcbf",
+                      "on-primary-container": "#00285d",
+                      "background": "#051424",
+                      "surface-variant": "#273647",
+                      "primary": "#adc6ff",
+                      "secondary-container": "#00bd85",
+                      "on-secondary": "#003825",
+                      "inverse-on-surface": "#233143",
+                      "error-container": "#93000a",
+                      "on-secondary-fixed-variant": "#005137",
+                      "surface": "#051424",
+                      "secondary": "#45dfa4",
+                      "secondary-fixed-dim": "#45dfa4",
+                      "surface-container-low": "#0d1c2d",
+                      "on-secondary-fixed": "#002114",
+                      "on-primary-fixed": "#001a42",
+                      "primary-fixed": "#d8e2ff",
+                      "outline-variant": "#424754",
+                      "on-surface": "#d4e4fa",
+                      "outline": "#8c909f",
+                      "tertiary-fixed-dim": "#eec131",
+                      "inverse-primary": "#005ac2",
+                      "surface-bright": "#2c3a4c",
+                      "surface-container": "#122131",
+                      "on-primary-fixed-variant": "#004395",
+                      "surface-container-high": "#1c2b3c",
+                      "inverse-surface": "#d4e4fa",
+                      "on-tertiary": "#3d2f00",
+                      "on-primary": "#002e6a",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-error-container": "#ffdad6",
+                      "surface-dim": "#051424",
+                      "surface-tint": "#adc6ff",
+                      "on-tertiary-fixed": "#241a00",
+                      "tertiary-container": "#d0a60d",
+                      "surface-container-highest": "#273647",
+                      "on-surface-variant": "#c2c6d6",
+                      "on-error": "#690005",
+                      "on-background": "#d4e4fa",
+                      "on-tertiary-fixed-variant": "#584400",
+                      "tertiary": "#eec131",
+                      "primary-container": "#4d8eff",
+                      "on-tertiary-container": "#4f3d00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "8px",
+                      "xl": "32px",
+                      "lg": "24px",
+                      "margin": "40px",
+                      "xs": "4px",
+                      "gutter": "24px",
+                      "md": "16px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "mono-sm": ["Inter"],
+                      "h3": ["Inter"],
+                      "label-md": ["Inter"],
+                      "h1": ["Inter"],
+                      "body-md": ["Inter"],
+                      "h2": ["Inter"],
+                      "display": ["Inter"]
+              },
+              "fontSize": {
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "mono-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "h3": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                      "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body { background-color: #0a0a0f; }
+        .glass-card {
+            background-color: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-background antialiased flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="docked vertical left-0 w-[240px] border-r border-white/10 bg-[#0d1117]/60 backdrop-blur-2xl text-blue-500 font-inter text-[13px] font-medium flat no-shadows fixed left-0 top-0 h-screen flex flex-col p-4 z-50 hidden md:flex shrink-0">
+<div class="flex items-center gap-3 mb-8 px-2">
+<div class="w-8 h-8 rounded bg-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<div>
+<div class="text-lg font-black text-white leading-none">Agiliza</div>
+<div class="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">Mission Control</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-blue-400 bg-blue-500/10 border-l-2 border-blue-500 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">monitoring</span>
+<span>Metrics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">shopping_cart</span>
+<span>Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">campaign</span>
+<span>Ads</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+<span>Reports</span>
+</a>
+</div>
+<div class="mt-auto pt-4 border-t border-white/10 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-[240px] h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="docked full-width top-0 border-b border-white/10 bg-[#0d1117]/80 backdrop-blur-xl text-blue-500 font-inter text-sm antialiased flat no-shadows flex items-center justify-between h-14 px-10 sticky top-0 z-40 shrink-0">
+<div class="flex items-center gap-4">
+<h1 class="font-h3 text-h3 text-white">Dashboard</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="w-px h-6 bg-white/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<div class="font-label-md text-label-md text-white">Pedro Oberlaender</div>
+<div class="font-mono-sm text-mono-sm text-slate-400">Admin</div>
+</div>
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-white/10" data-alt="A professional headshot of a man with short brown hair, wearing a dark shirt. The lighting is studio quality, creating a clean, high-end e-commerce management platform aesthetic. Minimalist dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOYH6QEWqkfiCelQCMa_RoRFb3w9lamiFvNBS1n0WvM8yWfQuPoR3jczITZ6XkBAZUFSxTAGZ7nycf3PBMcS4J4YiJa30CjKItR_Mu3F-qhGgU04m588lmPP5de5cqTJUIS7Type1rUDDIPg1d6TdC-4leazC4RWAWwNgldemq5za53jnp0qS33mKW6RavKDiK-n6Pw_Yq9wLQXQOztGCI4qF6rdNyBaTS0-JqQMXKerYRmTq_alCqpnV3-cwIMKosZTLgjiykexQ"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-lg">
+<div class="max-w-[1200px] mx-auto space-y-lg pb-xl">
+<!-- Welcome Header -->
+<div>
+<h2 class="font-h1 text-h1 text-white mb-1">Bom dia, Pedro</h2>
+<p class="font-body-md text-body-md text-slate-400 flex items-center gap-2">
+                        Últimos 30 dias <span class="w-1 h-1 rounded-full bg-slate-600"></span> conta GRUPOLUZZOO
+                    </p>
+</div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Faturamento -->
+<div class="glass-card rounded-xl p-lg flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Faturamento</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">payments</span>
+</div>
+<div>
+<div class="font-display text-display text-white mb-1">R$ 124.830</div>
+<div class="flex items-center gap-1 text-secondary-container">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-md text-label-md">+12,4%</span>
+</div>
+</div>
+</div>
+<!-- Pedidos -->
+<div class="glass-card rounded-xl p-lg flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Pedidos</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">shopping_bag</span>
+</div>
+<div>
+<div class="font-display text-display text-white mb-1">1.847</div>
+<div class="flex items-center gap-1 text-secondary-container">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-md text-label-md">+8,1%</span>
+</div>
+</div>
+</div>
+<!-- Lucro Bruto -->
+<div class="glass-card rounded-xl p-lg flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Lucro Bruto</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">account_balance_wallet</span>
+</div>
+<div>
+<div class="font-display text-display text-white mb-1">R$ 38.920</div>
+<div class="flex items-center gap-1 text-secondary-container">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-md text-label-md">+15,2%</span>
+</div>
+</div>
+</div>
+<!-- Margem Média -->
+<div class="glass-card rounded-xl p-lg flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-slate-400 uppercase tracking-wider">Margem Média</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">percent</span>
+</div>
+<div>
+<div class="font-display text-display text-white mb-1">31,2%</div>
+<div class="flex items-center gap-1 text-error">
+<span class="material-symbols-outlined text-[16px]">trending_down</span>
+<span class="font-label-md text-label-md">-0,8%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ROW 3: Chart & Alerts -->
+<div class="flex flex-col lg:flex-row gap-gutter">
+<!-- Chart Area -->
+<div class="glass-card rounded-xl lg:w-[65%] flex flex-col">
+<div class="p-lg border-b border-white/10 flex justify-between items-center">
+<h3 class="font-h3 text-h3 text-white">Faturamento vs Lucro</h3>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-blue-500"></div>
+<span class="font-label-md text-label-md text-slate-400">Faturamento</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary-container"></div>
+<span class="font-label-md text-label-md text-slate-400">Lucro</span>
+</div>
+</div>
+</div>
+<div class="p-lg flex-1 min-h-[300px] flex items-end justify-between gap-2 relative">
+<!-- Placeholder for actual chart -->
+<div class="absolute inset-x-lg inset-y-lg flex flex-col justify-between z-0">
+<div class="border-t border-white/5 w-full"></div>
+<div class="border-t border-white/5 w-full"></div>
+<div class="border-t border-white/5 w-full"></div>
+<div class="border-t border-white/5 w-full"></div>
+</div>
+<!-- Dummy Bars for visual representation -->
+<div class="w-8 h-[40%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[30%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[55%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[40%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[45%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[35%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[70%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[45%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[60%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[50%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[85%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[55%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+<div class="w-8 h-[75%] bg-blue-500/20 border border-blue-500/50 rounded-t z-10 relative"><div class="absolute bottom-0 w-full h-[60%] bg-secondary-container/30 border-t border-secondary-container/50"></div></div>
+</div>
+</div>
+<!-- Alerts -->
+<div class="glass-card rounded-xl lg:w-[35%] flex flex-col">
+<div class="p-lg border-b border-white/10 flex justify-between items-center">
+<h3 class="font-h3 text-h3 text-white">Alertas Ativos</h3>
+<span class="bg-error/10 text-error font-label-md text-label-md px-2 py-1 rounded">3 Novos</span>
+</div>
+<div class="p-lg flex flex-col gap-4">
+<!-- Alert 1 -->
+<div class="bg-surface-container-high border border-white/5 p-4 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5">warning</span>
+<div>
+<div class="font-label-md text-label-md text-white mb-1">Estoque Crítico</div>
+<div class="font-body-md text-body-md text-slate-400">Produto "Cadeira Gamer X" com menos de 5 unidades.</div>
+</div>
+</div>
+<!-- Alert 2 -->
+<div class="bg-surface-container-high border border-white/5 p-4 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary mt-0.5">info</span>
+<div>
+<div class="font-label-md text-label-md text-white mb-1">Atraso de Envio</div>
+<div class="font-body-md text-body-md text-slate-400">2 pedidos da última terça-feira ainda não despachados.</div>
+</div>
+</div>
+<!-- Alert 3 -->
+<div class="bg-surface-container-high border border-white/5 p-4 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary mt-0.5">info</span>
+<div>
+<div class="font-label-md text-label-md text-white mb-1">Mensagem de Cliente</div>
+<div class="font-body-md text-body-md text-slate-400">Nova reclamação aberta no pedido #8923.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ROW 4: Saúde da Conta & Sistema -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+<!-- Saúde da Conta -->
+<div class="glass-card rounded-xl flex flex-col">
+<div class="p-lg border-b border-white/10">
+<h3 class="font-h3 text-h3 text-white">Saúde da Conta ML</h3>
+</div>
+<div class="p-lg flex flex-col gap-6">
+<!-- Cancelamentos -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-slate-300">Cancelamentos</span>
+<span class="font-label-md text-label-md text-white">0,8% <span class="text-slate-500">/ 2,5%</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 32%"></div>
+</div>
+</div>
+<!-- Atraso -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-slate-300">Atraso</span>
+<span class="font-label-md text-label-md text-white">2,1% <span class="text-slate-500">/ 3,0%</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full" style="width: 70%"></div>
+</div>
+</div>
+<!-- Reclamações -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-slate-300">Reclamações</span>
+<span class="font-label-md text-label-md text-white">0,3% <span class="text-slate-500">/ 1,0%</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 30%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Status do Sistema -->
+<div class="glass-card rounded-xl flex flex-col">
+<div class="p-lg border-b border-white/10">
+<h3 class="font-h3 text-h3 text-white">Status do Sistema</h3>
+</div>
+<div class="p-lg flex flex-col gap-4">
+<div class="flex items-center justify-between pb-4 border-b border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,189,133,0.5)]"></div>
+<span class="font-body-md text-body-md text-slate-300">Sincronização Mercado Livre</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-slate-500">Há 2 min</span>
+</div>
+<div class="flex items-center justify-between pb-4 border-b border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,189,133,0.5)]"></div>
+<span class="font-body-md text-body-md text-slate-300">ERP Bling Sync</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-slate-500">Há 5 min</span>
+</div>
+<div class="flex items-center justify-between pb-4 border-b border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,189,133,0.5)]"></div>
+<span class="font-body-md text-body-md text-slate-300">Atualização de Preços</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-slate-500">Há 1 min</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container shadow-[0_0_8px_rgba(0,189,133,0.5)]"></div>
+<span class="font-body-md text-body-md text-slate-300">Fila de Mensagens</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-slate-500">Operacional</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
