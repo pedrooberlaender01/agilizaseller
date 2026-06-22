@@ -92,10 +92,9 @@ function KpiCard({
 
 const CANAL_OPTIONS: CanalSlug[] = ['shopee', 'shein']
 
-function MarketplaceSelect({ current }: { current: CanalFilter }) {
+function MarketplaceSelect({ current, pending, startTransition }: { current: CanalFilter; pending: boolean; startTransition: (cb: () => void) => void }) {
   const router = useRouter()
   const sp = useSearchParams()
-  const [, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -115,10 +114,10 @@ function MarketplaceSelect({ current }: { current: CanalFilter }) {
     }
   }, [open])
 
-  function changeCanal(canal: CanalFilter) {
+  function changeCanal(c: CanalFilter) {
     const next = new URLSearchParams(sp.toString())
-    if (canal === 'all') next.delete('canal')
-    else next.set('canal', canal)
+    if (c === 'all') next.delete('canal')
+    else next.set('canal', c)
     setOpen(false)
     startTransition(() => {
       router.replace(`?${next.toString()}`, { scroll: false })
@@ -213,10 +212,9 @@ function MarketplaceSelect({ current }: { current: CanalFilter }) {
   )
 }
 
-function PeriodSwitcher({ period, isCustom }: { period: Period; isCustom: boolean }) {
+function PeriodSwitcher({ period, isCustom, pending, startTransition }: { period: Period; isCustom: boolean; pending: boolean; startTransition: (cb: () => void) => void }) {
   const router = useRouter()
   const sp = useSearchParams()
-  const [, startTransition] = useTransition()
 
   function setPeriod(p: Period) {
     const next = new URLSearchParams(sp.toString())
@@ -234,8 +232,9 @@ function PeriodSwitcher({ period, isCustom }: { period: Period; isCustom: boolea
         <button
           key={p.key}
           onClick={() => setPeriod(p.key)}
+          disabled={pending}
           className={cn(
-            'rounded px-3 py-1 text-xs font-medium transition-colors',
+            'rounded px-3 py-1 text-xs font-medium transition-colors disabled:cursor-wait',
             !isCustom && period === p.key ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white',
           )}
         >
@@ -326,6 +325,7 @@ export function MetricasView({
   const isCustom = !!(customFrom && customTo)
   const router = useRouter()
   const sp = useSearchParams()
+  const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement | null>(null)
 
@@ -344,7 +344,9 @@ export function MetricasView({
     next.set('from', from)
     next.set('to', to)
     setPopoverOpen(false)
-    router.replace(`?${next.toString()}`, { scroll: false })
+    startTransition(() => {
+      router.replace(`?${next.toString()}`, { scroll: false })
+    })
   }
 
   const taxaCancel = metrics.pedidos.cur > 0 ? (metrics.cancelamentos.cur / metrics.pedidos.cur) * 100 : 0
@@ -392,15 +394,23 @@ export function MetricasView({
   return (
     <>
       <TopBar title="Métricas" />
-      <main className="overflow-y-auto p-margin">
+      <main className={cn('overflow-y-auto p-margin transition-opacity', pending && 'opacity-50 pointer-events-none')}>
+        {pending && (
+          <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/95 px-4 py-1.5 text-xs font-medium text-white shadow-xl backdrop-blur">
+            <span className="inline-flex items-center gap-2">
+              <span className="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
+              Atualizando…
+            </span>
+          </div>
+        )}
         <div className="mb-lg flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-h2 font-semibold text-white">Visão geral</h2>
             {metrics.nickname && <p className="mt-1 text-xs text-zinc-400">Conexão: {metrics.nickname}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <MarketplaceSelect current={canal} />
-            <PeriodSwitcher period={period} isCustom={isCustom} />
+            <MarketplaceSelect current={canal} pending={pending} startTransition={startTransition} />
+            <PeriodSwitcher period={period} isCustom={isCustom} pending={pending} startTransition={startTransition} />
             <div ref={popoverRef} className="relative">
               <button
                 type="button"
