@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import { PeriodFilter, type Period } from './period-filter'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 type Marketplace = 'magazord' | 'shein' | 'shopee'
 

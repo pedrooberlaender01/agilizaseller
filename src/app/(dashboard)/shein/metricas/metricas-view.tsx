@@ -51,6 +51,8 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
 export type CostAgg = {
   estimated: number
   totalGross: number
+  totalCommission: number
+  totalServiceCharge: number
   coveredGross: number
   coveredEstimated: number
   coveredCost: number
@@ -132,13 +134,64 @@ export function MetricasView({
         </div>
 
         {costAgg && (
-          <div className="mb-lg">
-            {(() => {
-              const coveragePct = costAgg.totalGross > 0 ? (costAgg.coveredGross / costAgg.totalGross) * 100 : 0
-              const realMarginPct = costAgg.coveredGross > 0 ? (costAgg.coveredProfit / costAgg.coveredGross) * 100 : 0
-              const profitTone = costAgg.coveredProfit >= 0 ? 'text-emerald-300' : 'text-rose-300'
-              const marginTone = realMarginPct >= 30 ? 'text-emerald-300' : realMarginPct >= 10 ? 'text-amber-300' : 'text-rose-300'
-              const covTone = coveragePct >= 80 ? 'text-emerald-300' : coveragePct >= 40 ? 'text-amber-300' : 'text-rose-300'
+          <>
+            <div className="mb-lg">
+              {(() => {
+                const taxaTotal = costAgg.totalCommission + costAgg.totalServiceCharge
+                const taxaPct = costAgg.totalGross > 0 ? (taxaTotal / costAgg.totalGross) * 100 : 0
+                const repassePct = costAgg.totalGross > 0 ? (costAgg.estimated / costAgg.totalGross) * 100 : 0
+                return (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Faturamento Bruto</span>
+                        <Icon name="payments" size={18} className="text-zinc-500" />
+                      </div>
+                      <p className="mt-2 text-3xl font-semibold text-white">{fmtBrl(costAgg.totalGross)}</p>
+                      <p className="mt-1 text-[10px] text-zinc-500">Receita gross dos itens vendidos</p>
+                    </div>
+                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Taxa Shein Total</span>
+                        <Icon name="receipt_long" size={18} className="text-zinc-500" />
+                      </div>
+                      <p className="mt-2 text-3xl font-semibold text-rose-300">-{fmtBrl(taxaTotal)}</p>
+                      <p className="mt-1 text-[10px] text-zinc-500">
+                        Comissão {fmtBrl(costAgg.totalCommission)} + Service {fmtBrl(costAgg.totalServiceCharge)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Repasse (líquido)</span>
+                        <Icon name="account_balance_wallet" size={18} className="text-zinc-500" />
+                      </div>
+                      <p className="mt-2 text-3xl font-semibold text-emerald-300">{fmtBrl(costAgg.estimated)}</p>
+                      <p className="mt-1 text-[10px] text-zinc-500">Que vai cair na conta Santander</p>
+                    </div>
+                    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">% Taxa / Repasse</span>
+                        <Icon name="percent" size={18} className="text-zinc-500" />
+                      </div>
+                      <p className="mt-2 text-3xl font-semibold text-white">
+                        <span className="text-rose-300">{taxaPct.toFixed(1)}%</span>
+                        <span className="text-zinc-600 mx-1">/</span>
+                        <span className="text-emerald-300">{repassePct.toFixed(1)}%</span>
+                      </p>
+                      <p className="mt-1 text-[10px] text-zinc-500">Taxa absorvida vs repasse efetivo</p>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+
+            <div className="mb-lg">
+              {(() => {
+                const coveragePct = costAgg.totalGross > 0 ? (costAgg.coveredGross / costAgg.totalGross) * 100 : 0
+                const realMarginPct = costAgg.coveredGross > 0 ? (costAgg.coveredProfit / costAgg.coveredGross) * 100 : 0
+                const profitTone = costAgg.coveredProfit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                const marginTone = realMarginPct >= 30 ? 'text-emerald-300' : realMarginPct >= 10 ? 'text-amber-300' : 'text-rose-300'
+                const covTone = coveragePct >= 80 ? 'text-emerald-300' : coveragePct >= 40 ? 'text-amber-300' : 'text-rose-300'
               return (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
@@ -182,7 +235,8 @@ export function MetricasView({
                 </div>
               )
             })()}
-          </div>
+            </div>
+          </>
         )}
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -15,6 +15,7 @@ const isGroup = (item: NavItem): item is NavGroup => 'children' in item
 
 const baseNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { href: '/metricas', label: 'Métricas', icon: 'monitoring' },
   { href: '/pedidos', label: 'Pedidos', icon: 'receipt_long' },
   { href: '/envios', label: 'Envios', icon: 'local_shipping' },
   {

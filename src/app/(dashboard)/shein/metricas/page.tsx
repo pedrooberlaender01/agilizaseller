@@ -54,7 +54,7 @@ export default async function SheinMetricasPage({
     }),
     supabase
       .from('shein_margins_enriched')
-      .select('quantity, seller_price, estimated_income, total_cost, real_profit, cost_price')
+      .select('quantity, seller_price, estimated_income, total_cost, real_profit, cost_price, commission, service_charge')
       .eq('connection_id', conn.id)
       .gte('order_time', cutoff),
   ])
@@ -77,6 +77,8 @@ export default async function SheinMetricasPage({
     total_cost: number | string | null
     real_profit: number | string | null
     cost_price: number | string | null
+    commission: number | string | null
+    service_charge: number | string | null
   }>
 
   const costAgg = marginRows.reduce(
@@ -85,6 +87,8 @@ export default async function SheinMetricasPage({
       const gross = qty * Number(r.seller_price ?? 0)
       acc.estimated += Number(r.estimated_income ?? 0)
       acc.totalGross += gross
+      acc.totalCommission += Number(r.commission ?? 0)
+      acc.totalServiceCharge += Number(r.service_charge ?? 0)
       if (r.cost_price !== null && r.cost_price !== undefined) {
         acc.coveredGross += gross
         acc.coveredEstimated += Number(r.estimated_income ?? 0)
@@ -99,6 +103,8 @@ export default async function SheinMetricasPage({
     {
       estimated: 0,
       totalGross: 0,
+      totalCommission: 0,
+      totalServiceCharge: 0,
       coveredGross: 0,
       coveredEstimated: 0,
       coveredCost: 0,

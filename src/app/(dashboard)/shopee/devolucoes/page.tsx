@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { ShopeeReturn } from '@/types'
 import { DevolucoesView, type DevolucoesPeriod } from './devolucoes-view'
 
+export const revalidate = 60
+
 function parsePeriod(raw: string | undefined): DevolucoesPeriod {
   if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes' || raw === 'custom') return raw
   return '30d'

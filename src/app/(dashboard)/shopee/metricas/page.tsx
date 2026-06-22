@@ -5,6 +5,8 @@ import type { Period } from '@/components/metrics-chart'
 import type { ShopeeDailyMetric } from '@/types'
 import { MetricasView } from './metricas-view'
 
+export const revalidate = 60
+
 function parsePeriod(raw: string | undefined): Period {
   if (raw === '7d' || raw === '30d' || raw === '90d' || raw === 'mes') return raw
   return '30d'
@@ -110,7 +112,19 @@ export default async function ShopeeMetricasPage({
     ? customRange(customFrom, customTo)
     : periodRange(period)
 
-  const [{ data: currentRows }, { data: previousRows }] = await Promise.all([
+  const curFromTs = `${cur.from}T00:00:00`
+  const curToTs = `${cur.to}T23:59:59`
+  const prevFromTs = `${prev.from}T00:00:00`
+  const prevToTs = `${prev.to}T23:59:59`
+
+  const [
+    { data: currentRows },
+    { data: previousRows },
+    { data: walletCur },
+    { data: walletPrev },
+    { data: affiliateCur },
+    { data: affiliatePrev },
+  ] = await Promise.all([
     supabase
       .from('shopee_daily_metrics')
       .select('*')
@@ -125,7 +139,50 @@ export default async function ShopeeMetricasPage({
       .gte('date', prev.from)
       .lte('date', prev.to)
       .order('date', { ascending: true }),
+    supabase
+      .from('shopee_wallet_transactions')
+      .select('transaction_type,amount_cents')
+      .eq('connection_id', conn.id)
+      .in('transaction_type', ['FAST_ESCROW_DEDUCT', 'SPM_DEDUCT', 'SPM_DEDUCT_DIRECT', 'ADJUSTMENT_CENTER_DEDUCT', 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED'])
+      .gte('create_time', curFromTs)
+      .lte('create_time', curToTs),
+    supabase
+      .from('shopee_wallet_transactions')
+      .select('transaction_type,amount_cents')
+      .eq('connection_id', conn.id)
+      .in('transaction_type', ['FAST_ESCROW_DEDUCT', 'SPM_DEDUCT', 'SPM_DEDUCT_DIRECT', 'ADJUSTMENT_CENTER_DEDUCT', 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED'])
+      .gte('create_time', prevFromTs)
+      .lte('create_time', prevToTs),
+    supabase
+      .from('shopee_affiliate_performance')
+      .select('commission_cents')
+      .eq('connection_id', conn.id)
+      .gte('date', cur.from)
+      .lte('date', cur.to),
+    supabase
+      .from('shopee_affiliate_performance')
+      .select('commission_cents')
+      .eq('connection_id', conn.id)
+      .gte('date', prev.from)
+      .lte('date', prev.to),
   ])
+
+  function sumWalletByType(rows: { transaction_type: string | null; amount_cents: number | null }[] | null, types: string[]): number {
+    if (!rows) return 0
+    return rows
+      .filter(r => r.transaction_type && types.includes(r.transaction_type))
+      .reduce((a, r) => a + Math.abs(Number(r.amount_cents) || 0), 0) / 100
+  }
+
+  const antecipacoesCur = sumWalletByType(walletCur, ['FAST_ESCROW_DEDUCT'])
+  const antecipacoesPrev = sumWalletByType(walletPrev, ['FAST_ESCROW_DEDUCT'])
+
+  function sumAffiliate(rows: { commission_cents: number | null }[] | null): number {
+    if (!rows) return 0
+    return rows.reduce((a, r) => a + (Number(r.commission_cents) || 0), 0) / 100
+  }
+  const comissaoAfiliadosCur = sumAffiliate(affiliateCur)
+  const comissaoAfiliadosPrev = sumAffiliate(affiliatePrev)
 
   return (
     <MetricasView
@@ -134,6 +191,10 @@ export default async function ShopeeMetricasPage({
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}
+      antecipacoesCur={antecipacoesCur}
+      antecipacoesPrev={antecipacoesPrev}
+      comissaoAfiliadosCur={comissaoAfiliadosCur}
+      comissaoAfiliadosPrev={comissaoAfiliadosPrev}
       nickname={conn.nickname}
     />
   )
