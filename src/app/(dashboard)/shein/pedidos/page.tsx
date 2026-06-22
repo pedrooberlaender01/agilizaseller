@@ -90,20 +90,16 @@ export default async function SheinPedidosPage({
     query = query.or(`order_no.ilike.%${term}%,buyer_name.ilike.%${term}%,buyer_email.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('order_time', { ascending: false, nullsFirst: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: statusRows } = await supabase
-    .from('shein_orders')
-    .select('order_status')
-    .eq('connection_id', conn.id)
-    .not('order_status', 'is', null)
-    .neq('order_status', '')
-
-  const uniqueStatuses = Array.from(
-    new Set((statusRows ?? []).map((r) => r.order_status as string)),
-  ).sort()
+  const [pageResult, statusesResult] = await Promise.all([
+    query
+      .order('order_time', { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('shein_distinct_order_statuses', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const uniqueStatuses = ((statusesResult.data ?? []) as Array<{ status: string | null }>)
+    .map((r) => r.status)
+    .filter((s): s is string => !!s)
 
   return (
     <PedidosView

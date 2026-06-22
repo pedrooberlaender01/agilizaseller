@@ -56,39 +56,25 @@ export default async function SheinEnviosPage({
     query = query.or(`order_no.ilike.%${term}%,waybill_no.ilike.%${term}%,package_no.ilike.%${term}%,product_name.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('last_update_at', { ascending: false, nullsFirst: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: carrierRows } = await supabase
-    .from('shein_shipments')
-    .select('carrier')
-    .eq('connection_id', conn.id)
-    .not('carrier', 'is', null)
-
-  const carriers = Array.from(
-    new Set(((carrierRows ?? []) as Array<{ carrier: string }>).map((r) => r.carrier)),
-  ).sort()
-
-  // Counts pra KPIs
-  const { count: totalCount } = await supabase
-    .from('shein_shipments')
-    .select('*', { count: 'exact', head: true })
-    .eq('connection_id', conn.id)
-
-  const { count: pendingCount } = await supabase
-    .from('shein_shipments')
-    .select('*', { count: 'exact', head: true })
-    .eq('connection_id', conn.id)
-    .is('carrier', null)
-
-  const { count: deliveredCount } = await supabase
-    .from('shein_shipments')
-    .select('*', { count: 'exact', head: true })
-    .eq('connection_id', conn.id)
-    .in('last_node', ['sign_for', 'signed', 'delivered'])
-
-  const transitCount = (totalCount ?? 0) - (pendingCount ?? 0) - (deliveredCount ?? 0)
+  const [pageResult, statsResult] = await Promise.all([
+    query
+      .order('last_update_at', { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('shein_envios_stats', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const statsRow = (statsResult.data ?? [])[0] as {
+    total: number | string | null
+    pending: number | string | null
+    delivered: number | string | null
+    transit: number | string | null
+    carriers: string[] | null
+  } | undefined
+  const totalCount = Number(statsRow?.total ?? 0)
+  const pendingCount = Number(statsRow?.pending ?? 0)
+  const deliveredCount = Number(statsRow?.delivered ?? 0)
+  const transitCount = Number(statsRow?.transit ?? 0)
+  const carriers = statsRow?.carriers ?? []
 
   return (
     <EnviosView

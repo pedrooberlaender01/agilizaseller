@@ -181,26 +181,33 @@ type MarketplaceData = {
 async function fetchMarketplaceData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   marketplace: Marketplace,
+  conn: { id: string; nickname: string | null },
   cutoff: Date | null,
   endAt: Date | null,
-): Promise<MarketplaceData | null> {
-  const { data: conn } = await supabase
-    .from('marketplace_connections')
-    .select('id, nickname')
-    .eq('marketplace', marketplace)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle()
-
-  if (!conn) return null
-
+): Promise<MarketplaceData> {
   const cutoffIso = cutoff?.toISOString() ?? '1970-01-01T00:00:00.000Z'
+  const endIso = endAt?.toISOString() ?? null
 
-  const [{ data: rows }, { data: syncRows }] = await Promise.all([
+  const sheinFeesPromise = marketplace === 'shein'
+    ? (async () => {
+        const { data } = await supabase.rpc('shein_fees_realtime', {
+          p_connection_id: conn.id,
+          p_cutoff: cutoffIso,
+          p_end: endIso,
+        })
+        const row = (data ?? [])[0] as { fees_total: number | string | null; estimated_income_total: number | string | null } | undefined
+        return {
+          feesTotal: Number(row?.fees_total ?? 0),
+          estimatedIncomeTotal: Number(row?.estimated_income_total ?? 0),
+        }
+      })()
+    : Promise.resolve<{ feesTotal?: number; estimatedIncomeTotal?: number }>({})
+
+  const [{ data: rows }, { data: syncRows }, sheinFees] = await Promise.all([
     supabase.rpc(RPC_NAME[marketplace], {
       p_connection_id: conn.id,
       p_cutoff: cutoffIso,
-      p_end: endAt?.toISOString() ?? null,
+      p_end: endIso,
     }),
     supabase
       .from('sync_logs')
@@ -208,35 +215,16 @@ async function fetchMarketplaceData(
       .ilike('workflow', `${marketplace}%`)
       .order('started_at', { ascending: false, nullsFirst: false })
       .limit(6),
+    sheinFeesPromise,
   ])
-
-  let feesTotal: number | undefined
-  let estimatedIncomeTotal: number | undefined
-  if (marketplace === 'shein') {
-    let feeQuery = supabase
-      .from('shein_order_items')
-      .select('commission, service_charge, estimated_income, shein_orders!inner(connection_id, order_time)')
-      .eq('shein_orders.connection_id', conn.id)
-      .gte('shein_orders.order_time', cutoffIso)
-    if (endAt) feeQuery = feeQuery.lt('shein_orders.order_time', endAt.toISOString())
-    const { data: feeRows } = await feeQuery
-    let f = 0
-    let est = 0
-    for (const r of (feeRows ?? []) as Array<{ commission: number | string | null; service_charge: number | string | null; estimated_income: number | string | null }>) {
-      f += Number(r.commission ?? 0) + Number(r.service_charge ?? 0)
-      est += Number(r.estimated_income ?? 0)
-    }
-    feesTotal = f
-    estimatedIncomeTotal = est
-  }
 
   return {
     marketplace,
     nickname: conn.nickname ?? null,
     metrics: (rows ?? []) as DailyMetric[],
     syncs: (syncRows ?? []) as SyncLog[],
-    feesTotal,
-    estimatedIncomeTotal,
+    feesTotal: sheinFees.feesTotal,
+    estimatedIncomeTotal: sheinFees.estimatedIncomeTotal,
   }
 }
 
@@ -584,10 +572,29 @@ export default async function DashboardPage({
   const supabase = await createClient()
 
   const marketplaces: Marketplace[] = ['magazord', 'shein', 'shopee']
+
+  const { data: connsRaw } = await supabase
+    .from('marketplace_connections')
+    .select('id, nickname, marketplace')
+    .in('marketplace', marketplaces)
+    .eq('status', 'active')
+
+  const connByMarket = new Map<Marketplace, { id: string; nickname: string | null }>()
+  for (const c of (connsRaw ?? []) as Array<{ id: string; nickname: string | null; marketplace: Marketplace }>) {
+    if (!connByMarket.has(c.marketplace)) {
+      connByMarket.set(c.marketplace, { id: c.id, nickname: c.nickname })
+    }
+  }
+
   const results = await Promise.all(
-    marketplaces.map((m) => fetchMarketplaceData(supabase, m, cutoff, endAt)),
+    marketplaces
+      .map((m) => {
+        const conn = connByMarket.get(m)
+        return conn ? fetchMarketplaceData(supabase, m, conn, cutoff, endAt) : null
+      })
+      .filter((p): p is Promise<MarketplaceData> => p !== null),
   )
-  const active = results.filter((r): r is MarketplaceData => r !== null)
+  const active = results
 
   if (active.length === 0) {
     return (

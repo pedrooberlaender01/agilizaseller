@@ -50,20 +50,16 @@ export default async function SheinEstoquePage({
     query = query.or(`sku_code.ilike.%${term}%,product_name.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('updated_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: whRows } = await supabase
-    .from('shein_stock')
-    .select('warehouse')
-    .eq('connection_id', conn.id)
-    .not('warehouse', 'is', null)
-    .neq('warehouse', '')
-
-  const warehouses = Array.from(
-    new Set((whRows ?? []).map((r) => r.warehouse as string)),
-  ).sort()
+  const [pageResult, whResult] = await Promise.all([
+    query
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('shein_distinct_warehouses', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const warehouses = ((whResult.data ?? []) as Array<{ warehouse: string | null }>)
+    .map((r) => r.warehouse)
+    .filter((w): w is string => !!w)
 
   return (
     <EstoqueView

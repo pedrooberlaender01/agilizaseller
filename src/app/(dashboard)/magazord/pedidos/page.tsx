@@ -87,20 +87,17 @@ export default async function MagazordPedidosPage({
     query = query.or(`external_id.ilike.%${term}%,pessoa_nome.ilike.%${term}%,codigo_marketplace.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('data_hora', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: marketplaces } = await supabase
-    .from('mag_orders')
-    .select('marketplace_origem')
-    .eq('connection_id', conn.id)
-    .not('marketplace_origem', 'is', null)
-    .neq('marketplace_origem', '')
-
-  const uniqueMarketplaces = Array.from(
-    new Set((marketplaces ?? []).map((r) => r.marketplace_origem as string)),
-  ).sort()
+  const [pageResult, marketplacesResult] = await Promise.all([
+    query
+      .order('data_hora', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('mag_marketplaces', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const uniqueMarketplaces = ((marketplacesResult.data ?? []) as Array<{ marketplace: string | null }>)
+    .map((r) => r.marketplace)
+    .filter((m): m is string => !!m)
+    .sort()
 
   return (
     <PedidosView

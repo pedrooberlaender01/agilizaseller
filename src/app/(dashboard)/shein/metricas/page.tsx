@@ -52,11 +52,10 @@ export default async function SheinMetricasPage({
       p_connection_id: conn.id,
       p_cutoff: cutoff,
     }),
-    supabase
-      .from('shein_margins_enriched')
-      .select('quantity, seller_price, estimated_income, total_cost, real_profit, cost_price, commission, service_charge')
-      .eq('connection_id', conn.id)
-      .gte('order_time', cutoff),
+    supabase.rpc('shein_margins_agg', {
+      p_connection_id: conn.id,
+      p_cutoff: cutoff,
+    }),
   ])
 
   if (error) {
@@ -70,49 +69,30 @@ export default async function SheinMetricasPage({
     )
   }
 
-  const marginRows = (marginAgg.data ?? []) as Array<{
-    quantity: number | null
-    seller_price: number | string | null
-    estimated_income: number | string | null
-    total_cost: number | string | null
-    real_profit: number | string | null
-    cost_price: number | string | null
-    commission: number | string | null
-    service_charge: number | string | null
-  }>
-
-  const costAgg = marginRows.reduce(
-    (acc, r) => {
-      const qty = Number(r.quantity ?? 0)
-      const gross = qty * Number(r.seller_price ?? 0)
-      acc.estimated += Number(r.estimated_income ?? 0)
-      acc.totalGross += gross
-      acc.totalCommission += Number(r.commission ?? 0)
-      acc.totalServiceCharge += Number(r.service_charge ?? 0)
-      if (r.cost_price !== null && r.cost_price !== undefined) {
-        acc.coveredGross += gross
-        acc.coveredEstimated += Number(r.estimated_income ?? 0)
-        acc.coveredCost += Number(r.total_cost ?? 0)
-        acc.coveredProfit += Number(r.real_profit ?? 0)
-        acc.coveredUnits += qty
-      } else {
-        acc.uncoveredUnits += qty
-      }
-      return acc
-    },
-    {
-      estimated: 0,
-      totalGross: 0,
-      totalCommission: 0,
-      totalServiceCharge: 0,
-      coveredGross: 0,
-      coveredEstimated: 0,
-      coveredCost: 0,
-      coveredProfit: 0,
-      coveredUnits: 0,
-      uncoveredUnits: 0,
-    },
-  )
+  const aggRow = ((marginAgg.data ?? []) as Array<{
+    estimated: number | string | null
+    total_gross: number | string | null
+    total_commission: number | string | null
+    total_service_charge: number | string | null
+    covered_gross: number | string | null
+    covered_estimated: number | string | null
+    covered_cost: number | string | null
+    covered_profit: number | string | null
+    covered_units: number | string | null
+    uncovered_units: number | string | null
+  }>)[0]
+  const costAgg = {
+    estimated: Number(aggRow?.estimated ?? 0),
+    totalGross: Number(aggRow?.total_gross ?? 0),
+    totalCommission: Number(aggRow?.total_commission ?? 0),
+    totalServiceCharge: Number(aggRow?.total_service_charge ?? 0),
+    coveredGross: Number(aggRow?.covered_gross ?? 0),
+    coveredEstimated: Number(aggRow?.covered_estimated ?? 0),
+    coveredCost: Number(aggRow?.covered_cost ?? 0),
+    coveredProfit: Number(aggRow?.covered_profit ?? 0),
+    coveredUnits: Number(aggRow?.covered_units ?? 0),
+    uncoveredUnits: Number(aggRow?.uncovered_units ?? 0),
+  }
 
   return (
     <MetricasView

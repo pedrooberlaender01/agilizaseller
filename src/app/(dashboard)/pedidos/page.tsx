@@ -84,7 +84,7 @@ export default async function PedidosUnifiedPage({
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
     .from('all_orders_unified')
-    .select('*', { count: 'exact' })
+    .select('*', { count: 'estimated' })
 
   if (cutoff) query = query.gte('order_date', cutoff.toISOString())
   if (endAt) query = query.lt('order_date', endAt.toISOString())
@@ -104,14 +104,15 @@ export default async function PedidosUnifiedPage({
     query = query.or(`external_id.ilike.%${term}%,buyer_name.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('order_date', { ascending: false, nullsFirst: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: mktCountsRaw } = await supabase.rpc('all_orders_counts', {
-    p_cutoff: cutoff?.toISOString() ?? null,
-    p_end: endAt?.toISOString() ?? null,
-  })
+  const [{ data, count }, { data: mktCountsRaw }] = await Promise.all([
+    query
+      .order('order_date', { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('all_orders_counts', {
+      p_cutoff: cutoff?.toISOString() ?? null,
+      p_end: endAt?.toISOString() ?? null,
+    }),
+  ])
 
   const counts: Record<string, number> = { magazord: 0, mercado_livre: 0, shopee: 0, shein: 0 }
   for (const row of (mktCountsRaw ?? []) as { marketplace: string; total: number }[]) {
