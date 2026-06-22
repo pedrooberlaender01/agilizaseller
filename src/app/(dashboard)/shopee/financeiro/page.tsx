@@ -87,23 +87,31 @@ export default async function ShopeeFinanceiroPage({
 
   const { from, to } = periodRange(period, customFrom, customTo)
 
-  // Supabase JS hard cap 1000/query → paginar manual
+  // Supabase JS hard cap 1000/query → paginar em paralelo a partir do count
   async function fetchAllTransactions(): Promise<ShopeeWalletTransaction[]> {
-    const all: ShopeeWalletTransaction[] = []
-    for (let page = 0; page < 20; page++) {
-      const start = page * 1000
-      const { data } = await supabase
-        .from('shopee_wallet_transactions')
-        .select('*')
-        .eq('connection_id', connId)
-        .gte('create_time', from)
-        .lte('create_time', to)
-        .order('create_time', { ascending: false })
-        .range(start, start + 999)
-      if (!data || data.length === 0) break
-      all.push(...(data as ShopeeWalletTransaction[]))
-      if (data.length < 1000) break
-    }
+    const baseQuery = () => supabase
+      .from('shopee_wallet_transactions')
+      .select('*', { count: 'estimated' })
+      .eq('connection_id', connId)
+      .gte('create_time', from)
+      .lte('create_time', to)
+      .order('create_time', { ascending: false })
+
+    const { data: firstChunk, count } = await baseQuery().range(0, 999)
+    const total = count ?? firstChunk?.length ?? 0
+    const all: ShopeeWalletTransaction[] = (firstChunk ?? []) as ShopeeWalletTransaction[]
+    if (total <= 1000) return all
+
+    const remainingChunks = Math.min(19, Math.ceil(total / 1000) - 1)
+    const rangeStarts = Array.from({ length: remainingChunks }, (_, i) => (i + 1) * 1000)
+    const results = await Promise.all(
+      rangeStarts.map((start) =>
+        baseQuery()
+          .range(start, start + 999)
+          .then((r) => (r.data ?? []) as ShopeeWalletTransaction[]),
+      ),
+    )
+    for (const arr of results) all.push(...arr)
     return all
   }
 

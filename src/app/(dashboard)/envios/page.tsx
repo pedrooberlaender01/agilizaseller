@@ -157,18 +157,7 @@ export default async function EnviosPage({
     }
   })
 
-  let totalQ = supabase
-    .from('shopee_shipments')
-    .select('id', { count: 'exact', head: true })
-  if (cutoffIso) totalQ = totalQ.gte('created_at', cutoffIso)
-  if (endIso) totalQ = totalQ.lt('created_at', endIso)
-  if (search) {
-    const term = search.replace(/%/g, '')
-    totalQ = totalQ.or(`tracking_number.ilike.%${term}%,order_sn.ilike.%${term}%`)
-  }
-  const { count: shopeeTotal } = await totalQ
-
-  const counts: Record<string, number> = { shopee: shopeeTotal ?? 0 }
+  const counts: Record<string, number> = { shopee: totalCount ?? 0 }
 
   return (
     <>

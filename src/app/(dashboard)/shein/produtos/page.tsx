@@ -57,30 +57,19 @@ export default async function SheinProdutosPage({
   else if (sort === 'revenue') query = query.order('gross_revenue', { ascending: false, nullsFirst: false })
   else query = query.order('cost_updated_at', { ascending: false, nullsFirst: true })
 
-  const { data, count } = await query.range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: statusRows } = await supabase
-    .from('shein_products')
-    .select('status')
-    .eq('connection_id', conn.id)
-    .not('status', 'is', null)
-    .neq('status', '')
-
-  const uniqueStatuses = Array.from(
-    new Set((statusRows ?? []).map((r) => r.status as string)),
-  ).sort()
-
-  // KPI footer: cobertura de custos
-  const { count: withCost } = await supabase
-    .from('shein_products')
-    .select('*', { count: 'exact', head: true })
-    .eq('connection_id', conn.id)
-    .not('cost_price', 'is', null)
-
-  const { count: totalProducts } = await supabase
-    .from('shein_products')
-    .select('*', { count: 'exact', head: true })
-    .eq('connection_id', conn.id)
+  const [pageResult, statsResult] = await Promise.all([
+    query.range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('shein_produtos_stats', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const statsRow = (statsResult.data ?? [])[0] as {
+    total: number | string | null
+    with_cost: number | string | null
+    statuses: string[] | null
+  } | undefined
+  const totalProducts = Number(statsRow?.total ?? 0)
+  const withCost = Number(statsRow?.with_cost ?? 0)
+  const uniqueStatuses = statsRow?.statuses ?? []
 
   return (
     <ProdutosView

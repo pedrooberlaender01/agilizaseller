@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -243,10 +244,15 @@ export function Sidebar({ role = 'user' }: SidebarProps) {
   const renderContent = (isCollapsed: boolean) => (
     <>
       <Link href="/dashboard" className={cn('flex items-center mb-4', isCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-2 py-2')}>
-        <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined fill text-[#0a0a0c] text-lg">
-            insights
-          </span>
+        <div className="w-9 h-9 overflow-hidden flex items-center justify-center shrink-0">
+          <Image
+            src="/logo-luzzo.svg"
+            alt="Painel Luzzo"
+            width={36}
+            height={36}
+            priority
+            className="w-full h-full object-contain scale-125"
+          />
         </div>
         {!isCollapsed && (
           <div className="flex flex-col">

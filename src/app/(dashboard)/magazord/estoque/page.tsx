@@ -48,16 +48,16 @@ export default async function MagazordEstoquePage({
     query = query.ilike('codigo_produto', `%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('data_hora_atualizacao', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const { data: depositos } = await supabase
-    .from('mag_stock')
-    .select('deposito')
-    .eq('connection_id', conn.id)
-
-  const uniqueDepositos = Array.from(new Set((depositos ?? []).map((r) => r.deposito as number))).sort((a, b) => a - b)
+  const [pageResult, depositosResult] = await Promise.all([
+    query
+      .order('data_hora_atualizacao', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('mag_distinct_depositos', { p_connection_id: conn.id }),
+  ])
+  const { data, count } = pageResult
+  const uniqueDepositos = ((depositosResult.data ?? []) as Array<{ deposito: number | null }>)
+    .map((r) => r.deposito)
+    .filter((d): d is number => d !== null)
 
   return (
     <EstoqueView
