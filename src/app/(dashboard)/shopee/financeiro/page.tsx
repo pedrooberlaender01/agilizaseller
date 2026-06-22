@@ -5,6 +5,8 @@ import type { ShopeeWalletTransaction, ShopeePayout, ShopeeDailyMetric } from '@
 import type { Period } from '@/components/metrics-chart'
 import { FinanceiroView } from './financeiro-view'
 
+export const revalidate = 60
+
 export type FinanceiroPeriod = Period | 'custom'
 
 function parsePeriod(raw: string | undefined): FinanceiroPeriod {

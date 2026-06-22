@@ -189,6 +189,10 @@ export function MetricasView({
   period,
   customFrom,
   customTo,
+  antecipacoesCur,
+  antecipacoesPrev,
+  comissaoAfiliadosCur,
+  comissaoAfiliadosPrev,
   nickname,
 }: {
   current: ShopeeDailyMetric[]
@@ -196,6 +200,10 @@ export function MetricasView({
   period: PeriodKey
   customFrom: string | null
   customTo: string | null
+  antecipacoesCur: number
+  antecipacoesPrev: number
+  comissaoAfiliadosCur: number
+  comissaoAfiliadosPrev: number
   nickname: string | null
 }) {
   const router = useRouter()
@@ -281,13 +289,12 @@ export function MetricasView({
   const prevAcos = prevAdsGmv > 0 ? (prevAdsSpend / prevAdsGmv) * 100 : 0
   const prevPctVendasAds = prevFat > 0 ? (prevAdsGmv / prevFat) * 100 : 0
 
+  // Card #58 (call João 18/06): KPIs topo = 4 cards. Lucro Bruto + Margem Líquida removidos (cálculo ainda não confiável).
   const kpis = [
-    { label: 'Faturamento Bruto', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat),     icon: 'payments',                iconClass: 'text-zinc-50',             valueClass: 'text-zinc-50',           sub: undefined as string | undefined },
-    { label: 'Pedidos',           value: fmtNum(pedidos),         ...deltaPct(pedidos, prevPed),         icon: 'shopping_cart',           iconClass: 'text-primary',              valueClass: 'text-zinc-50',           sub: undefined },
-    { label: 'Lucro Bruto Macro', value: fmtBrlInt(lucroBrutoMacro), ...deltaPct(lucroBrutoMacro, prevLucroBrutoMacro), icon: 'account_balance_wallet', iconClass: 'text-secondary',            valueClass: 'text-secondary-fixed',   sub: `vendas − taxas ${fmtBrlInt(taxasShopee)} − Ads ${fmtBrlInt(adsSpend)}` },
-    { label: 'Ticket Médio',      value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long',          iconClass: 'text-primary-fixed-dim',    valueClass: 'text-zinc-50',           sub: undefined },
-    { label: 'Margem Líquida',    value: fmtPct(margemLiquida),   ...deltaPct(margemLiquida, faturamento > 0 ? (prevLucroLiquido / prevFat) * 100 : 0), icon: 'pie_chart', iconClass: 'text-emerald-400', valueClass: 'text-zinc-50', sub: `Bruta ${fmtPct(margemMedia)}` },
-    { label: 'Cancelamentos',     value: fmtPct(taxaCancel),      ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart',  iconClass: 'text-error',                valueClass: 'text-zinc-50',           sub: undefined },
+    { label: 'Faturamento', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: undefined as string | undefined },
+    { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: undefined },
+    { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-zinc-50', sub: undefined },
+    { label: 'Cancelamentos', value: fmtPct(taxaCancel), ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-zinc-50', sub: `${fmtNum(cancelados)} de ${fmtNum(pedidos + cancelados)}` },
   ]
 
   const adsKpis = [
@@ -298,6 +305,20 @@ export function MetricasView({
     { label: '% Vendas via Ads',  value: fmtPct(pctVendasAds),       ...deltaPct(pctVendasAds, prevPctVendasAds), icon: 'campaign',  iconClass: 'text-primary-fixed', valueClass: 'text-zinc-50',      invert: false, sub: `de R$ ${fmtBrl(adsGmv / 1000)}k em ${fmtBrlInt(faturamento)}` },
     { label: 'Pedidos via Ads',   value: fmtNum(adsOrders),          ...deltaPct(adsOrders, prevAdsOrders),   icon: 'inventory',      iconClass: 'text-zinc-50',   valueClass: 'text-zinc-50',        invert: false, sub: pedidos > 0 ? `${fmtPct((adsOrders / pedidos) * 100)} do total · CTR ${fmtPct(ctrGlobal)}` : undefined },
   ]
+
+  // Card #59 (call João 18/06): linha Despesas/Financeiro — 5 cards do período
+  // comissaoAfiliados vem de shopee_affiliate_performance (card #62)
+  const despesasKpis = [
+    { label: 'Gasto em Ads',           value: fmtBrlInt(adsSpend),                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
+    { label: 'Comissão Afiliados',     value: fmtBrlInt(comissaoAfiliadosCur),     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'API Affiliate bloqueada — escopo não liberado pro app' },
+    { label: 'Taxa Shopee',            value: fmtBrlInt(totalFrete),               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
+    { label: 'Comissão Shopee',        value: fmtBrlInt(totalComissao),            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: faturamento > 0 ? `${fmtPct((totalComissao / faturamento) * 100)} do faturamento` : undefined },
+    { label: 'Antecipações',           value: fmtBrlInt(antecipacoesCur),          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
+  ]
+  // Total despesas pra mostrar acima da linha
+  const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao + antecipacoesCur
+  const prevTotalDespesas = prevAdsSpend + comissaoAfiliadosPrev + prevFrete + prevComissao + antecipacoesPrev
+  const totalDespesasDelta = deltaPct(totalDespesas, prevTotalDespesas)
 
   const dailyRows = [...current].reverse().slice(0, 5)
   const distribution = buildDistribution(current)
@@ -381,7 +402,7 @@ export function MetricasView({
           <EmptyDataState nickname={nickname} />
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-gutter">
               {kpis.map((kpi) => (
                 <div
                   key={kpi.label}
@@ -415,21 +436,24 @@ export function MetricasView({
               ))}
             </div>
 
-            {/* Linha Ads — investimento + retorno, impacta Lucro Líquido acima */}
+            {/* Linha Despesas (card #59 call João 18/06) — 5 cards do período */}
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-semibold mt-1">
-              <span className="material-symbols-outlined text-[14px] text-tertiary">campaign</span>
-              Shopee Ads
+              <span className="material-symbols-outlined text-[14px] text-error">trending_down</span>
+              Despesas
               <span className="flex-1 h-px bg-zinc-800" />
-              <a
-                href="/shopee/anuncios?tab=ads"
-                className="text-[10px] text-zinc-400 hover:text-zinc-50 flex items-center gap-1 normal-case tracking-normal"
-              >
-                Ver painel completo
-                <span className="material-symbols-outlined text-[12px]">arrow_outward</span>
-              </a>
+              <span className={cn(
+                'normal-case tracking-normal text-[10px] flex items-center gap-1',
+                totalDespesasDelta.trend === 'flat' ? 'text-zinc-500' : totalDespesasDelta.trend === 'up' ? 'text-error' : 'text-secondary',
+              )}>
+                Total: <span className="text-zinc-300 font-mono font-semibold">{fmtBrlInt(totalDespesas)}</span>
+                <span className="material-symbols-outlined text-[12px]">
+                  {totalDespesasDelta.trend === 'up' ? 'trending_up' : totalDespesasDelta.trend === 'down' ? 'trending_down' : 'trending_flat'}
+                </span>
+                <span>{totalDespesasDelta.delta}</span>
+              </span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
-              {adsKpis.map((kpi) => {
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-gutter">
+              {despesasKpis.map((kpi) => {
                 const goodUp = !kpi.invert
                 const trendColor =
                   kpi.trend === 'flat' ? 'text-zinc-500'
@@ -441,17 +465,11 @@ export function MetricasView({
                     className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden hover:bg-zinc-900/70 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">
-                        {kpi.label}
-                      </span>
-                      <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>
-                        {kpi.icon}
-                      </span>
+                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">{kpi.label}</span>
+                      <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>{kpi.icon}</span>
                     </div>
                     <div className={cn('font-h2 text-h2', kpi.valueClass)}>{kpi.value}</div>
-                    {kpi.sub && (
-                      <div className="text-[10px] text-zinc-500 font-mono leading-tight">{kpi.sub}</div>
-                    )}
+                    {kpi.sub && <div className="text-[10px] text-zinc-500 font-mono leading-tight">{kpi.sub}</div>}
                     <div className={cn('flex items-center gap-1 font-label-md text-label-md', trendColor)}>
                       <span className="material-symbols-outlined text-[14px]">
                         {kpi.trend === 'up' ? 'trending_up' : kpi.trend === 'down' ? 'trending_down' : 'trending_flat'}

@@ -12,6 +12,8 @@ import type { Period } from '@/components/metrics-chart'
 import { AnunciosView, type CostEntry } from './anuncios-view'
 export type { Period }
 
+export const revalidate = 60
+
 export type AdsPeriod = Period | 'custom'
 
 function parseAdsPeriod(raw: string | undefined): AdsPeriod {
