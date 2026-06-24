@@ -372,7 +372,7 @@ export function MetricasView({
   const taxaIcon = canal === 'shein' ? 'receipt_long' : 'local_shipping'
   const despesasMeta: { key: DespesaKey; label: string; icon: string; sub?: string }[] = [
     { key: 'ads', label: 'Ads', icon: 'campaign' },
-    { key: 'afiliados', label: 'Comissão Afiliados', icon: 'group', sub: canal !== 'shein' ? 'AMS API — aguardando aprovação app' : undefined },
+    { key: 'afiliados', label: 'Comissão Afiliados', icon: 'group', sub: canal !== 'shein' ? 'Snapshot últimos 30d (AMS)' : undefined },
     { key: 'taxa', label: taxaLabel, icon: taxaIcon },
     { key: 'comissao', label: 'Comissão', icon: 'percent' },
     { key: 'antecipacoes', label: 'Antecipações', icon: 'flash_on' },
