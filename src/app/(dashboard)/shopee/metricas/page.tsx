@@ -153,18 +153,29 @@ export default async function ShopeeMetricasPage({
       .in('transaction_type', ['FAST_ESCROW_DEDUCT', 'SPM_DEDUCT', 'SPM_DEDUCT_DIRECT', 'ADJUSTMENT_CENTER_DEDUCT', 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED'])
       .gte('create_time', prevFromTs)
       .lte('create_time', prevToTs),
-    supabase
-      .from('shopee_affiliate_performance')
-      .select('commission_cents')
-      .eq('connection_id', conn.id)
-      .gte('date', cur.from)
-      .lte('date', cur.to),
-    supabase
-      .from('shopee_affiliate_performance')
-      .select('commission_cents')
-      .eq('connection_id', conn.id)
-      .gte('date', prev.from)
-      .lte('date', prev.to),
+    // AMS snapshot — period_type baseado em diff dias do filter
+    (() => {
+      const days = Math.round((new Date(cur.to).getTime() - new Date(cur.from).getTime()) / 86400_000) + 1
+      const periodType = days <= 7 ? 'Last7d' : 'Last30d'
+      return supabase
+        .from('shopee_affiliate_performance')
+        .select('commission_cents, period_end, period_type')
+        .eq('connection_id', conn.id)
+        .eq('period_type', periodType)
+        .order('period_end', { ascending: false })
+        .limit(500)
+    })(),
+    (() => {
+      const days = Math.round((new Date(prev.to).getTime() - new Date(prev.from).getTime()) / 86400_000) + 1
+      const periodType = days <= 7 ? 'Last7d' : 'Last30d'
+      return supabase
+        .from('shopee_affiliate_performance')
+        .select('commission_cents, period_end, period_type')
+        .eq('connection_id', conn.id)
+        .eq('period_type', periodType)
+        .order('period_end', { ascending: false })
+        .limit(500)
+    })(),
   ])
 
   function sumWalletByType(rows: { transaction_type: string | null; amount_cents: number | null }[] | null, types: string[]): number {
@@ -177,12 +188,17 @@ export default async function ShopeeMetricasPage({
   const antecipacoesCur = sumWalletByType(walletCur, ['FAST_ESCROW_DEDUCT'])
   const antecipacoesPrev = sumWalletByType(walletPrev, ['FAST_ESCROW_DEDUCT'])
 
-  function sumAffiliate(rows: { commission_cents: number | null }[] | null): number {
-    if (!rows) return 0
-    return rows.reduce((a, r) => a + (Number(r.commission_cents) || 0), 0) / 100
+  // Snapshot AMS Last30d: soma todas commission_cents do snapshot mais recente
+  function sumAffiliateLatestSnapshot(rows: { commission_cents: number | null; period_end: string | null }[] | null): number {
+    if (!rows || rows.length === 0) return 0
+    const latest = rows[0]?.period_end
+    if (!latest) return 0
+    return rows
+      .filter(r => r.period_end === latest)
+      .reduce((a, r) => a + (Number(r.commission_cents) || 0), 0) / 100
   }
-  const comissaoAfiliadosCur = sumAffiliate(affiliateCur)
-  const comissaoAfiliadosPrev = sumAffiliate(affiliatePrev)
+  const comissaoAfiliadosCur = sumAffiliateLatestSnapshot(affiliateCur as { commission_cents: number | null; period_end: string | null }[] | null)
+  const comissaoAfiliadosPrev = sumAffiliateLatestSnapshot(affiliatePrev as { commission_cents: number | null; period_end: string | null }[] | null)
 
   return (
     <MetricasView
