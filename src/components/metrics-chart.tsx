@@ -133,6 +133,7 @@ export function MetricsChart({
 
   const ticks = [1, 0.75, 0.5, 0.25, 0]
   const dateMarkers = useMemo(() => {
+    if (len === 0) return []
     const count = Math.min(7, len)
     if (count <= 1) return [0]
     return Array.from({ length: count }, (_, i) => Math.round((i * (len - 1)) / (count - 1)))
@@ -351,7 +352,7 @@ export function MetricsChart({
                 <div className="rounded-lg border border-white/10 bg-[#050507]/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-md">
                   <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
                     <span className="font-mono text-[11px] tabular-nums text-zinc-500">
-                      {fmtFull(dates[idx])}
+                      {dates[idx] ? fmtFull(dates[idx]) : ''}
                     </span>
                     {showCurrent && showPrevious && (
                       <span
@@ -404,9 +405,10 @@ export function MetricsChart({
         </div>
 
         <div className="pointer-events-none absolute bottom-2 left-16 right-lg flex justify-between font-mono text-[10px] tabular-nums text-zinc-600">
-          {dateMarkers.map((i) => (
-            <span key={i}>{fmtShort(dates[i])}</span>
-          ))}
+          {dateMarkers.map((i) => {
+            const d = dates[i]
+            return <span key={i}>{d ? fmtShort(d) : ''}</span>
+          })}
         </div>
       </div>
     </div>

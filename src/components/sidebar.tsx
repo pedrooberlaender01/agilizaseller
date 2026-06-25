@@ -22,8 +22,8 @@ const baseNav: NavItem[] = [
   {
     label: 'Mercado Livre',
     icon: 'storefront',
+    brand: 'mercado_livre',
     basePath: '/mercado-livre',
-    disabled: true,
     children: [
       { href: '/mercado-livre/metricas', label: 'Métricas', icon: 'monitoring' },
       { href: '/mercado-livre/anuncios', label: 'Anúncios', icon: 'sell' },
