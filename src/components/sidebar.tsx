@@ -29,6 +29,7 @@ const baseNav: NavItem[] = [
       { href: '/mercado-livre/anuncios', label: 'Anúncios', icon: 'sell' },
       { href: '/mercado-livre/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
       { href: '/mercado-livre/envios', label: 'Envios', icon: 'local_shipping' },
+      { href: '/mercado-livre/financeiro', label: 'Financeiro', icon: 'payments' },
       { href: '/mercado-livre/saude', label: 'Saúde', icon: 'monitor_heart' },
     ],
   },
