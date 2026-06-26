@@ -57,18 +57,28 @@ export async function loadShopeeMetrics(
     supabase.from('shopee_daily_metrics').select(cols).eq('connection_id', conn.id).gte('date', range.previous.from).lte('date', range.previous.to),
     supabase.from('shopee_wallet_transactions').select('transaction_type,amount_cents').eq('connection_id', conn.id).in('transaction_type', FAST_ESCROW).gte('create_time', curFromTs).lte('create_time', curToTs),
     supabase.from('shopee_wallet_transactions').select('transaction_type,amount_cents').eq('connection_id', conn.id).in('transaction_type', FAST_ESCROW).gte('create_time', prevFromTs).lte('create_time', prevToTs),
-    // AMS get_affiliate_performance: snapshot Last30d (não daily). Pega snapshot mais recente.
-    supabase.from('shopee_affiliate_performance')
-      .select('commission_cents, period_end')
-      .eq('connection_id', conn.id)
-      .order('period_end', { ascending: false })
-      .limit(500),
-    supabase.from('shopee_affiliate_performance')
-      .select('commission_cents, period_end')
-      .eq('connection_id', conn.id)
-      .order('period_end', { ascending: false })
-      .limit(500)
-      .lt('period_end', new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10)),
+    // AMS snapshot — period_type baseado em diff dias do filter
+    (() => {
+      const days = Math.round((new Date(range.current.to).getTime() - new Date(range.current.from).getTime()) / 86400_000) + 1
+      const periodType = days <= 7 ? 'Last7d' : 'Last30d'
+      return supabase.from('shopee_affiliate_performance')
+        .select('commission_cents, period_end, period_type')
+        .eq('connection_id', conn.id)
+        .eq('period_type', periodType)
+        .order('period_end', { ascending: false })
+        .limit(500)
+    })(),
+    (() => {
+      const days = Math.round((new Date(range.previous.to).getTime() - new Date(range.previous.from).getTime()) / 86400_000) + 1
+      const periodType = days <= 7 ? 'Last7d' : 'Last30d'
+      return supabase.from('shopee_affiliate_performance')
+        .select('commission_cents, period_end, period_type')
+        .eq('connection_id', conn.id)
+        .eq('period_type', periodType)
+        .order('period_end', { ascending: false })
+        .limit(500)
+        .lt('period_end', new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10))
+    })(),
   ])
 
   const cur = (curRows ?? []) as ShopeeRow[]

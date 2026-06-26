@@ -133,12 +133,14 @@ export function MetricsChart({
 
   const ticks = [1, 0.75, 0.5, 0.25, 0]
   const dateMarkers = useMemo(() => {
+    if (len === 0) return []
     const count = Math.min(7, len)
     if (count <= 1) return [0]
     return Array.from({ length: count }, (_, i) => Math.round((i * (len - 1)) / (count - 1)))
   }, [len])
 
-  const idx = hovered ?? Math.floor(lastIdx / 2)
+  const idx = Math.min(hovered ?? Math.floor(lastIdx / 2), lastIdx)
+  const hasHover = hovered !== null && len > 0 && current[idx] != null
   const cx = lastIdx === 0 ? 50 : (idx / lastIdx) * 100
   const curY = 100 - (current[idx] / max) * 100
   const prevY = 100 - (previous[idx] / max) * 100
@@ -321,20 +323,20 @@ export function MetricsChart({
             )}
           </svg>
 
-          {hovered !== null && showPrevious && (
+          {hasHover && showPrevious && (
             <span
               className="pointer-events-none absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8c909f]"
               style={{ left: `${cx}%`, top: `${prevY}%` }}
             />
           )}
-          {hovered !== null && showCurrent && (
+          {hasHover && showCurrent && (
             <span
               className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
               style={{ left: `${cx}%`, top: `${curY}%`, background: meta.color, boxShadow: `0 0 6px ${meta.color}` }}
             />
           )}
 
-          {hovered !== null && (() => {
+          {hasHover && (() => {
             const anchorY = showCurrent ? curY : prevY
             const placeBelow = anchorY < 30
             const tx = cx > 75 ? '-100%' : cx < 25 ? '0%' : '-50%'
@@ -351,7 +353,7 @@ export function MetricsChart({
                 <div className="rounded-lg border border-white/10 bg-[#050507]/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-md">
                   <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
                     <span className="font-mono text-[11px] tabular-nums text-zinc-500">
-                      {fmtFull(dates[idx])}
+                      {dates[idx] ? fmtFull(dates[idx]) : ''}
                     </span>
                     {showCurrent && showPrevious && (
                       <span
@@ -404,9 +406,10 @@ export function MetricsChart({
         </div>
 
         <div className="pointer-events-none absolute bottom-2 left-16 right-lg flex justify-between font-mono text-[10px] tabular-nums text-zinc-600">
-          {dateMarkers.map((i) => (
-            <span key={i}>{fmtShort(dates[i])}</span>
-          ))}
+          {dateMarkers.map((i) => {
+            const d = dates[i]
+            return <span key={i}>{d ? fmtShort(d) : ''}</span>
+          })}
         </div>
       </div>
     </div>

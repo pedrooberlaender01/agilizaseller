@@ -2,20 +2,20 @@ import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import type { Period } from '@/components/metrics-chart'
-import { MetricasView, type DailyRow } from './metricas-view'
+import { FinanceiroView, type FinDailyRow, type PaymentMixRow } from './financeiro-view'
 
 export const revalidate = 60
 
 function NoConnectionState() {
   return (
     <>
-      <TopBar title="Métricas — Mercado Livre" />
+      <TopBar title="Financeiro — Mercado Livre" />
       <main className="flex flex-1 items-center justify-center p-margin">
         <div className="glass-card flex max-w-md flex-col items-center gap-md rounded-2xl p-xl text-center">
           <span className="material-symbols-outlined text-4xl text-tertiary">link_off</span>
           <h2 className="text-h2 font-semibold text-on-surface">Sem conexão Mercado Livre ativa</h2>
           <p className="text-sm text-on-surface-variant">
-            Conecte sua conta Mercado Livre em Configurações para começar a sincronizar métricas.
+            Conecte sua conta Mercado Livre em Configurações para começar a sincronizar dados financeiros.
           </p>
           <Link
             href="/configuracoes"
@@ -53,9 +53,10 @@ function periodFromIso(period: Period): string {
   return d.toISOString()
 }
 
-type RpcRow = { date: string; pedidos: number; cancel: number; fat: number | string }
+type RpcRow = { date: string; pedidos: number; faturamento: number | string; comissao: number | string; frete: number | string; cupom: number | string }
+type MixRpcRow = { payment_type: string | null; qtd: number; valor: number | string }
 
-export default async function MercadoLivreMetricasPage({
+export default async function MercadoLivreFinanceiroPage({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string; from?: string; to?: string }>
@@ -78,28 +79,33 @@ export default async function MercadoLivreMetricasPage({
 
   if (!conn) return <NoConnectionState />
 
-  // Agrega no Postgres (RPC) — evita o cap de 1000 linhas do PostgREST.
-  // Offset -03:00 (BRT) alinha a janela do filtro com o agrupamento por dia (AT TIME ZONE São Paulo).
-  // Sem isso, 'T00:00:00' é tratado como UTC e desloca ~3h, vazando pro dia anterior.
   const pFrom = isCustom ? `${customFrom}T00:00:00-03:00` : periodFromIso(period)
   const pTo = isCustom ? `${customTo}T23:59:59-03:00` : null
 
-  const { data } = await supabase.rpc('ml_daily_metrics', {
-    p_connection_id: conn.id,
-    p_from: pFrom,
-    p_to: pTo,
-  })
+  const [{ data: finData }, { data: mixData }] = await Promise.all([
+    supabase.rpc('ml_financeiro_daily', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
+    supabase.rpc('ml_payment_mix', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
+  ])
 
-  const rows: DailyRow[] = ((data ?? []) as RpcRow[]).map((r) => ({
+  const rows: FinDailyRow[] = ((finData ?? []) as RpcRow[]).map((r) => ({
     date: r.date,
     pedidos: r.pedidos,
-    cancel: r.cancel,
-    fat: Number(r.fat) || 0,
+    faturamento: Number(r.faturamento) || 0,
+    comissao: Number(r.comissao) || 0,
+    frete: Number(r.frete) || 0,
+    cupom: Number(r.cupom) || 0,
+  }))
+
+  const paymentMix: PaymentMixRow[] = ((mixData ?? []) as MixRpcRow[]).map((r) => ({
+    payment_type: r.payment_type ?? 'desconhecido',
+    qtd: r.qtd,
+    valor: Number(r.valor) || 0,
   }))
 
   return (
-    <MetricasView
+    <FinanceiroView
       rows={rows}
+      paymentMix={paymentMix}
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}
