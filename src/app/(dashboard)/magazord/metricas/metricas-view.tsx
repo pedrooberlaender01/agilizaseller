@@ -412,11 +412,13 @@ function marketplaceLabel(raw: string | null): string {
 function MarketplaceSelect({
   value,
   options,
-  onChange,
+  onToggle,
+  onClear,
 }: {
-  value: string | null
+  value: string[]
   options: string[]
-  onChange: (v: string) => void
+  onToggle: (v: string) => void
+  onClear: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -437,8 +439,12 @@ function MarketplaceSelect({
     }
   }, [open])
 
-  const isAll = !value
-  const currentLabel = isAll ? 'Todos marketplaces' : marketplaceLabel(value)
+  const isAll = value.length === 0
+  const currentLabel = isAll
+    ? 'Todos marketplaces'
+    : value.length === 1
+      ? marketplaceLabel(value[0])
+      : `${value.length} marketplaces`
 
   return (
     <div ref={ref} className="relative">
@@ -454,12 +460,12 @@ function MarketplaceSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        {isAll ? (
+        {value.length === 1 ? (
+          <MarketplaceLogo name={value[0]} size={20} />
+        ) : (
           <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 text-outline">
             <Icon name="apps" size={12} />
           </span>
-        ) : (
-          <MarketplaceLogo name={value} size={20} />
         )}
         <span className="max-w-[160px] truncate">{currentLabel}</span>
         <Icon
@@ -482,10 +488,7 @@ function MarketplaceSelect({
           <div className="max-h-[340px] overflow-y-auto p-1.5">
             <button
               type="button"
-              onClick={() => {
-                onChange('')
-                setOpen(false)
-              }}
+              onClick={() => onClear()}
               className={cn(
                 'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
                 isAll
@@ -506,16 +509,13 @@ function MarketplaceSelect({
             <div className="my-1 h-px bg-white/5" />
 
             {options.map((opt) => {
-              const active = value === opt
+              const active = value.includes(opt)
               const isUnknown = opt === '__unknown__'
               return (
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => {
-                    onChange(opt)
-                    setOpen(false)
-                  }}
+                  onClick={() => onToggle(opt)}
                   className={cn(
                     'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
                     active
@@ -523,11 +523,16 @@ function MarketplaceSelect({
                       : 'text-slate-200 hover:bg-white/5',
                   )}
                 >
+                  <span className={cn(
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded border',
+                    active ? 'border-primary bg-primary text-on-primary' : 'border-white/20',
+                  )}>
+                    {active && <Icon name="check" size={12} />}
+                  </span>
                   <MarketplaceLogo name={opt} size={28} />
                   <span className={cn('flex-1', isUnknown && !active && 'text-slate-400')}>
                     {marketplaceLabel(opt)}
                   </span>
-                  {active && <Icon name="check" size={14} className="text-primary" />}
                 </button>
               )
             })}
@@ -700,7 +705,7 @@ export function MetricasView({
   period: Period
   from: string | null
   to: string | null
-  mkt: string | null
+  mkt: string[]
   marketplaces: string[]
   origem: number | null
   nickname?: string | null
@@ -745,10 +750,22 @@ export function MetricasView({
     })
   }
 
-  function setMarketplace(value: string) {
+  function toggleMarketplace(value: string) {
+    const cur = new Set(mkt)
+    if (cur.has(value)) cur.delete(value)
+    else cur.add(value)
+    const list = [...cur]
     const next = new URLSearchParams(sp.toString())
-    if (!value) next.delete('mkt')
-    else next.set('mkt', value)
+    if (list.length === 0) next.delete('mkt')
+    else next.set('mkt', list.join(','))
+    startTransition(() => {
+      router.replace(`?${next.toString()}`, { scroll: false })
+    })
+  }
+
+  function clearMarketplaces() {
+    const next = new URLSearchParams(sp.toString())
+    next.delete('mkt')
     startTransition(() => {
       router.replace(`?${next.toString()}`, { scroll: false })
     })
@@ -765,8 +782,14 @@ export function MetricasView({
 
   const mktLabel = (raw: string | null) => raw ?? 'Origem desconhecida'
 
+  // Multi-select: vazio = todos. marketplace_origem null = '__unknown__'
+  const filteredRows = useMemo(
+    () => (mkt.length ? rows.filter((r) => mkt.includes(r.marketplace_origem ?? '__unknown__')) : rows),
+    [rows, mkt],
+  )
+
   const totals = useMemo(() => {
-    return rows.reduce(
+    return filteredRows.reduce(
       (acc, r) => {
         acc.orders += r.orders_count
         acc.cancelled += r.orders_cancelled_count
@@ -778,12 +801,9 @@ export function MetricasView({
       },
       { orders: 0, cancelled: 0, aprovados: 0, revenue: 0, frete: 0, desconto: 0 },
     )
-  }, [rows])
+  }, [filteredRows])
 
   const ticketMedio = totals.orders > 0 ? totals.revenue / totals.orders : 0
-  const cancelRate = totals.orders + totals.cancelled > 0
-    ? (totals.cancelled / (totals.orders + totals.cancelled)) * 100
-    : 0
 
   const customLabel = period === 'custom' && from && to
     ? `${fmtDateBRShort(from)} – ${fmtDateBRShort(to)}`
@@ -808,7 +828,8 @@ export function MetricasView({
               <MarketplaceSelect
                 value={mkt}
                 options={marketplaces}
-                onChange={setMarketplace}
+                onToggle={toggleMarketplace}
+                onClear={clearMarketplaces}
               />
             )}
 
@@ -876,22 +897,16 @@ export function MetricasView({
         </div>
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Receita Bruta" value={fmtBrl(totals.revenue)} icon="payments" tone="green" />
-          <StatCard label="Pedidos Válidos" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" />
+          <StatCard label="Faturamento" value={fmtBrl(totals.revenue)} icon="payments" tone="green" />
+          <StatCard label="Pedidos Faturados" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" />
           <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" />
-          <StatCard label="Cancelados" value={`${fmtInt(totals.cancelled)} (${cancelRate.toFixed(1)}%)`} icon="cancel" tone="red" />
-        </div>
-
-        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatCard label="Aprovados" value={fmtInt(totals.aprovados)} icon="check_circle" tone="green" />
           <StatCard label="Total Frete" value={fmtBrl(totals.frete)} icon="local_shipping" />
-          <StatCard label="Total Desconto" value={fmtBrl(totals.desconto)} icon="local_offer" />
         </div>
 
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="border-b border-white/10 px-6 py-4">
-            <h3 className="text-sm font-semibold text-white">Diário — {sectionTitle}</h3>
-            <p className="mt-1 text-xs text-slate-400">Agregado em tempo real direto da tabela mag_orders (sem cron).</p>
+            <h3 className="text-sm font-semibold text-white">Faturamento diário — {sectionTitle}</h3>
+            <p className="mt-1 text-xs text-slate-400">Pedidos por data de faturamento (emissão da NF de venda), direto de mag_orders.</p>
           </div>
           <table className="w-full border-collapse text-left">
             <thead>
@@ -900,21 +915,19 @@ export function MetricasView({
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Marketplace</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Origem</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Pedidos</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Aprovados</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Cancelados</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Receita</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Faturamento</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Ticket Médio</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-200">
-              {rows.length === 0 ? (
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-outline">
-                    Sem pedidos no período selecionado.
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-outline">
+                    Sem pedidos faturados no período selecionado.
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => {
+                filteredRows.map((r) => {
                   const isUnknownMkt = !r.marketplace_origem
                   return (
                     <tr key={`${r.date}-${r.origem}-${r.marketplace_origem ?? 'unknown'}`} className="border-b border-white/5 hover:bg-white/5">
@@ -931,8 +944,6 @@ export function MetricasView({
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-400">{origemLabel[r.origem ?? 0] ?? `#${r.origem}`}</td>
                       <td className="px-6 py-4 text-right">{fmtInt(r.orders_count)}</td>
-                      <td className="px-6 py-4 text-right text-secondary">{fmtInt(r.orders_aprovados_count)}</td>
-                      <td className="px-6 py-4 text-right text-error">{fmtInt(r.orders_cancelled_count)}</td>
                       <td className="px-6 py-4 text-right font-medium">{fmtBrl(r.gross_revenue)}</td>
                       <td className="px-6 py-4 text-right text-slate-400">{fmtBrl(r.ticket_medio)}</td>
                     </tr>
