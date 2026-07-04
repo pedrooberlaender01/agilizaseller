@@ -700,6 +700,7 @@ export function MetricasView({
   marketplaces,
   origem,
   nickname,
+  freteRows,
 }: {
   rows: DailyMetric[]
   period: Period
@@ -709,6 +710,7 @@ export function MetricasView({
   marketplaces: string[]
   origem: number | null
   nickname?: string | null
+  freteRows: Array<{ marketplace_origem: string | null; frete: number }>
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -805,6 +807,15 @@ export function MetricasView({
 
   const ticketMedio = totals.orders > 0 ? totals.revenue / totals.orders : 0
 
+  // Frete transportadora (eixo data do pedido, situacao 4-8,12) - filtra por marketplace selecionado
+  const freteTotal = useMemo(
+    () =>
+      freteRows
+        .filter((r) => !mkt.length || mkt.includes(r.marketplace_origem ?? '__unknown__'))
+        .reduce((acc, r) => acc + r.frete, 0),
+    [freteRows, mkt],
+  )
+
   const customLabel = period === 'custom' && from && to
     ? `${fmtDateBRShort(from)} – ${fmtDateBRShort(to)}`
     : 'Personalizar'
@@ -900,7 +911,7 @@ export function MetricasView({
           <StatCard label="Faturamento" value={fmtBrl(totals.revenue)} icon="payments" tone="green" />
           <StatCard label="Pedidos Faturados" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" />
           <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" />
-          <StatCard label="Total Frete" value={fmtBrl(totals.frete)} icon="local_shipping" />
+          <StatCard label="Total Frete" value={fmtBrl(freteTotal)} icon="local_shipping" />
         </div>
 
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">

@@ -107,7 +107,7 @@ export default async function MagazordMetricasPage({
     )
   }
 
-  const [{ data: rawRows, error }, { data: mktRows }] = await Promise.all([
+  const [{ data: rawRows, error }, { data: mktRows }, { data: freteRaw }] = await Promise.all([
     supabase.rpc('mag_faturamento_realtime', {
       p_connection_id: conn.id,
       p_cutoff: isoBRTStart(cutoff),
@@ -116,7 +116,19 @@ export default async function MagazordMetricasPage({
       p_origem: origemFilter,
     }),
     supabase.rpc('mag_marketplaces', { p_connection_id: conn.id }),
+    // Frete = valorFreteTransportadora, pedidos situacao 4,5,6,7,8,12, por data do pedido
+    supabase.rpc('mag_frete_realtime', {
+      p_connection_id: conn.id,
+      p_cutoff: isoBRTStart(cutoff),
+      p_end: endAt ? isoBRTEnd(endAt) : null,
+      p_marketplace: null,
+      p_origem: origemFilter,
+    }),
   ])
+
+  const freteRows = ((freteRaw ?? []) as Array<{ marketplace_origem: string | null; frete: number | string }>).map(
+    (r) => ({ marketplace_origem: r.marketplace_origem, frete: Number(r.frete) }),
+  )
 
   // Eixo = data de faturamento (emissão NF venda). Mapeia p/ shape da view.
   const rows = ((rawRows ?? []) as Array<{
@@ -165,6 +177,7 @@ export default async function MagazordMetricasPage({
       marketplaces={marketplaces}
       origem={origemFilter}
       nickname={conn.nickname}
+      freteRows={freteRows}
     />
   )
 }
