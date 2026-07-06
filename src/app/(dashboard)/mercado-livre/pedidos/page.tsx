@@ -86,8 +86,8 @@ export default async function MercadoLivrePedidosPage({
       { count: 'exact' },
     )
     .eq('connection_id', connId)
-    .gte('date_created', fromIso)
-  if (toIso) query = query.lte('date_created', toIso)
+    .gte('sale_date', fromIso)
+  if (toIso) query = query.lte('sale_date', toIso)
 
   if (search) {
     const term = search.replace(/%/g, '')
@@ -95,7 +95,7 @@ export default async function MercadoLivrePedidosPage({
   }
 
   const { data, count } = await query
-    .order('date_created', { ascending: false })
+    .order('sale_date', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
   // KPIs agregados via RPC no Postgres (evita cap de 1000 linhas; margens vazias → lucro "—")

@@ -6,27 +6,47 @@ export const revalidate = 60
 
 const PAGE_SIZE = 50
 
-type Period = '7d' | '30d' | '90d' | 'all'
+type Period = '7d' | '30d' | '90d' | 'all' | 'mes' | 'custom'
 
 function parsePeriod(raw: string | undefined): Period {
-  return raw === '7d' || raw === '90d' || raw === 'all' ? raw : '30d'
+  if (raw === '7d' || raw === '90d' || raw === 'all' || raw === 'mes' || raw === 'custom') return raw
+  return '30d'
 }
 
-function periodCutoffIso(period: Period): string | null {
-  if (period === 'all') return null
+function parseIsoDateOnly(s: string | undefined): string | null {
+  if (!s) return null
+  return /^(\d{4})-(\d{2})-(\d{2})$/.test(s) ? s : null
+}
+
+function periodRangeIso(period: Period, customFrom: string | null, customTo: string | null): { from: string | null; to: string | null } {
+  if (period === 'all') return { from: null, to: null }
+  const today = new Date()
+  const toIso = today.toISOString()
+  if (period === 'custom' && customFrom && customTo) {
+    const f = new Date(customFrom + 'T00:00:00')
+    const t = new Date(customTo + 'T23:59:59')
+    return { from: f.toISOString(), to: t.toISOString() }
+  }
+  if (period === 'mes') {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { from: start.toISOString(), to: toIso }
+  }
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString()
+  const d = new Date(today)
+  d.setDate(d.getDate() - days + 1)
+  d.setHours(0, 0, 0, 0)
+  return { from: d.toISOString(), to: toIso }
 }
 
 export default async function SheinFinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; q?: string; page?: string }>
+  searchParams: Promise<{ period?: string; q?: string; page?: string; from?: string; to?: string }>
 }) {
   const sp = await searchParams
   const period = parsePeriod(sp.period)
+  const customFrom = parseIsoDateOnly(sp.from)
+  const customTo = parseIsoDateOnly(sp.to)
   const search = (sp.q ?? '').trim()
   const page = Math.max(1, Number(sp.page ?? 1) || 1)
 
@@ -51,13 +71,14 @@ export default async function SheinFinanceiroPage({
   }
 
   const offset = (page - 1) * PAGE_SIZE
+  const { from, to } = periodRangeIso(period, customFrom, customTo)
   let query = supabase
     .from('shein_settlements_enriched')
     .select('*', { count: 'exact' })
     .eq('connection_id', conn.id)
 
-  const cutoff = periodCutoffIso(period)
-  if (cutoff) query = query.gte('settlement_date', cutoff)
+  if (from) query = query.gte('settlement_date', from)
+  if (to) query = query.lte('settlement_date', to)
   if (search) {
     const term = search.replace(/%/g, '')
     query = query.or(`settlement_id.ilike.%${term}%,order_no.ilike.%${term}%`)
@@ -73,6 +94,8 @@ export default async function SheinFinanceiroPage({
       totalCount={count ?? 0}
       page={page}
       period={period}
+      customFrom={period === 'custom' ? customFrom : null}
+      customTo={period === 'custom' ? customTo : null}
       search={search}
       nickname={conn.nickname}
     />

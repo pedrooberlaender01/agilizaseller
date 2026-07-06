@@ -304,7 +304,7 @@ function Section({
   const cancelRate = totalAttempts > 0 ? (totals.cancelled / totalAttempts) * 100 : 0
   const approvalRate = totalAttempts > 0 ? (totals.aprovados / totalAttempts) * 100 : 0
 
-  const kpis: { label: string; value: string; sub: string; icon: string; tone: string }[] = [
+  const kpis: { label: string; value: string; sub: string; icon: string; tone: string; inDev?: boolean }[] = [
     { label: 'Faturamento', value: fmtBrl(totals.revenue), sub: `${periodLabelText.toLowerCase()} · aprovados`, icon: 'payments', tone: 'text-secondary' },
     { label: 'Pedidos Aprovados', value: fmtInt(totals.aprovados), sub: `${approvalRate.toFixed(1)}% taxa aprovação`, icon: 'shopping_bag', tone: 'text-primary' },
     { label: 'Ticket Médio', value: fmtBrl(ticketMedio), sub: `${fmtInt(totals.orders)} pedidos válidos`, icon: 'trending_up', tone: 'text-white' },
@@ -324,10 +324,11 @@ function Section({
   if (data.estimatedIncomeTotal != null) {
     kpis.push({
       label: 'Receita líquida est.',
-      value: fmtBrl(data.estimatedIncomeTotal),
-      sub: 'após taxas Shein',
-      icon: 'account_balance_wallet',
-      tone: 'text-secondary',
+      value: '',
+      sub: 'Precisamos cadastrar o custo dos produtos pra determinar o lucro líquido.',
+      icon: 'construction',
+      tone: 'text-amber-400',
+      inDev: true,
     })
   }
 
@@ -384,17 +385,31 @@ function Section({
         {kpis.map((k) => (
           <div
             key={k.label}
-            className="group rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-900/70"
+            className={cn(
+              'group rounded-xl border p-5 transition-all',
+              k.inDev
+                ? 'border-amber-500/20 bg-amber-500/5'
+                : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70',
+            )}
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-zinc-400">{k.label}</span>
               <span className={cn('material-symbols-outlined text-[18px]', k.tone)}>{k.icon}</span>
             </div>
             <div className="mt-3">
-              <div className="text-[30px] font-bold leading-none tracking-tight text-zinc-50 tabular-nums">
-                {k.value}
-              </div>
-              <p className="mt-2 text-xs text-zinc-500">{k.sub}</p>
+              {k.inDev ? (
+                <>
+                  <div className="text-xl font-semibold text-amber-300">Em desenvolvimento</div>
+                  <p className="mt-2 text-[11px] leading-snug text-zinc-400">{k.sub}</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-[30px] font-bold leading-none tracking-tight text-zinc-50 tabular-nums">
+                    {k.value}
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500">{k.sub}</p>
+                </>
+              )}
             </div>
           </div>
         ))}

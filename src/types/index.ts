@@ -235,6 +235,10 @@ export interface ShopeeDailyMetric {
   net_revenue_cents: number | null
   roas: number | null
   acos: number | null
+  total_commission_fee: number | null
+  total_service_fee: number | null
+  total_commission_net: number | null
+  total_service_fee_net: number | null
 }
 
 export interface ShopeeAdsBalance {

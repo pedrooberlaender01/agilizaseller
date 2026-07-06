@@ -41,6 +41,7 @@ const baseNav: NavItem[] = [
     children: [
       { href: '/shopee/metricas', label: 'Métricas', icon: 'monitoring' },
       { href: '/shopee/anuncios', label: 'Anúncios', icon: 'sell' },
+      { href: '/shopee/produtos', label: 'Produtos', icon: 'inventory_2' },
       { href: '/shopee/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
       { href: '/shopee/envios', label: 'Envios', icon: 'local_shipping' },
       { href: '/shopee/financeiro', label: 'Financeiro', icon: 'payments' },
@@ -77,7 +78,6 @@ const baseNav: NavItem[] = [
     ],
   },
   { href: '/alertas', label: 'Alertas', icon: 'notifications_active' },
-  { href: '/configuracoes', label: 'Configurações', icon: 'settings' },
 ]
 
 const adminNav: NavItem = {
