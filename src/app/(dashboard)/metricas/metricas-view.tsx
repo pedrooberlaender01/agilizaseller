@@ -386,13 +386,15 @@ export function MetricasView({
     },
   ]
 
-  const taxaLabel = canal === 'shopee' ? 'Taxa Shopee' : canal === 'shein' ? 'Taxa Shein' : 'Taxas'
+  const taxaLabel = canal === 'shopee' ? 'Frete Vendedor' : canal === 'shein' ? 'Taxa Shein' : 'Taxas'
   const taxaIcon = canal === 'shein' ? 'receipt_long' : 'local_shipping'
+  const comissaoLabel = canal === 'shopee' ? 'Taxas Shopee' : 'Comissão'
+  const comissaoSub = canal === 'shopee' ? 'comissão + serviço' : undefined
   const despesasMeta: { key: DespesaKey; label: string; icon: string; sub?: string }[] = [
     { key: 'ads', label: 'Ads', icon: 'campaign' },
     { key: 'afiliados', label: 'Comissão Afiliados', icon: 'group', sub: canal !== 'shein' ? 'Snapshot últimos 30d (AMS)' : undefined },
     { key: 'taxa', label: taxaLabel, icon: taxaIcon },
-    { key: 'comissao', label: 'Comissão', icon: 'percent' },
+    { key: 'comissao', label: comissaoLabel, icon: 'percent', sub: comissaoSub },
     { key: 'antecipacoes', label: 'Antecipações', icon: 'flash_on' },
   ]
 
