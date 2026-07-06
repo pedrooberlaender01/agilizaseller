@@ -298,13 +298,15 @@ export function MetricsChart({
               </>
             )}
             {showCurrent && len === 1 && (
-              <circle
-                cx="50"
-                cy={100 - (current[0] / max) * 100}
-                r="2.5"
-                fill={meta.color}
+              <line
+                x1="50"
+                x2="50"
+                y1={100 - (current[0] / max) * 100}
+                y2="100"
                 stroke={meta.color}
-                strokeWidth="2"
+                strokeOpacity="0.35"
+                strokeWidth="1.5"
+                strokeDasharray="2 3"
                 vectorEffect="non-scaling-stroke"
               />
             )}
@@ -322,6 +324,26 @@ export function MetricsChart({
               />
             )}
           </svg>
+
+          {showCurrent && len === 1 && (
+            <div
+              className="pointer-events-none absolute z-10 flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+              style={{ left: '50%', top: `${100 - (current[0] / max) * 100}%` }}
+            >
+              <span
+                className="h-3 w-3 rounded-full ring-4 ring-[#0d1117]"
+                style={{
+                  background: meta.color,
+                  boxShadow: `0 0 12px ${meta.color}`,
+                }}
+              />
+              <span
+                className="mt-1.5 rounded-md border border-white/10 bg-[#0d1117]/95 px-2 py-0.5 font-mono text-[11px] font-medium text-zinc-50 backdrop-blur"
+              >
+                {meta.axis(current[0])}
+              </span>
+            </div>
+          )}
 
           {hasHover && showPrevious && (
             <span

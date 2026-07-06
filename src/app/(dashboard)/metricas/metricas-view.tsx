@@ -48,6 +48,7 @@ function KpiCard({
   invert = false,
   sub,
   unavailable = false,
+  inDevelopment = false,
 }: {
   label: string
   value: string
@@ -58,6 +59,7 @@ function KpiCard({
   invert?: boolean
   sub?: string
   unavailable?: boolean
+  inDevelopment?: boolean
 }) {
   const d = pair ? deltaPct(pair.cur, pair.prev) : null
   const trendCls =
@@ -68,6 +70,20 @@ function KpiCard({
         : 'text-rose-300'
   const trendIcon =
     !d || d.trend === 'flat' ? 'trending_flat' : d.trend === 'up' ? 'arrow_drop_up' : 'arrow_drop_down'
+  if (inDevelopment) {
+    return (
+      <div className="border border-amber-500/20 bg-amber-500/5 rounded-2xl p-5">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">{label}</span>
+          <span className="material-symbols-outlined text-[18px] text-amber-400">construction</span>
+        </div>
+        <p className="mt-2 text-xl font-semibold text-amber-300">Em desenvolvimento</p>
+        <p className="mt-2 text-[11px] leading-snug text-zinc-400">
+          Precisamos cadastrar o custo dos produtos pra determinar o lucro líquido. Sem custo, não dá pra calcular margem real.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
@@ -282,6 +298,7 @@ function SheinExtrasCard({ extras }: { extras: SheinExtras }) {
         iconClass="text-emerald-400"
         valueClass={extras.lucroReal >= 0 ? 'text-emerald-300' : 'text-rose-300'}
         sub="SKUs c/ custo preenchido"
+        inDevelopment
       />
       <KpiCard
         label="Margem Real"
@@ -289,6 +306,7 @@ function SheinExtrasCard({ extras }: { extras: SheinExtras }) {
         icon="percent"
         valueClass={marginTone}
         sub="Lucro / Receita coberta"
+        inDevelopment
       />
       <KpiCard
         label="Custo Total"

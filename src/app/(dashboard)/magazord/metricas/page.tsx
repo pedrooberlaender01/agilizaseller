@@ -11,8 +11,20 @@ function parsePeriod(raw: string | undefined): Period {
   return raw === '7d' || raw === '90d' || raw === 'custom' ? raw : '30d'
 }
 
-function isoDate(d: Date): string {
-  return d.toISOString()
+// Boundaries no fuso BRT (-03:00). Magazord opera em horário de Brasília;
+// usar UTC desloca pedidos entre dias (bug antigo).
+function isoBRTStart(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}T00:00:00-03:00`
+}
+
+function isoBRTEnd(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}T23:59:59-03:00`
 }
 
 function startOfDay(d: Date): Date {
@@ -54,7 +66,8 @@ export default async function MagazordMetricasPage({
 
   const customFrom = parseIsoDateOnly(sp.from)
   const customTo = parseIsoDateOnly(sp.to)
-  const mktFilter = (sp.mkt ?? '').trim() || null
+  // Multi-select: lista separada por virgula (vazio = todos)
+  const mktList = (sp.mkt ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   const origemRaw = (sp.origem ?? '').trim()
   const origemFilter = origemRaw && /^[0-9]+$/.test(origemRaw) ? Number(origemRaw) : null
 
@@ -94,16 +107,52 @@ export default async function MagazordMetricasPage({
     )
   }
 
-  const [{ data: rows, error }, { data: mktRows }] = await Promise.all([
-    supabase.rpc('mag_metrics_realtime', {
+  const [{ data: rawRows, error }, { data: mktRows }, { data: freteRaw }] = await Promise.all([
+    supabase.rpc('mag_faturamento_realtime', {
       p_connection_id: conn.id,
-      p_cutoff: isoDate(cutoff),
-      p_end: endAt ? isoDate(endAt) : null,
-      p_marketplace: mktFilter,
+      p_cutoff: isoBRTStart(cutoff),
+      p_end: endAt ? isoBRTEnd(endAt) : null,
+      p_marketplace: null,
       p_origem: origemFilter,
     }),
     supabase.rpc('mag_marketplaces', { p_connection_id: conn.id }),
+    // Frete = valorFreteTransportadora, pedidos situacao 4,5,6,7,8,12, por data do pedido
+    supabase.rpc('mag_frete_realtime', {
+      p_connection_id: conn.id,
+      p_cutoff: isoBRTStart(cutoff),
+      p_end: endAt ? isoBRTEnd(endAt) : null,
+      p_marketplace: null,
+      p_origem: origemFilter,
+    }),
   ])
+
+  const freteRows = ((freteRaw ?? []) as Array<{ marketplace_origem: string | null; frete: number | string }>).map(
+    (r) => ({ marketplace_origem: r.marketplace_origem, frete: Number(r.frete) }),
+  )
+
+  // Eixo = data de faturamento (emissão NF venda). Mapeia p/ shape da view.
+  const rows = ((rawRows ?? []) as Array<{
+    connection_id: string
+    date: string
+    origem: number | null
+    marketplace_origem: string | null
+    orders_faturados: number
+    faturamento: number | string
+    total_frete: number | string
+    ticket_medio: number | string
+  }>).map((r) => ({
+    connection_id: r.connection_id,
+    date: r.date,
+    origem: r.origem,
+    marketplace_origem: r.marketplace_origem,
+    orders_count: r.orders_faturados,
+    orders_cancelled_count: 0,
+    orders_aprovados_count: r.orders_faturados,
+    gross_revenue: r.faturamento,
+    total_frete: r.total_frete,
+    total_desconto: 0,
+    ticket_medio: r.ticket_medio,
+  }))
 
   if (error) {
     return (
@@ -124,10 +173,11 @@ export default async function MagazordMetricasPage({
       period={period}
       from={customFrom ? customFrom.toISOString().slice(0, 10) : null}
       to={customTo ? customTo.toISOString().slice(0, 10) : null}
-      mkt={mktFilter}
+      mkt={mktList}
       marketplaces={marketplaces}
       origem={origemFilter}
       nickname={conn.nickname}
+      freteRows={freteRows}
     />
   )
 }

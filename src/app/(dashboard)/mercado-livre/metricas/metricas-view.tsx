@@ -81,12 +81,12 @@ export function MetricasView({
   const cancelPct = pedidos > 0 ? (cancel / pedidos) * 100 : 0
 
   const kpis = [
-    { label: 'Faturamento Bruto', value: `R$ ${fmtBrl(faturamento)}`, icon: 'payments', iconClass: 'text-primary', valueClass: 'text-on-surface' },
-    { label: 'Pedidos', value: pedidos.toLocaleString('pt-BR'), icon: 'local_shipping', iconClass: 'text-tertiary', valueClass: 'text-on-surface' },
-    { label: 'Lucro Líquido', value: '—', icon: 'account_balance_wallet', iconClass: 'text-secondary', valueClass: 'text-on-surface-variant' },
-    { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticket)}`, icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-on-surface' },
-    { label: 'Margem Média', value: '—', icon: 'pie_chart', iconClass: 'text-secondary-container', valueClass: 'text-on-surface-variant' },
-    { label: 'Cancelamentos', value: `${cancelPct.toFixed(1).replace('.', ',')}%`, icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-on-surface' },
+    { label: 'Faturamento Bruto', value: `R$ ${fmtBrl(faturamento)}`, icon: 'payments', iconClass: 'text-primary', valueClass: 'text-on-surface', inDev: false },
+    { label: 'Pedidos', value: pedidos.toLocaleString('pt-BR'), icon: 'local_shipping', iconClass: 'text-tertiary', valueClass: 'text-on-surface', inDev: false },
+    { label: 'Lucro Líquido', value: '', icon: 'construction', iconClass: 'text-amber-400', valueClass: 'text-amber-300', inDev: true },
+    { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticket)}`, icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-on-surface', inDev: false },
+    { label: 'Margem Média', value: '', icon: 'construction', iconClass: 'text-amber-400', valueClass: 'text-amber-300', inDev: true },
+    { label: 'Cancelamentos', value: `${cancelPct.toFixed(1).replace('.', ',')}%`, icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false },
   ]
 
   const chartData: MetricsChartData = useMemo(() => {
@@ -182,7 +182,11 @@ export function MetricasView({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-surface-container/70 backdrop-blur-[16px] rounded-xl p-lg border border-white/10 flex flex-col gap-2 relative overflow-hidden group hover:bg-surface-container/90 transition-colors"
+              className={`backdrop-blur-[16px] rounded-xl p-lg border flex flex-col gap-2 relative overflow-hidden group transition-colors ${
+                kpi.inDev
+                  ? 'border-amber-500/20 bg-amber-500/5'
+                  : 'border-white/10 bg-surface-container/70 hover:bg-surface-container/90'
+              }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
@@ -190,7 +194,16 @@ export function MetricasView({
                 </span>
                 <span className={`material-symbols-outlined ${kpi.iconClass} text-lg`}>{kpi.icon}</span>
               </div>
-              <div className={`font-h2 text-h2 ${kpi.valueClass}`}>{kpi.value}</div>
+              {kpi.inDev ? (
+                <>
+                  <div className="text-base font-semibold text-amber-300">Em desenvolvimento</div>
+                  <p className="text-[10px] leading-snug text-zinc-400">
+                    Precisamos cadastrar o custo dos produtos pra calcular.
+                  </p>
+                </>
+              ) : (
+                <div className={`font-h2 text-h2 ${kpi.valueClass}`}>{kpi.value}</div>
+              )}
             </div>
           ))}
         </div>

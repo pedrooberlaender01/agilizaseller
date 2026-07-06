@@ -194,23 +194,25 @@ export function MetricasView({
                 const covTone = coveragePct >= 80 ? 'text-emerald-300' : coveragePct >= 40 ? 'text-amber-300' : 'text-rose-300'
               return (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Lucro Real</span>
-                      <Icon name="account_balance_wallet" size={18} className="text-zinc-500" />
+                      <Icon name="construction" size={18} className="text-amber-400" />
                     </div>
-                    <p className={cn('mt-2 text-3xl font-semibold', profitTone)}>{fmtBrl(costAgg.coveredProfit)}</p>
-                    <p className="mt-1 text-[10px] text-zinc-500">SKUs c/ custo preenchido</p>
+                    <p className="mt-2 text-xl font-semibold text-amber-300">Em desenvolvimento</p>
+                    <p className="mt-2 text-[11px] leading-snug text-zinc-400">
+                      Precisamos cadastrar o custo dos produtos pra determinar o lucro líquido.
+                    </p>
                   </div>
-                  <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Margem Real</span>
-                      <Icon name="percent" size={18} className="text-zinc-500" />
+                      <Icon name="construction" size={18} className="text-amber-400" />
                     </div>
-                    <p className={cn('mt-2 text-3xl font-semibold', marginTone)}>
-                      {realMarginPct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                    <p className="mt-2 text-xl font-semibold text-amber-300">Em desenvolvimento</p>
+                    <p className="mt-2 text-[11px] leading-snug text-zinc-400">
+                      Margem depende do custo dos produtos cadastrado.
                     </p>
-                    <p className="mt-1 text-[10px] text-zinc-500">Lucro / Receita coberta</p>
                   </div>
                   <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
                     <div className="flex items-center justify-between">

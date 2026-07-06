@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { TopBar } from '@/components/top-bar'
@@ -97,6 +98,26 @@ function buildDailyFlow(txs: ShopeeWalletTransaction[]) {
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
+export type OrderFeeRow = {
+  order_sn: string
+  date_created: string
+  status: string
+  valor: number
+  preco_produto: number
+  reembolso: number
+  buyer_ship: number
+  comissao_bruta: number
+  comissao_liq: number
+  servico_bruta: number
+  servico_liq: number
+  dev_facil_real: number
+  frete_real: number
+  frete_rebate: number
+  renda: number
+  estimado: boolean
+  sem_escrow: boolean
+}
+
 export function FinanceiroView({
   transactions,
   payouts,
@@ -107,6 +128,7 @@ export function FinanceiroView({
   customTo,
   typeFilter,
   nickname,
+  orderFeesList,
 }: {
   transactions: ShopeeWalletTransaction[]
   payouts: ShopeePayout[]
@@ -117,6 +139,7 @@ export function FinanceiroView({
   customTo: string | null
   typeFilter: string
   nickname: string | null
+  orderFeesList?: OrderFeeRow[] | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -134,10 +157,10 @@ export function FinanceiroView({
     return () => document.removeEventListener('mousedown', onDown)
   }, [showDatePicker])
 
-  type ViewMode = 'overview' | 'transacoes' | 'saques' | 'payouts'
+  type ViewMode = 'overview' | 'transacoes' | 'saques' | 'payouts' | 'taxas'
   const rawView = searchParams.get('view') as ViewMode | null
   const view: ViewMode =
-    rawView === 'transacoes' || rawView === 'saques' || rawView === 'payouts' || rawView === 'overview'
+    rawView === 'transacoes' || rawView === 'saques' || rawView === 'payouts' || rawView === 'overview' || rawView === 'taxas'
       ? rawView
       : 'overview'
 
@@ -267,6 +290,7 @@ export function FinanceiroView({
             { key: 'transacoes' as const, label: 'Transações', icon: 'receipt_long', badge: transactions.length },
             { key: 'saques' as const, label: 'Saques Bancários', icon: 'account_balance', badge: withdrawalCount },
             { key: 'payouts' as const, label: 'Repasses', icon: 'paid', badge: payouts.length || null },
+            { key: 'taxas' as const, label: 'Taxas', icon: 'receipt', badge: orderFeesList?.length || null },
           ].map((t) => {
             const active = view === t.key
             return (
@@ -300,10 +324,21 @@ export function FinanceiroView({
         {/* Lucro Bruto Macro — fórmula João: Vendas − Taxas Shopee − Ads */}
         {(() => {
           const vendas = dailyMetrics.reduce((a, m) => a + (Number(m.gross_revenue) || 0), 0)
-          const taxas = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission) || 0) + (Number(m.total_shipping_cost) || 0), 0)
+          const comissaoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_fee) || 0), 0)
+          const servicoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_service_fee) || 0), 0)
+          const comissaoNet = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_net) || 0), 0)
+          const servicoNet = dailyMetrics.reduce((a, m) => a + (Number(m.total_service_fee_net) || 0), 0)
+          // Fallback: dias antigos sem colunas novas usam total_commission agregado
+          const temSeparado = comissaoBruta > 0 || servicoBruta > 0
+          const comissao = temSeparado ? comissaoBruta : dailyMetrics.reduce((a, m) => a + (Number(m.total_commission) || 0), 0)
+          const servico = temSeparado ? servicoBruta : 0
+          const frete = dailyMetrics.reduce((a, m) => a + (Number(m.total_shipping_cost) || 0), 0)
           const ads = dailyMetrics.reduce((a, m) => a + (Number(m.ads_spend_cents) || 0), 0) / 100
-          const lucroBruto = vendas - taxas - ads
+          const lucroBruto = vendas - comissao - servico - frete - ads
           const margemBruta = vendas > 0 ? (lucroBruto / vendas) * 100 : 0
+          const subsidioCampanha = temSeparado && comissaoNet + servicoNet > 0
+            ? (comissao + servico) - (comissaoNet + servicoNet)
+            : 0
           if (dailyMetrics.length === 0) return null
           return (
             <div
@@ -324,18 +359,37 @@ export function FinanceiroView({
                     {lucroBruto >= 0 ? '+' : ''}{fmtBrlInt(lucroBruto)}
                   </div>
                   <div className="text-xs text-zinc-500 mt-1">
-                    Vendas − Taxas Marketplace − Investimento Ads · margem {margemBruta.toFixed(1).replace('.', ',')}%
+                    Vendas − Comissão − Taxa Serviço − Frete − Ads · margem {margemBruta.toFixed(1).replace('.', ',')}%
                   </div>
+                  {subsidioCampanha > 0 && (
+                    <div className="text-[10px] text-emerald-400/80 mt-1">
+                      +{fmtBrlInt(subsidioCampanha)} devolvidos pela Shopee via campanhas (taxa líquida real: {fmtBrlInt(comissaoNet + servicoNet)})
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-3 min-w-[440px]">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 min-w-[640px]">
                   <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
                     <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Vendas</div>
                     <div className="text-zinc-50 font-h3 text-h3 mt-1">{fmtBrlInt(vendas)}</div>
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
-                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Taxas Shopee</div>
-                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(taxas)}</div>
-                    <div className="text-[10px] text-zinc-600 mt-0.5">comissão + frete</div>
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Comissão</div>
+                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(comissao)}</div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      {temSeparado && comissaoNet > 0 ? `líquida ${fmtBrlInt(comissaoNet)}` : vendas > 0 ? `${((comissao / vendas) * 100).toFixed(1)}% das vendas` : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Taxa Serviço</div>
+                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(servico)}</div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      {temSeparado && servicoNet > 0 ? `líquida ${fmtBrlInt(servicoNet)}` : 'frete grátis + transação'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
+                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Frete</div>
+                    <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(frete)}</div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">pago pelo vendedor</div>
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">
                     <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Ads</div>
@@ -735,7 +789,200 @@ export function FinanceiroView({
           </div>
         )}
         </>)}
+
+        {view === 'taxas' && <TaxasTab rows={orderFeesList ?? []} />}
       </main>
     </>
+  )
+}
+
+// ── Aba Taxas — relatório agregado + lista de pedidos, nomenclatura do painel Shopee ──
+
+// Devolução Fácil: campo real da API (shipping_seller_protection_fee_amount).
+// Sync Escrow re-synca os 5000 mais recentes a cada 6h — campo sempre atualizado.
+function devolucaoFacil(r: OrderFeeRow): number {
+  return r.dev_facil_real > 0 ? r.dev_facil_real : 0
+}
+
+function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
+  const [busca, setBusca] = useState('')
+  const [page, setPage] = useState(1)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const PAGE = 50
+
+  const filtered = useMemo(() => {
+    const q = busca.trim().toUpperCase()
+    if (!q) return rows
+    return rows.filter((r) => r.order_sn.includes(q))
+  }, [rows, busca])
+
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (a, r) => {
+        a.valor += r.valor
+        a.comissao_bruta += r.comissao_bruta
+        a.comissao_liq += r.comissao_liq
+        a.servico_bruta += r.servico_bruta
+        a.servico_liq += r.servico_liq
+        a.dev_facil += devolucaoFacil(r)
+        a.frete_vendedor += Math.max(0, r.frete_real - r.frete_rebate - r.buyer_ship)
+        a.renda += r.renda
+        a.reembolso += r.reembolso
+        if (r.reembolso !== 0) a.com_reembolso++
+        if (r.sem_escrow) a.sem_escrow++
+        return a
+      },
+      { valor: 0, comissao_bruta: 0, comissao_liq: 0, servico_bruta: 0, servico_liq: 0, dev_facil: 0, frete_vendedor: 0, renda: 0, reembolso: 0, com_reembolso: 0, sem_escrow: 0 },
+    )
+  }, [filtered])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE))
+  const pageRows = filtered.slice((page - 1) * PAGE, page * PAGE)
+
+  const resumoCards = [
+    { label: 'Subtotal dos Produtos', value: totals.valor, tone: 'text-zinc-50', sub: `${filtered.length} pedidos` },
+    { label: 'Valor do Reembolso', value: totals.reembolso, tone: 'text-error', sub: `${totals.com_reembolso} pedidos reembolsados` },
+    { label: 'Taxa de comissão líquida', value: -totals.comissao_liq, tone: 'text-error', sub: `bruta R$ ${fmtBrl(totals.comissao_bruta)}` },
+    { label: 'Taxa de serviço líquida', value: -totals.servico_liq, tone: 'text-error', sub: `bruta R$ ${fmtBrl(totals.servico_bruta)}` },
+    { label: 'Taxa de Devolução Fácil', value: -totals.dev_facil, tone: 'text-error', sub: 'shipping_seller_protection' },
+    { label: 'Frete pago pelo vendedor', value: -totals.frete_vendedor, tone: 'text-error', sub: 'real − subsídio − comprador' },
+    { label: 'Renda dos pedidos', value: totals.renda, tone: 'text-secondary', sub: 'repasse escrow' },
+  ]
+
+  return (
+    <div className="flex flex-col gap-lg">
+      {/* Resumo do período (respeita filtro de data do topo E busca de pedido) */}
+      {busca.trim() && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300 -mb-2">
+          <span className="material-symbols-outlined text-[16px]">filter_alt</span>
+          Resumo filtrado pela busca &quot;{busca.trim()}&quot; ({filtered.length} {filtered.length === 1 ? 'pedido' : 'pedidos'})
+          <button onClick={() => { setBusca(''); setPage(1) }} className="ml-auto underline hover:text-amber-200">Limpar busca</button>
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-gutter">
+        {resumoCards.map((c) => (
+          <div key={c.label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-md">
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">{c.label}</div>
+            <div className={cn('font-h3 text-h3 mt-1', c.tone)}>
+              {c.value < 0 ? '−' : ''}{Math.abs(c.value) < 100 ? `R$ ${fmtBrl(Math.abs(c.value))}` : fmtBrlInt(Math.abs(c.value))}
+            </div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {totals.sem_escrow > 0 && (
+        <div className="text-[11px] text-amber-400/80 -mt-2">
+          ⚠ {totals.sem_escrow} pedidos sem escrow sincronizado (Shopee ainda não liberou) — taxas zeradas na lista.
+        </div>
+      )}
+
+      {/* Busca + tabela */}
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col overflow-hidden">
+        <div className="p-lg border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-h3 text-h3 text-zinc-50">Taxas por Pedido</h3>
+          <div className="relative w-[280px]">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-zinc-500">search</span>
+            <input
+              value={busca}
+              onChange={(e) => { setBusca(e.target.value); setPage(1); setExpanded(null) }}
+              placeholder="Filtrar por código do pedido..."
+              className="w-full rounded-lg border border-zinc-800 bg-[#050507] py-2 pl-10 pr-9 font-mono text-xs text-white outline-none transition-colors focus:border-zinc-50/40"
+            />
+            {busca && (
+              <button
+                onClick={() => { setBusca(''); setPage(1); setExpanded(null) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-white/10 hover:text-white"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-label-md text-label-md whitespace-nowrap">
+            <thead className="bg-zinc-900/60">
+              <tr>
+                <th className="px-lg py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px]">Pedido</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px]">Data</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Produtos</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Comissão líq.</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Serviço líq.</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Dev. Fácil</th>
+                <th className="px-md py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Frete vend.</th>
+                <th className="px-lg py-3 text-zinc-400 font-medium uppercase tracking-wider text-[11px] text-right">Renda</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {pageRows.length === 0 && (
+                <tr><td colSpan={8} className="px-lg py-10 text-center text-sm text-zinc-500">Nenhum pedido no período/filtro.</td></tr>
+              )}
+              {pageRows.map((r) => {
+                const df = devolucaoFacil(r)
+                const freteVend = Math.max(0, r.frete_real - r.frete_rebate - r.buyer_ship)
+                const isOpen = expanded === r.order_sn
+                return (
+                  <React.Fragment key={r.order_sn}>
+                    <tr
+                      onClick={() => setExpanded(isOpen ? null : r.order_sn)}
+                      className={cn('cursor-pointer hover:bg-white/[0.03] transition-colors', isOpen && 'bg-white/[0.04]')}
+                    >
+                      <td className="px-lg py-2.5 font-mono text-xs text-zinc-200">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={cn('material-symbols-outlined text-[14px] text-zinc-600 transition-transform', isOpen && 'rotate-90')}>chevron_right</span>
+                          {r.order_sn}
+                        </span>
+                        {r.sem_escrow && <span className="ml-2 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] text-amber-300">sem escrow</span>}
+                      </td>
+                      <td className="px-md py-2.5 text-zinc-500 text-xs">{fmtShortDate(r.date_created)}</td>
+                      <td className="px-md py-2.5 text-right font-mono-sm text-zinc-200">R$ {fmtBrl(r.valor)}</td>
+                      <td className="px-md py-2.5 text-right font-mono-sm text-error">−{fmtBrl(r.comissao_liq)}</td>
+                      <td className="px-md py-2.5 text-right font-mono-sm text-error">−{fmtBrl(r.servico_liq)}</td>
+                      <td className="px-md py-2.5 text-right font-mono-sm text-error">{df > 0 ? `−${fmtBrl(df)}` : '—'}</td>
+                      <td className="px-md py-2.5 text-right font-mono-sm text-error">{freteVend > 0 ? `−${fmtBrl(freteVend)}` : '—'}</td>
+                      <td className="px-lg py-2.5 text-right font-mono-sm text-secondary font-semibold">R$ {fmtBrl(r.renda)}</td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="bg-zinc-950/60">
+                        <td colSpan={8} className="px-lg py-4">
+                          <div className="max-w-[480px] text-sm">
+                            <div className="flex justify-between py-1"><span className="font-semibold text-zinc-300">Subtotal dos Produtos</span><span className="font-mono-sm text-zinc-100">R$ {fmtBrl(r.valor)}</span></div>
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Preço do Produto</span><span className="font-mono-sm text-zinc-400">R$ {fmtBrl(r.reembolso !== 0 ? r.preco_produto : r.valor)}</span></div>
+                            {r.reembolso !== 0 && (
+                              <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Valor do Reembolso</span><span className="font-mono-sm text-error">−R$ {fmtBrl(Math.abs(r.reembolso))}</span></div>
+                            )}
+                            <div className="flex justify-between py-1 border-t border-zinc-800 mt-1 pt-2"><span className="font-semibold text-zinc-300">Subtotal de Frete</span><span className="font-mono-sm text-zinc-300">R$ {fmtBrl(r.buyer_ship - r.frete_real + r.frete_rebate)}</span></div>
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Taxa de frete paga pelo comprador</span><span className="font-mono-sm text-zinc-400">R$ {fmtBrl(r.buyer_ship)}</span></div>
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Taxa de Frete Paga pela Shopee para Você</span><span className="font-mono-sm text-error">−R$ {fmtBrl(r.frete_real)}</span></div>
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Desconto de frete pago pela Shopee</span><span className="font-mono-sm text-zinc-400">R$ {fmtBrl(r.frete_rebate)}</span></div>
+                            <div className="flex justify-between py-1 border-t border-zinc-800 mt-1 pt-2"><span className="font-semibold text-zinc-300">Taxas e Encargos</span><span className="font-mono-sm text-error">−R$ {fmtBrl(r.comissao_liq + r.servico_liq + df)}</span></div>
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Taxa de comissão líquida <span className="text-[10px] text-zinc-600">(bruta R$ {fmtBrl(r.comissao_bruta)})</span></span><span className="font-mono-sm text-error">−R$ {fmtBrl(r.comissao_liq)}</span></div>
+                            {df > 0 && <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Taxa de Devolução Fácil Shopee</span><span className="font-mono-sm text-error">−R$ {fmtBrl(df)}</span></div>}
+                            <div className="flex justify-between py-1"><span className="text-zinc-500 pl-3">Taxa de serviço líquida <span className="text-[10px] text-zinc-600">(bruta R$ {fmtBrl(r.servico_bruta)})</span></span><span className="font-mono-sm text-error">−R$ {fmtBrl(r.servico_liq)}</span></div>
+                            <div className="flex justify-between border-t-2 border-zinc-700 mt-2 pt-2"><span className="font-bold text-zinc-100">Renda do pedido</span><span className="font-mono text-base font-bold text-secondary">R$ {fmtBrl(r.renda)}</span></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-800 px-lg py-3">
+          <span className="text-xs text-zinc-500">
+            {filtered.length === 0 ? '0 pedidos' : `${(page - 1) * PAGE + 1}–${Math.min(page * PAGE, filtered.length)} de ${filtered.length}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}
+              className="rounded border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">Anterior</button>
+            <span className="px-1 text-xs text-zinc-400">{page}/{totalPages}</span>
+            <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}
+              className="rounded border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">Próximo</button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

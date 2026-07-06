@@ -65,13 +65,14 @@ function NoConnectionState() {
 export default async function ShopeeFinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; type?: string; from?: string; to?: string }>
+  searchParams: Promise<{ period?: string; type?: string; from?: string; to?: string; view?: string }>
 }) {
   const sp = await searchParams
   const period = parsePeriod(sp.period)
   const customFrom = parseIsoDateOnly(sp.from)
   const customTo = parseIsoDateOnly(sp.to)
   const typeFilter = sp.type || 'all'
+  const isTaxasView = sp.view === 'taxas'
   const supabase = await createClient()
 
   const { data: conn } = await supabase
@@ -118,7 +119,71 @@ export default async function ShopeeFinanceiroPage({
   const fromDate = from.slice(0, 10)
   const toDate = to.slice(0, 10)
 
-  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }] = await Promise.all([
+  // Aba Taxas: todos os pedidos do período com breakdown de taxas (paginado server → completo)
+  async function fetchOrderFeesList() {
+    if (!isTaxasView) return null
+    const selectCols = [
+      'external_id', 'date_created', 'status', 'total_amount',
+      'shopee_order_margins(gross_revenue,commission_fee_real_cents,net_commission_fee_cents,service_fee_real_cents,net_service_fee_cents,shipping_protection_fee_cents,actual_shipping_fee_cents,shopee_shipping_rebate_cents,escrow_amount_cents,is_estimated,' +
+      'selling_price:escrow_raw->order_income->>order_selling_price,buyer_ship:escrow_raw->order_income->>buyer_paid_shipping_fee,' +
+      'preco_produto:escrow_raw->order_income->>original_cost_of_goods_sold,reembolso:escrow_raw->order_income->>seller_return_refund)',
+    ].join(',')
+    const baseQuery = () => supabase
+      .from('shopee_orders')
+      .select(selectCols, { count: 'estimated' })
+      .eq('connection_id', connId)
+      .gte('date_created', from)
+      .lte('date_created', to)
+      .not('status', 'in', '("CANCELLED","IN_CANCEL","UNPAID","INVOICE_PENDING")')
+      .order('date_created', { ascending: false })
+
+    const { data: first, count } = await baseQuery().range(0, 999)
+    const total = count ?? first?.length ?? 0
+    const all = [...(first ?? [])]
+    if (total > 1000) {
+      const chunks = Math.min(9, Math.ceil(total / 1000) - 1)
+      const starts = Array.from({ length: chunks }, (_, i) => (i + 1) * 1000)
+      const results = await Promise.all(starts.map((s) => baseQuery().range(s, s + 999).then((r) => r.data ?? [])))
+      for (const arr of results) all.push(...arr)
+    }
+    type RawRow = {
+      external_id: string; date_created: string; status: string; total_amount: number | string
+      shopee_order_margins: {
+        gross_revenue: number | string | null
+        commission_fee_real_cents: number | null; net_commission_fee_cents: number | null
+        service_fee_real_cents: number | null; net_service_fee_cents: number | null
+        shipping_protection_fee_cents: number | null
+        actual_shipping_fee_cents: number | null; shopee_shipping_rebate_cents: number | null
+        escrow_amount_cents: number | null; is_estimated: boolean | null
+        selling_price: string | null; buyer_ship: string | null
+        preco_produto: string | null; reembolso: string | null
+      }[] | null
+    }
+    return (all as unknown as RawRow[]).map((o) => {
+      const m = Array.isArray(o.shopee_order_margins) ? o.shopee_order_margins[0] : o.shopee_order_margins
+      return {
+        order_sn: o.external_id,
+        date_created: o.date_created,
+        status: o.status,
+        valor: Number(m?.selling_price ?? o.total_amount) || 0,
+        preco_produto: Number(m?.preco_produto ?? 0) || 0,
+        reembolso: Number(m?.reembolso ?? 0) || 0,
+        buyer_ship: Number(m?.buyer_ship ?? 0) || 0,
+        comissao_bruta: (m?.commission_fee_real_cents ?? 0) / 100,
+        comissao_liq: (m?.net_commission_fee_cents ?? 0) / 100,
+        servico_bruta: (m?.service_fee_real_cents ?? 0) / 100,
+        servico_liq: (m?.net_service_fee_cents ?? 0) / 100,
+        dev_facil_real: (m?.shipping_protection_fee_cents ?? 0) / 100,
+        frete_real: (m?.actual_shipping_fee_cents ?? 0) / 100,
+        frete_rebate: (m?.shopee_shipping_rebate_cents ?? 0) / 100,
+        renda: (m?.escrow_amount_cents ?? 0) / 100,
+        estimado: !!m?.is_estimated,
+        sem_escrow: !m || m.escrow_amount_cents == null,
+      }
+    })
+  }
+
+  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList] = await Promise.all([
     fetchAllTransactions(),
     supabase
       .from('shopee_payouts')
@@ -140,6 +205,7 @@ export default async function ShopeeFinanceiroPage({
       .gte('date', fromDate)
       .lte('date', toDate)
       .order('date', { ascending: true }),
+    fetchOrderFeesList(),
   ])
 
   return (
@@ -157,6 +223,7 @@ export default async function ShopeeFinanceiroPage({
       customTo={period === 'custom' ? customTo : null}
       typeFilter={typeFilter}
       nickname={conn.nickname}
+      orderFeesList={orderFeesList}
     />
   )
 }
