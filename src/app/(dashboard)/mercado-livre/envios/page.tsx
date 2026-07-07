@@ -53,5 +53,12 @@ export default async function MercadoLivreEnviosPage() {
 
   const shipments = (data ?? []) as unknown as ShipmentRow[]
 
-  return <EnviosView shipments={shipments} />
+  // Contagem por status de TODOS os envios (não capada nos 1000 da lista).
+  const { data: bucketData } = await supabase.rpc('ml_shipment_buckets', { p_connection_id: conn.id })
+  const counts = { transito: 0, entregue: 0, problema: 0, pendente: 0 }
+  for (const b of (bucketData ?? []) as { bucket: string; qtd: number }[]) {
+    if (b.bucket in counts) counts[b.bucket as keyof typeof counts] = b.qtd
+  }
+
+  return <EnviosView shipments={shipments} counts={counts} />
 }

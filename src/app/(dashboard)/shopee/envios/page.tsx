@@ -75,17 +75,24 @@ export default async function ShopeeEnviosPage({
 
   const cutoff = periodCutoffIso(period)
 
-  const { data: statusRows } = await supabase
-    .from('shopee_shipments')
-    .select('logistics_status')
-    .eq('connection_id', conn.id)
-    .gte('created_at', cutoff)
-
-  const counts: Record<Category, number> = { in_transit: 0, delivered: 0, problem: 0, pending: 0 }
-  for (const r of (statusRows ?? []) as { logistics_status: string | null }[]) {
-    if (!r.logistics_status) continue
-    const c = STATUS_CATEGORY[r.logistics_status]
-    if (c) counts[c]++
+  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase
+  const categories: Category[] = ['in_transit', 'delivered', 'problem', 'pending']
+  const countResults = await Promise.all(
+    categories.map((cat) =>
+      supabase
+        .from('shopee_shipments')
+        .select('id', { count: 'exact', head: true })
+        .eq('connection_id', conn.id)
+        .gte('created_at', cutoff)
+        .in('logistics_status', statusesForCategory(cat))
+        .then((r) => r.count ?? 0),
+    ),
+  )
+  const counts: Record<Category, number> = {
+    in_transit: countResults[0],
+    delivered: countResults[1],
+    problem: countResults[2],
+    pending: countResults[3],
   }
 
   const offset = (page - 1) * PAGE_SIZE
@@ -112,7 +119,7 @@ export default async function ShopeeEnviosPage({
     .order('synced_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  const totalAcrossAll = (statusRows ?? []).length
+  const totalAcrossAll = countResults.reduce((a, n) => a + n, 0)
 
   return (
     <EnviosView
