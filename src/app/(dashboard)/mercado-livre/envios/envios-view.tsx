@@ -201,7 +201,13 @@ function ShipmentDrawer({ shipment, onClose }: { shipment: ShipmentRow; onClose:
   )
 }
 
-export function EnviosView({ shipments }: { shipments: ShipmentRow[] }) {
+export function EnviosView({
+  shipments,
+  counts,
+}: {
+  shipments: ShipmentRow[]
+  counts: { transito: number; entregue: number; problema: number; pendente: number }
+}) {
   const [selected, setSelected] = useState<ShipmentRow | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | Bucket>('all')
@@ -213,12 +219,6 @@ export function EnviosView({ shipments }: { shipments: ShipmentRow[] }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  const counts = useMemo(() => {
-    const c = { transito: 0, entregue: 0, problema: 0, pendente: 0 }
-    for (const s of shipments) c[bucketOf(s.status)] += 1
-    return c
-  }, [shipments])
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
