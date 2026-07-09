@@ -240,6 +240,8 @@ export interface ShopeeDailyMetric {
   total_commission_net: number | null
   total_service_fee_net: number | null
   total_product_sales: number | null
+  orders_count_incl_cancel: number | null
+  gross_revenue_incl_cancel: number | null
 }
 
 export interface ShopeeAdsBalance {

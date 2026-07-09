@@ -61,27 +61,31 @@ const avgMargemReal = (arr: ShopeeDailyMetric[]): number => {
 
 type Trend = 'up' | 'down' | 'flat'
 
-// Explicações dos cards — o que é + de onde vem o dado (validado vs Relatório de Renda oficial 07/2026)
-const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string }> = {
+// Explicações dos cards — o que é + de onde vem + por que pode diferir do painel Shopee
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; difere?: string }> = {
   'Faturamento': {
     title: 'Faturamento',
-    oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período (critério "produto pago": exclui não pagos e cancelados). Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee — por isso difere levemente do card "Vendas" do painel Dados da Shopee, que usa só o preço dos produtos.',
+    oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
     origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
+    difere: 'Dois motivos: (1) por padrão EXCLUÍMOS pedidos cancelados — mesmo os que chegaram a pagar — pra mostrar a receita que realmente vira repasse; o painel da Shopee (Informações Gerenciais, "Produto Pago") INCLUI pedidos pagos que cancelaram depois. Validação: aplicando o critério deles, batemos 99,7%. Dá pra espelhar o critério da Shopee na engrenagem ⚙ acima. (2) O período: confira sempre com datas idênticas (o botão "30d" aqui termina HOJE, que ainda está incompleto).',
   },
   'Pedidos': {
     title: 'Pedidos',
-    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente. O painel Dados da Shopee ("Produto Pago") conta também pedidos pagos que cancelaram depois — por isso mostra ~2% a mais.',
+    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente.',
     origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, filtrados pelo status do pedido, por data de criação.',
+    difere: 'Mesmos dois motivos do Faturamento: excluímos cancelados (a Shopee "Produto Pago" conta pedidos pagos que cancelaram depois — ~2% a mais) e o range de datas precisa ser idêntico. Use a engrenagem ⚙ pra espelhar o critério da Shopee.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
     oQueE: 'Faturamento dividido pelo número de pedidos do período.',
     origem: 'Calculado: Faturamento ÷ Pedidos (mesmas fontes dos dois cards).',
+    difere: 'Herda as diferenças dos dois cards acima. Próximo do "Vendas por Comprador" da Shopee, mas lá o divisor é compradores únicos, não pedidos.',
   },
   'Cancelamentos': {
     title: 'Cancelamentos',
     oQueE: 'Percentual de pedidos cancelados sobre o total criado no período. Inclui cancelamentos do comprador, do vendedor e do antifraude.',
     origem: 'Campo "status" que a API da Shopee retorna em cada pedido (cancelado / em cancelamento). O número pequeno abaixo mostra a contagem absoluta.',
+    difere: 'Nosso número é MAIOR que o "Pedidos Cancelados" das Informações Gerenciais: contamos TODOS os cancelamentos (inclusive de pedidos que nunca chegaram a pagar); a Shopee só conta cancelamentos de pedidos pagos. Ex: 165 aqui vs 78 lá — os ~87 extras desistiram antes de pagar.',
   },
   'Gasto em Ads': {
     title: 'Gasto em Ads',
@@ -157,6 +161,84 @@ function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () =
             <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
             <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
           </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Por que pode diferir do painel Shopee</div>
+              <p className="text-sm leading-relaxed text-zinc-400">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Configurações da tela (engrenagem) — persistem em localStorage ──
+type MetricasConfig = { incluirCancelados: boolean }
+const CONFIG_KEY = 'shopee-metricas-config'
+const DEFAULT_CONFIG: MetricasConfig = { incluirCancelados: false }
+
+function loadConfig(): MetricasConfig {
+  if (typeof window === 'undefined') return DEFAULT_CONFIG
+  try {
+    return { ...DEFAULT_CONFIG, ...JSON.parse(localStorage.getItem(CONFIG_KEY) ?? '{}') }
+  } catch {
+    return DEFAULT_CONFIG
+  }
+}
+
+function ConfigModal({ open, config, onSave, onClose }: {
+  open: boolean
+  config: MetricasConfig
+  onSave: (c: MetricasConfig) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState(config)
+  useEffect(() => { if (open) setDraft(config) }, [open, config])
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[460px] rounded-2xl border border-zinc-700 shadow-2xl" style={{ background: 'rgba(22,27,34,0.97)' }}>
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-zinc-400">settings</span>
+            Configurações das Métricas
+          </h3>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white" aria-label="Fechar">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={draft.incluirCancelados}
+              onChange={(e) => setDraft({ ...draft, incluirCancelados: e.target.checked })}
+              className="mt-1 h-4 w-4 accent-emerald-400 cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm font-medium text-zinc-200 group-hover:text-white">Incluir pedidos cancelados (critério Shopee)</span>
+              <span className="block text-xs text-zinc-500 mt-1 leading-relaxed">
+                Faturamento e Pedidos passam a incluir pedidos pagos que foram cancelados depois — igual ao funil &quot;Produto Pago&quot; das Informações Gerenciais da Shopee (~99,7% de match).
+                Desligado, mostra o dado conservador: só a receita que fica de pé e vira repasse.
+              </span>
+            </span>
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-zinc-800 px-5 py-3">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 hover:text-white transition-colors">Cancelar</button>
+          <button
+            onClick={() => { onSave(draft); onClose() }}
+            className="rounded-lg bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors"
+          >
+            Salvar
+          </button>
         </div>
       </div>
     </div>
@@ -326,6 +408,13 @@ export function MetricasView({
   const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [infoKey, setInfoKey] = useState<string | null>(null)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [config, setConfig] = useState<MetricasConfig>(DEFAULT_CONFIG)
+  useEffect(() => { setConfig(loadConfig()) }, [])
+  function saveConfig(c: MetricasConfig) {
+    setConfig(c)
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(c))
+  }
   const popoverRef = useRef<HTMLDivElement>(null)
   const isCustom = !!(customFrom && customTo)
 
@@ -362,10 +451,16 @@ export function MetricasView({
   const sumCents = (arr: ShopeeDailyMetric[], key: keyof ShopeeDailyMetric): number =>
     arr.reduce((a, x) => a + (Number(x[key]) || 0), 0) / 100
 
-  const faturamento = sum(current, 'gross_revenue')
+  // Engrenagem: critério Shopee inclui pedidos pagos que cancelaram depois
+  const incl = config.incluirCancelados
+  const faturamento = incl
+    ? (sum(current, 'gross_revenue_incl_cancel') || sum(current, 'gross_revenue'))
+    : sum(current, 'gross_revenue')
   // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
   const vendasProduto = sum(current, 'total_product_sales') || faturamento
-  const pedidos = sum(current, 'orders_count')
+  const pedidos = incl
+    ? (sum(current, 'orders_count_incl_cancel') || sum(current, 'orders_count'))
+    : sum(current, 'orders_count')
   const totalComissao = sum(current, 'total_commission')
   const totalFrete = sum(current, 'total_shipping_cost')
   const taxasShopee = totalComissao + totalFrete
@@ -388,8 +483,12 @@ export function MetricasView({
   const pctVendasAds = faturamento > 0 ? (adsGmv / faturamento) * 100 : 0
   const ctrGlobal = adsImpressions > 0 ? (adsClicks / adsImpressions) * 100 : 0
 
-  const prevFat = sum(previous, 'gross_revenue')
-  const prevPed = sum(previous, 'orders_count')
+  const prevFat = incl
+    ? (sum(previous, 'gross_revenue_incl_cancel') || sum(previous, 'gross_revenue'))
+    : sum(previous, 'gross_revenue')
+  const prevPed = incl
+    ? (sum(previous, 'orders_count_incl_cancel') || sum(previous, 'orders_count'))
+    : sum(previous, 'orders_count')
   const prevComissao = sum(previous, 'total_commission')
   const prevFrete = sum(previous, 'total_shipping_cost')
   const prevTaxasShopee = prevComissao + prevFrete
@@ -409,8 +508,8 @@ export function MetricasView({
 
   // Card #58 (call João 18/06): KPIs topo = 4 cards. Lucro Bruto + Margem Líquida removidos (cálculo ainda não confiável).
   const kpis = [
-    { label: 'Faturamento', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: undefined as string | undefined },
-    { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: undefined },
+    { label: 'Faturamento', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
+    { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
     { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-zinc-50', sub: undefined },
     { label: 'Cancelamentos', value: fmtPct(taxaCancel), ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-zinc-50', sub: `${fmtNum(cancelados)} de ${fmtNum(pedidos + cancelados)}` },
   ]
@@ -449,6 +548,7 @@ export function MetricasView({
     <>
       <TopBar showSearch />
       <InfoModal infoKey={infoKey} onClose={() => setInfoKey(null)} />
+      <ConfigModal open={configOpen} config={config} onSave={saveConfig} onClose={() => setConfigOpen(false)} />
       <div className={cn('p-margin flex flex-col gap-gutter flex-1 overflow-y-auto', pending && 'opacity-70 pointer-events-none transition-opacity')}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -514,6 +614,22 @@ export function MetricasView({
                 />
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setConfigOpen(true)}
+              className={cn(
+                'flex h-[36px] items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
+                config.incluirCancelados
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/60'
+                  : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-50',
+              )}
+              aria-label="Configurações das métricas"
+              title="Configurações das métricas"
+            >
+              <span className="material-symbols-outlined text-[18px]">settings</span>
+              {config.incluirCancelados && <span className="text-[10px] font-semibold uppercase">critério Shopee</span>}
+            </button>
           </div>
         </div>
 
