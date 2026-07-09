@@ -67,13 +67,13 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; d
     title: 'Faturamento',
     oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
     origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
-    difere: 'Dois motivos: (1) por padrão EXCLUÍMOS pedidos cancelados — mesmo os que chegaram a pagar — pra mostrar a receita que realmente vira repasse; o painel da Shopee (Informações Gerenciais, "Produto Pago") INCLUI pedidos pagos que cancelaram depois. Validação: aplicando o critério deles, batemos 99,7%. Dá pra espelhar o critério da Shopee na engrenagem ⚙ acima. (2) O período: confira sempre com datas idênticas (o botão "30d" aqui termina HOJE, que ainda está incompleto).',
+    difere: 'Dois motivos: (1) por padrão EXCLUÍMOS pedidos cancelados — mesmo os que chegaram a pagar — pra mostrar a receita que realmente vira repasse; o painel da Shopee (Informações Gerenciais, "Produto Pago") INCLUI pedidos pagos que cancelaram depois. Dá pra espelhar o critério deles no botão Funil acima. (2) O período: confira sempre com datas idênticas (o botão "30d" aqui termina HOJE, que ainda está incompleto). Mesmo com o Funil no critério Shopee, sobra ~0,3% de diferença: nosso número inclui também cancelados que nunca chegaram a pagar (a API não expõe se o pagamento ocorreu antes do cancelamento). É uma diferença residual constante e conhecida — validado em 99,7%.',
   },
   'Pedidos': {
     title: 'Pedidos',
     oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente.',
     origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, filtrados pelo status do pedido, por data de criação.',
-    difere: 'Mesmos dois motivos do Faturamento: excluímos cancelados (a Shopee "Produto Pago" conta pedidos pagos que cancelaram depois — ~2% a mais) e o range de datas precisa ser idêntico. Use a engrenagem ⚙ pra espelhar o critério da Shopee.',
+    difere: 'Mesmos motivos do Faturamento: excluímos cancelados (a Shopee "Produto Pago" conta pedidos pagos que cancelaram depois) e o range de datas precisa ser idêntico. Use o botão Funil pra espelhar o critério da Shopee. Diferença residual esperada de ~70 pedidos (0,3%): cancelamentos sem pagamento que a API não permite separar dos cancelamentos pós-pagamento.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
