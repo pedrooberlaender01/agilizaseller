@@ -207,8 +207,8 @@ function ConfigModal({ open, config, onSave, onClose }: {
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[460px] rounded-2xl border border-zinc-700 shadow-2xl" style={{ background: 'rgba(22,27,34,0.97)' }}>
         <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
           <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px] text-zinc-400">settings</span>
-            Configurações das Métricas
+            <span className="material-symbols-outlined text-[18px] text-zinc-400">filter_alt</span>
+            Funil de Pedidos
           </h3>
           <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white" aria-label="Fechar">
             <span className="material-symbols-outlined text-[18px]">close</span>
@@ -624,11 +624,13 @@ export function MetricasView({
                   ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/60'
                   : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-50',
               )}
-              aria-label="Configurações das métricas"
-              title="Configurações das métricas"
+              aria-label="Filtro do funil de pedidos"
+              title="Filtro do funil de pedidos"
             >
-              <span className="material-symbols-outlined text-[18px]">settings</span>
-              {config.incluirCancelados && <span className="text-[10px] font-semibold uppercase">critério Shopee</span>}
+              <span className="material-symbols-outlined text-[18px]">filter_alt</span>
+              <span className="text-[10px] font-semibold uppercase">
+                {config.incluirCancelados ? 'Produto Pago (Shopee)' : 'Funil'}
+              </span>
             </button>
           </div>
         </div>
