@@ -75,16 +75,18 @@ export default async function ShopeeEnviosPage({
 
   const cutoff = periodCutoffIso(period)
 
-  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase
+  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase.
+  // GET com limit(1) em vez de head:true — HEAD retorna count nulo no fetch do Next RSC.
   const categories: Category[] = ['in_transit', 'delivered', 'problem', 'pending']
   const countResults = await Promise.all(
     categories.map((cat) =>
       supabase
         .from('shopee_shipments')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'exact' })
         .eq('connection_id', conn.id)
         .gte('created_at', cutoff)
         .in('logistics_status', statusesForCategory(cat))
+        .limit(1)
         .then((r) => r.count ?? 0),
     ),
   )
