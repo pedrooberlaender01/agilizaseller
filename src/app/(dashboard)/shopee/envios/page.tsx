@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import { EnviosView, STATUS_CATEGORY, type Category, type Period, type ShipmentRow } from './envios-view'
+import { EnviosView, type Period, type ShipmentRow } from './envios-view'
+import { statusesForCategory, type Category } from './status-map'
 
 const PAGE_SIZE = 50
 
@@ -19,12 +20,6 @@ function periodCutoffIso(period: Period): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
   return d.toISOString()
-}
-
-function statusesForCategory(cat: Category): string[] {
-  return Object.entries(STATUS_CATEGORY)
-    .filter(([, c]) => c === cat)
-    .map(([s]) => s)
 }
 
 function NoConnectionState() {

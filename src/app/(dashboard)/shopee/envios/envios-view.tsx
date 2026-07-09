@@ -10,7 +10,9 @@ import type { ShopeeShipment, ShopeeShipmentHistory } from '@/types'
 
 const PAGE_SIZE = 50
 
-export type Category = 'in_transit' | 'delivered' | 'problem' | 'pending'
+import { categoryOf, type Category } from './status-map'
+
+export type { Category }
 export type Period = '7d' | '30d' | '90d'
 
 export type ShipmentRow = ShopeeShipment & {
@@ -19,28 +21,6 @@ export type ShipmentRow = ShopeeShipment & {
     date_created: string
     total_amount: number
   } | null
-}
-
-export const STATUS_CATEGORY: Record<string, Category> = {
-  LOGISTICS_PICKUP_DONE: 'in_transit',
-  LOGISTICS_DELIVERY_PENDING: 'in_transit',
-  LOGISTICS_DELIVERY_DONE: 'delivered',
-  LOGISTICS_FAILED: 'problem',
-  LOGISTICS_PICKUP_RETRY: 'problem',
-  LOGISTICS_PICKUP_FAILED: 'problem',
-  LOGISTICS_DELIVERY_FAILED: 'problem',
-  LOGISTICS_RTS: 'problem',
-  LOGISTICS_RETURNING: 'problem',
-  LOGISTICS_RETURNED: 'problem',
-  LOGISTICS_INVOICE_PENDING: 'pending',
-  LOGISTICS_READY: 'pending',
-  LOGISTICS_REQUEST_CREATED: 'pending',
-  LOGISTICS_PICKUP_REQUESTED: 'pending',
-}
-
-export function categoryOf(status: string | null): Category {
-  if (!status) return 'pending'
-  return STATUS_CATEGORY[status] ?? 'pending'
 }
 
 const statusMeta: Record<string, { label: string; cls: string; tone: 'blue' | 'green' | 'red' | 'yellow' }> = {
