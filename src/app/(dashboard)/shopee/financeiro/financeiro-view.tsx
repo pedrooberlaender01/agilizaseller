@@ -363,7 +363,7 @@ export function FinanceiroView({
                   </div>
                   {subsidioCampanha > 0 && (
                     <div className="text-[10px] text-emerald-400/80 mt-1">
-                      +{fmtBrlInt(subsidioCampanha)} devolvidos pela Shopee via campanhas (taxa líquida real: {fmtBrlInt(comissaoNet + servicoNet)})
+                      +{fmtBrlInt(subsidioCampanha)} de Ajuste por Participação em Ação Comercial — desconto nas taxas por campanhas Shopee (taxa líquida real: {fmtBrlInt(comissaoNet + servicoNet)})
                     </div>
                   )}
                 </div>
