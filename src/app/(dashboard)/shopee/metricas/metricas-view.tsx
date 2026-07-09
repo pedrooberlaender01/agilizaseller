@@ -66,12 +66,12 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string }>
   'Faturamento': {
     title: 'Faturamento',
     oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período (critério "produto pago": exclui não pagos e cancelados). Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee — por isso difere levemente do card "Vendas" do painel Dados da Shopee, que usa só o preço dos produtos.',
-    origem: 'API Shopee get_order_detail → campo total_amount de cada pedido, agregado por dia (data de criação, fuso BRT). Sincronizado em tempo real via webhook + reconciliação por cron.',
+    origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
   },
   'Pedidos': {
     title: 'Pedidos',
-    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos (UNPAID), cancelados (CANCELLED/IN_CANCEL) e nota pendente (INVOICE_PENDING). O painel Dados da Shopee ("Produto Pago") conta também pedidos pagos que cancelaram depois — por isso mostra ~2% a mais.',
-    origem: 'Tabela shopee_orders (API get_order_detail), contagem diária por data de criação.',
+    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente. O painel Dados da Shopee ("Produto Pago") conta também pedidos pagos que cancelaram depois — por isso mostra ~2% a mais.',
+    origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, filtrados pelo status do pedido, por data de criação.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
@@ -80,33 +80,33 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string }>
   },
   'Cancelamentos': {
     title: 'Cancelamentos',
-    oQueE: 'Percentual de pedidos cancelados (CANCELLED + IN_CANCEL) sobre o total criado no período. Inclui cancelamentos do comprador, do vendedor e do antifraude.',
-    origem: 'Tabela shopee_orders, status do pedido via API. O número pequeno abaixo mostra a contagem absoluta.',
+    oQueE: 'Percentual de pedidos cancelados sobre o total criado no período. Inclui cancelamentos do comprador, do vendedor e do antifraude.',
+    origem: 'Campo "status" que a API da Shopee retorna em cada pedido (cancelado / em cancelamento). O número pequeno abaixo mostra a contagem absoluta.',
   },
   'Gasto em Ads': {
     title: 'Gasto em Ads',
-    oQueE: 'Total investido em Shopee Ads no período (todas as campanhas CPC: manual, GMV Max, etc). Validado 1:1 com a Central de Ads da Shopee.',
-    origem: 'API Shopee /ads/get_all_cpc_ads_daily_performance (campo expense), sincronizado por hora.',
+    oQueE: 'Total investido em Shopee Ads no período (todas as campanhas: manual, GMV Max, etc). Validado 1:1 com a Central de Ads da Shopee.',
+    origem: 'Campo "despesa" do relatório diário de performance de anúncios que a API de Ads da Shopee retorna — o mesmo número da Central de Ads. Atualizado de hora em hora.',
   },
   'Comissão Afiliados': {
     title: 'Comissão Afiliados',
-    oQueE: 'Comissão estimada paga aos afiliados/influenciadores do programa de Afiliados do Vendedor (AMS). Limitação da API: a Shopee só entrega o acumulado dos últimos 7 ou 30 dias — não dia a dia. O valor mostrado é o snapshot que melhor cobre o período filtrado.',
-    origem: 'API Shopee AMS /ams/get_affiliate_performance (app dedicado aprovado pela Shopee), campo est_commission somado por afiliado. Corresponde à "Taxa de comissão Afiliados do Vendedor" do Relatório de Renda.',
+    oQueE: 'Comissão estimada paga aos afiliados/influenciadores do programa de Afiliados do Vendedor. Limitação da Shopee: ela só entrega o acumulado dos últimos 7 ou 30 dias — não dia a dia. O valor mostrado é o snapshot que melhor cobre o período filtrado.',
+    origem: 'Campo "comissão estimada" por afiliado, retornado pela API de Marketing de Afiliados da Shopee (app dedicado aprovado por eles). Corresponde à "Taxa de comissão Afiliados do Vendedor" do Relatório de Renda.',
   },
   'Frete Vendedor': {
     title: 'Frete Vendedor',
     oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora MENOS o subsídio da Shopee MENOS a parte paga pelo comprador. Normalmente fica perto de zero — a sobra vem de discrepâncias de peso (frete real maior que o declarado). O custo do programa Frete Grátis NÃO está aqui: ele é cobrado dentro da Taxa de Serviço.',
-    origem: 'Escrow oficial por pedido (API get_escrow_detail): actual_shipping_fee − shopee_shipping_rebate − buyer_paid_shipping_fee. Validado vs "Subtotal de Envio" do Relatório de Renda.',
+    origem: 'Três campos do extrato financeiro (escrow) que a Shopee retorna por pedido: frete real cobrado, subsídio da Shopee e frete pago pelo comprador. Mesma fonte da tela "Minha Renda". Validado vs "Subtotal de Envio" do Relatório de Renda.',
   },
   'Taxas Shopee': {
     title: 'Taxas Shopee',
     oQueE: 'Comissão + Taxa de Serviço brutas cobradas pela Shopee em cada pedido. A Taxa de Serviço inclui o custo do programa Frete Grátis (é assim que a Shopee cobra o subsídio de frete) e a taxa de transação. O % é calculado sobre as vendas de produto (preço de venda, sem frete/cupons). Parte dessas taxas volta como desconto quando a loja participa de campanhas ("Ajuste por Participação em Ação Comercial") — veja a taxa líquida no Financeiro.',
-    origem: 'Escrow oficial por pedido (API get_escrow_detail): commission_fee + service_fee + transaction_fee. Validado 99%+ vs Relatório de Renda oficial (comissão bruta + serviço bruta).',
+    origem: 'Campos "taxa de comissão" e "taxa de serviço" do extrato financeiro (escrow) que a Shopee retorna por pedido — mesma fonte da tela "Minha Renda". Validado 99%+ vs Relatório de Renda oficial.',
   },
   'Antecipações': {
     title: 'Antecipações',
-    oQueE: 'Taxa cobrada pelo Repasse Rápido (Shopee Acelera) — quando a loja antecipa o recebimento do escrow antes da liberação normal. Zerado = a loja não usou antecipação no período.',
-    origem: 'Carteira Shopee (API get_wallet_transaction_list), transações do tipo FAST_ESCROW_DEDUCT, somadas por data.',
+    oQueE: 'Taxa cobrada pelo Repasse Rápido (Shopee Acelera) — quando a loja antecipa o recebimento antes da liberação normal. Zerado = a loja não usou antecipação no período.',
+    origem: 'Transações do tipo "ajuste do Shopee Acelera" no extrato da carteira Shopee Pay, somadas por data.',
   },
 }
 
