@@ -239,6 +239,7 @@ export interface ShopeeDailyMetric {
   total_service_fee: number | null
   total_commission_net: number | null
   total_service_fee_net: number | null
+  total_product_sales: number | null
 }
 
 export interface ShopeeAdsBalance {

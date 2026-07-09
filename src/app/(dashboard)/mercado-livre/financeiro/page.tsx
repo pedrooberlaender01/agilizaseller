@@ -82,10 +82,17 @@ export default async function MercadoLivreFinanceiroPage({
   const pFrom = isCustom ? `${customFrom}T00:00:00-03:00` : periodFromIso(period)
   const pTo = isCustom ? `${customTo}T23:59:59-03:00` : null
 
-  const [{ data: finData }, { data: mixData }] = await Promise.all([
+  const adsFrom = isCustom ? customFrom! : periodFromIso(period).slice(0, 10)
+  const adsTo = isCustom ? customTo! : new Date().toISOString().slice(0, 10)
+
+  const [{ data: finData }, { data: mixData }, { data: freteMlData }, { data: adsData }] = await Promise.all([
     supabase.rpc('ml_financeiro_daily', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_payment_mix', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
+    supabase.rpc('ml_frete_por_venda', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
+    supabase.rpc('ml_ads_total', { p_connection_id: conn.id, p_from: adsFrom, p_to: adsTo }),
   ])
+  const freteMl = Number(freteMlData) || 0
+  const adsCost = Number(adsData) || 0
 
   const rows: FinDailyRow[] = ((finData ?? []) as RpcRow[]).map((r) => ({
     date: r.date,
@@ -106,6 +113,8 @@ export default async function MercadoLivreFinanceiroPage({
     <FinanceiroView
       rows={rows}
       paymentMix={paymentMix}
+      freteMl={freteMl}
+      adsCost={adsCost}
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}

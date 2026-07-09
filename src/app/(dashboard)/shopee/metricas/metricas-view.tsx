@@ -247,6 +247,8 @@ export function MetricasView({
     arr.reduce((a, x) => a + (Number(x[key]) || 0), 0) / 100
 
   const faturamento = sum(current, 'gross_revenue')
+  // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
+  const vendasProduto = sum(current, 'total_product_sales') || faturamento
   const pedidos = sum(current, 'orders_count')
   const totalComissao = sum(current, 'total_commission')
   const totalFrete = sum(current, 'total_shipping_cost')
@@ -312,7 +314,7 @@ export function MetricasView({
     { label: 'Gasto em Ads',           value: fmtBrlInt(adsSpend),                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
     { label: 'Comissão Afiliados',     value: fmtBrlInt(comissaoAfiliadosCur),     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
     { label: 'Frete Vendedor',         value: fmtBrlInt(totalFrete),               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
-    { label: 'Taxas Shopee',           value: fmtBrlInt(totalComissao),            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: faturamento > 0 ? `comissão + serviço · ${fmtPct((totalComissao / faturamento) * 100)} do faturamento` : 'comissão + serviço' },
+    { label: 'Taxas Shopee',           value: fmtBrlInt(totalComissao),            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: vendasProduto > 0 ? `comissão + serviço · ${fmtPct((totalComissao / vendasProduto) * 100)} das vendas de produto` : 'comissão + serviço' },
     { label: 'Antecipações',           value: fmtBrlInt(antecipacoesCur),          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
   ]
   // Total despesas pra mostrar acima da linha
