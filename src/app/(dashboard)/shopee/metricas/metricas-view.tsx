@@ -61,6 +61,121 @@ const avgMargemReal = (arr: ShopeeDailyMetric[]): number => {
 
 type Trend = 'up' | 'down' | 'flat'
 
+// Explicações dos cards — o que é + de onde vem o dado (validado vs Relatório de Renda oficial 07/2026)
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string }> = {
+  'Faturamento': {
+    title: 'Faturamento',
+    oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período (critério "produto pago": exclui não pagos e cancelados). Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee — por isso difere levemente do card "Vendas" do painel Dados da Shopee, que usa só o preço dos produtos.',
+    origem: 'API Shopee get_order_detail → campo total_amount de cada pedido, agregado por dia (data de criação, fuso BRT). Sincronizado em tempo real via webhook + reconciliação por cron.',
+  },
+  'Pedidos': {
+    title: 'Pedidos',
+    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos (UNPAID), cancelados (CANCELLED/IN_CANCEL) e nota pendente (INVOICE_PENDING). O painel Dados da Shopee ("Produto Pago") conta também pedidos pagos que cancelaram depois — por isso mostra ~2% a mais.',
+    origem: 'Tabela shopee_orders (API get_order_detail), contagem diária por data de criação.',
+  },
+  'Ticket Médio': {
+    title: 'Ticket Médio',
+    oQueE: 'Faturamento dividido pelo número de pedidos do período.',
+    origem: 'Calculado: Faturamento ÷ Pedidos (mesmas fontes dos dois cards).',
+  },
+  'Cancelamentos': {
+    title: 'Cancelamentos',
+    oQueE: 'Percentual de pedidos cancelados (CANCELLED + IN_CANCEL) sobre o total criado no período. Inclui cancelamentos do comprador, do vendedor e do antifraude.',
+    origem: 'Tabela shopee_orders, status do pedido via API. O número pequeno abaixo mostra a contagem absoluta.',
+  },
+  'Gasto em Ads': {
+    title: 'Gasto em Ads',
+    oQueE: 'Total investido em Shopee Ads no período (todas as campanhas CPC: manual, GMV Max, etc). Validado 1:1 com a Central de Ads da Shopee.',
+    origem: 'API Shopee /ads/get_all_cpc_ads_daily_performance (campo expense), sincronizado por hora.',
+  },
+  'Comissão Afiliados': {
+    title: 'Comissão Afiliados',
+    oQueE: 'Comissão estimada paga aos afiliados/influenciadores do programa de Afiliados do Vendedor (AMS). Limitação da API: a Shopee só entrega o acumulado dos últimos 7 ou 30 dias — não dia a dia. O valor mostrado é o snapshot que melhor cobre o período filtrado.',
+    origem: 'API Shopee AMS /ams/get_affiliate_performance (app dedicado aprovado pela Shopee), campo est_commission somado por afiliado. Corresponde à "Taxa de comissão Afiliados do Vendedor" do Relatório de Renda.',
+  },
+  'Frete Vendedor': {
+    title: 'Frete Vendedor',
+    oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora MENOS o subsídio da Shopee MENOS a parte paga pelo comprador. Normalmente fica perto de zero — a sobra vem de discrepâncias de peso (frete real maior que o declarado). O custo do programa Frete Grátis NÃO está aqui: ele é cobrado dentro da Taxa de Serviço.',
+    origem: 'Escrow oficial por pedido (API get_escrow_detail): actual_shipping_fee − shopee_shipping_rebate − buyer_paid_shipping_fee. Validado vs "Subtotal de Envio" do Relatório de Renda.',
+  },
+  'Taxas Shopee': {
+    title: 'Taxas Shopee',
+    oQueE: 'Comissão + Taxa de Serviço brutas cobradas pela Shopee em cada pedido. A Taxa de Serviço inclui o custo do programa Frete Grátis (é assim que a Shopee cobra o subsídio de frete) e a taxa de transação. O % é calculado sobre as vendas de produto (preço de venda, sem frete/cupons). Parte dessas taxas volta como desconto quando a loja participa de campanhas ("Ajuste por Participação em Ação Comercial") — veja a taxa líquida no Financeiro.',
+    origem: 'Escrow oficial por pedido (API get_escrow_detail): commission_fee + service_fee + transaction_fee. Validado 99%+ vs Relatório de Renda oficial (comissão bruta + serviço bruta).',
+  },
+  'Antecipações': {
+    title: 'Antecipações',
+    oQueE: 'Taxa cobrada pelo Repasse Rápido (Shopee Acelera) — quando a loja antecipa o recebimento do escrow antes da liberação normal. Zerado = a loja não usou antecipação no período.',
+    origem: 'Carteira Shopee (API get_wallet_transaction_list), transações do tipo FAST_ESCROW_DEDUCT, somadas por data.',
+  },
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-primary">help</span>
+            {info.title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Fechar"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoButton({ label, onOpen }: { label: string; onOpen: (k: string) => void }) {
+  if (!KPI_INFO[label]) return null
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onOpen(label) }}
+      className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 hover:bg-white/10 hover:text-zinc-300 transition-colors"
+      aria-label={`Explicação: ${label}`}
+    >
+      <span className="material-symbols-outlined text-[14px]">help</span>
+    </button>
+  )
+}
+
 function deltaPct(curr: number, prev: number): { delta: string; trend: Trend } {
   if (prev === 0) return { delta: '—', trend: 'flat' }
   const pct = ((curr - prev) / prev) * 100
@@ -210,6 +325,7 @@ export function MetricasView({
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [infoKey, setInfoKey] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const isCustom = !!(customFrom && customTo)
 
@@ -332,6 +448,7 @@ export function MetricasView({
   return (
     <>
       <TopBar showSearch />
+      <InfoModal infoKey={infoKey} onClose={() => setInfoKey(null)} />
       <div className={cn('p-margin flex flex-col gap-gutter flex-1 overflow-y-auto', pending && 'opacity-70 pointer-events-none transition-opacity')}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -411,8 +528,9 @@ export function MetricasView({
                   className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden group hover:bg-zinc-900/70 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">
+                    <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                       {kpi.label}
+                      <InfoButton label={kpi.label} onOpen={setInfoKey} />
                     </span>
                     <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>
                       {kpi.icon}
@@ -467,7 +585,10 @@ export function MetricasView({
                     className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden hover:bg-zinc-900/70 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">{kpi.label}</span>
+                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                        {kpi.label}
+                        <InfoButton label={kpi.label} onOpen={setInfoKey} />
+                      </span>
                       <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>{kpi.icon}</span>
                     </div>
                     <div className={cn('font-h2 text-h2', kpi.valueClass)}>{kpi.value}</div>
