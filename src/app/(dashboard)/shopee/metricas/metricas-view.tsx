@@ -508,7 +508,7 @@ export function MetricasView({
 
   // Card #58 (call João 18/06): KPIs topo = 4 cards. Lucro Bruto + Margem Líquida removidos (cálculo ainda não confiável).
   const kpis = [
-    { label: 'Faturamento', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
+    { label: 'Faturamento', value: `R$ ${fmtBrl(faturamento)}`, ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
     { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
     { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-zinc-50', sub: undefined },
     { label: 'Cancelamentos', value: fmtPct(taxaCancel), ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-zinc-50', sub: `${fmtNum(cancelados)} de ${fmtNum(pedidos + cancelados)}` },
@@ -526,11 +526,11 @@ export function MetricasView({
   // Card #59 (call João 18/06): linha Despesas/Financeiro — 5 cards do período
   // comissaoAfiliados vem de shopee_affiliate_performance (card #62)
   const despesasKpis = [
-    { label: 'Gasto em Ads',           value: fmtBrlInt(adsSpend),                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
-    { label: 'Comissão Afiliados',     value: fmtBrlInt(comissaoAfiliadosCur),     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
-    { label: 'Frete Vendedor',         value: fmtBrlInt(totalFrete),               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
-    { label: 'Taxas Shopee',           value: fmtBrlInt(totalComissao),            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: vendasProduto > 0 ? `comissão + serviço · ${fmtPct((totalComissao / vendasProduto) * 100)} das vendas de produto` : 'comissão + serviço' },
-    { label: 'Antecipações',           value: fmtBrlInt(antecipacoesCur),          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
+    { label: 'Gasto em Ads',           value: `R$ ${fmtBrl(adsSpend)}`,                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
+    { label: 'Comissão Afiliados',     value: `R$ ${fmtBrl(comissaoAfiliadosCur)}`,     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
+    { label: 'Frete Vendedor',         value: `R$ ${fmtBrl(totalFrete)}`,               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
+    { label: 'Taxas Shopee',           value: `R$ ${fmtBrl(totalComissao)}`,            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: vendasProduto > 0 ? `comissão + serviço · ${fmtPct((totalComissao / vendasProduto) * 100)} das vendas de produto` : 'comissão + serviço' },
+    { label: 'Antecipações',           value: `R$ ${fmtBrl(antecipacoesCur)}`,          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
   ]
   // Total despesas pra mostrar acima da linha
   const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao + antecipacoesCur
@@ -683,7 +683,7 @@ export function MetricasView({
                 'normal-case tracking-normal text-[10px] flex items-center gap-1',
                 totalDespesasDelta.trend === 'flat' ? 'text-zinc-500' : totalDespesasDelta.trend === 'up' ? 'text-error' : 'text-secondary',
               )}>
-                Total: <span className="text-zinc-300 font-mono font-semibold">{fmtBrlInt(totalDespesas)}</span>
+                Total: <span className="text-zinc-300 font-mono font-semibold">{`R$ ${fmtBrl(totalDespesas)}`}</span>
                 <span className="material-symbols-outlined text-[12px]">
                   {totalDespesasDelta.trend === 'up' ? 'trending_up' : totalDespesasDelta.trend === 'down' ? 'trending_down' : 'trending_flat'}
                 </span>
