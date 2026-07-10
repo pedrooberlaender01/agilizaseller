@@ -97,6 +97,8 @@ export default async function SheinMetricasPage({
   const aggRow = ((marginAgg.data ?? []) as Array<{
     estimated: number | string | null
     total_gross: number | string | null
+    gmv: number | string | null
+    net_gmv: number | string | null
     total_commission: number | string | null
     total_service_charge: number | string | null
     covered_gross: number | string | null
@@ -109,6 +111,8 @@ export default async function SheinMetricasPage({
   const costAgg = {
     estimated: Number(aggRow?.estimated ?? 0),
     totalGross: Number(aggRow?.total_gross ?? 0),
+    gmv: Number(aggRow?.gmv ?? 0),
+    netGmv: Number(aggRow?.net_gmv ?? 0),
     totalCommission: Number(aggRow?.total_commission ?? 0),
     totalServiceCharge: Number(aggRow?.total_service_charge ?? 0),
     coveredGross: Number(aggRow?.covered_gross ?? 0),

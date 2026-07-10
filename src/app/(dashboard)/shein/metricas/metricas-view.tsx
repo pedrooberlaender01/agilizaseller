@@ -31,7 +31,146 @@ const fmtDateBR = (iso: string) => {
   return `${d}/${m}/${y.slice(2)}`
 }
 
-function StatCard({ label, value, icon, tone = 'default' }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue' }) {
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; onde: string; difere?: string }> = {
+  'Preço Total dos Produtos': {
+    title: 'Preço Total dos Produtos',
+    oQueE: 'Soma do preço listado de cada produto × quantidade vendida no período. NÃO desconta promoções nem cupons — é o valor "bruto de tabela" das vendas.',
+    origem: 'Campo `sellerCurrencyPrice × quantity` do payload de cada item de pedido (endpoint `/open-api/order/order-detail` da Shein).',
+    onde: 'Painel Shein → Pedido → Meus Pedidos → resumo embaixo "Preço total dos produtos".',
+    difere: 'Bate 100% com painel Meus Pedidos (diff ~0,05% por timing de snapshot Shein). Validado via cruzamento CSV: 1.564/1.567 pedidos idênticos.\n\nATENÇÃO: painel Analytics → Visão geral dos dados tem "GMV" e "Pagamento líquido GMV" com valores diferentes. Suporte técnico Shein confirmou (10/07/2026) que NÃO têm acesso à fórmula do Analytics — cálculo é interno e não expõe via API. Usamos Meus Pedidos como fonte oficial.',
+  },
+  'Pedidos': {
+    title: 'Pedidos',
+    oQueE: 'Quantidade de pedidos no período (inclui todos os status: pagos, aguardando pagamento, cancelados).',
+    origem: '`count(*)` dos pedidos com `order_time` na janela BRT selecionada.',
+    onde: 'Painel Shein → Pedido → Meus Pedidos → resumo "Quantidade de pedidos".',
+    difere: 'Bate 100% EXATO (1.567 = 1.567 validado via CSV).',
+  },
+  'Ticket Médio': {
+    title: 'Ticket Médio',
+    oQueE: 'Preço Total dos Produtos ÷ Quantidade de pedidos.',
+    origem: 'Calculado no frontend a partir dos 2 cards acima.',
+    onde: 'Não existe direto no painel Shein — é métrica derivada.',
+  },
+  'Cancelados + Reembolsados': {
+    title: 'Cancelados + Reembolsados',
+    oQueE: 'Pedidos perdidos por qualquer via na janela: (a) cancelados antes do embarque (não pagos/rejeitados) OU (b) reembolsados após envio/entrega. Percentual = perdidos ÷ total.',
+    origem: '`orderStatus = "7"` (cancelado) OU `orderReturnTime` preenchido no payload (reembolsado). Vias disjuntas somadas.',
+    onde: 'Painel Shein → Meus Pedidos → aba "Cancelar" mostra APENAS reembolsos com sub-filtro "Cancelado". Cancelamentos puros aparecem em outra aba.',
+    difere: 'Nossa métrica UNIFICA impacto real (cancel + reembolso). Painel Shein separa por sub-status. Nosso número tende a ser MAIOR pois soma tudo.',
+  },
+  'Itens Vendidos': {
+    title: 'Itens Vendidos',
+    oQueE: 'Quantidade total de unidades vendidas (soma das quantities de todos os items dos pedidos).',
+    origem: '`sum(shein_order_items.quantity)` para pedidos na janela.',
+    onde: 'Painel Shein → Pedido → Meus Pedidos → resumo "Quantidade de produtos".',
+    difere: 'Bate 100% EXATO (1.852 = 1.852 validado via CSV).',
+  },
+  'Taxa Shein Total': {
+    title: 'Taxa Shein Total',
+    oQueE: 'Total de taxas cobradas pela Shein = Comissão (padrão ~18-20%) + Service Charge (fulfillment, ~R$ 4-5/item).',
+    origem: 'Campos `commission` e `performanceServiceCharge` do payload por item.',
+    onde: 'Painel Shein → Análise → Analise de custos ou Registro de liquidação → Detalhamento de taxa.',
+    difere: 'Bate 99%+ com painel Shein. Payload de pedidos entregues (status 6) pode ter fees zerados (bug API Shein) — impacto mínimo.',
+  },
+  'Repasse (Líquido)': {
+    title: 'Repasse (Líquido)',
+    oQueE: 'Valor líquido REAL que cai na conta do vendedor = Preço Total - Comissão - Service Charge. É o "estimatedGrossIncome" do payload.',
+    origem: 'Campo `estimatedGrossIncome` order-level do raw Shein, somado por pedido. Shein ZERA este campo quando o pedido é reembolsado → repasse de reembolsado conta como 0 (dinheiro devolvido).',
+    onde: 'Painel Shein → Meus Pedidos → coluna "Receita estimada de mercadorias".',
+    difere: 'Validado via CSV export pedido-a-pedido: 1.503 pedidos batem ao centavo. Reembolsados aparecem zerados (igual painel). Diferença residual vs CSV antigo = snapshot desatualizado (nosso raw é mais fresco).',
+  },
+  '% Taxa / Repasse': {
+    title: '% Taxa / Repasse',
+    oQueE: 'Proporção da taxa Shein e do repasse líquido sobre o Preço Total.',
+    origem: 'Calculado: Taxa Total ÷ Preço Total e Repasse ÷ Preço Total.',
+    onde: 'Não existe direto no painel Shein — é métrica derivada.',
+  },
+  'Receita Líquida': {
+    title: 'Receita Líquida',
+    oQueE: 'Valor JÁ liquidado nos settlements Shein no período (dinheiro que efetivamente caiu na conta).',
+    origem: '`sum(shein_settlements.net_amount)` para pedidos NOT cancelled.',
+    onde: 'Painel Shein → Financeiro → Registro de liquidação (saques semanais).',
+    difere: 'Só ~7% dos pedidos têm settlement liquidado (delay ~7 dias). Restante estimado via card "Repasse".',
+  },
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-blue-400">help</span>
+            {info.title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Fechar"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Onde conferir no painel Shein</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.onde}</p>
+          </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Por que pode diferir do painel</div>
+              <p className="text-sm leading-relaxed text-zinc-400 whitespace-pre-line">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HelpButton({ label, onOpen }: { label: string; onOpen: (key: string) => void }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onOpen(label) }}
+      className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 hover:bg-white/10 hover:text-zinc-300 transition-colors"
+      aria-label={`Explicação: ${label}`}
+    >
+      <span className="material-symbols-outlined text-[14px]">help</span>
+    </button>
+  )
+}
+
+function StatCard({ label, value, icon, tone = 'default', onHelp }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue'; onHelp?: (key: string) => void }) {
   const toneCls = {
     default: 'text-white',
     green: 'text-secondary',
@@ -41,7 +180,10 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
   return (
     <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+          {onHelp && <HelpButton label={label} onOpen={onHelp} />}
+        </div>
         <Icon name={icon} size={18} className="text-zinc-500" />
       </div>
       <p className={cn('mt-2 text-3xl font-semibold', toneCls)}>{value}</p>
@@ -52,6 +194,8 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
 export type CostAgg = {
   estimated: number
   totalGross: number
+  gmv: number
+  netGmv: number
   totalCommission: number
   totalServiceCharge: number
   coveredGross: number
@@ -81,6 +225,7 @@ export function MetricasView({
   const sp = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [helpKey, setHelpKey] = useState<string | null>(null)
   const datePickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -189,10 +334,10 @@ export function MetricasView({
         </div>
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Receita Bruta" value={fmtBrl(totals.gross)} icon="payments" tone="green" />
-          <StatCard label="Pedidos" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" />
-          <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" />
-          <StatCard label="Cancelados" value={`${fmtInt(totals.cancellations)} (${cancelRate.toFixed(1)}%)`} icon="cancel" tone="red" />
+          <StatCard label="Preço Total dos Produtos" value={fmtBrl(totals.gross)} icon="payments" tone="green" onHelp={setHelpKey} />
+          <StatCard label="Pedidos" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" onHelp={setHelpKey} />
+          <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" onHelp={setHelpKey} />
+          <StatCard label="Cancelados + Reembolsados" value={`${fmtInt(totals.cancellations)} (${cancelRate.toFixed(1)}%)`} icon="cancel" tone="red" onHelp={setHelpKey} />
         </div>
 
         {costAgg && (
@@ -207,7 +352,10 @@ export function MetricasView({
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Taxa Shein Total</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Taxa Shein Total</span>
+                          <HelpButton label="Taxa Shein Total" onOpen={setHelpKey} />
+                        </div>
                         <Icon name="receipt_long" size={18} className="text-zinc-500" />
                       </div>
                       <p className="mt-2 text-3xl font-semibold text-rose-300">-{fmtBrl(taxaTotal)}</p>
@@ -217,7 +365,10 @@ export function MetricasView({
                     </div>
                     <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Repasse (líquido)</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Repasse (Líquido)</span>
+                          <HelpButton label="Repasse (Líquido)" onOpen={setHelpKey} />
+                        </div>
                         <Icon name="account_balance_wallet" size={18} className="text-zinc-500" />
                       </div>
                       <p className="mt-2 text-3xl font-semibold text-emerald-300">{fmtBrl(costAgg.estimated)}</p>
@@ -225,7 +376,10 @@ export function MetricasView({
                     </div>
                     <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">% Taxa / Repasse</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">% Taxa / Repasse</span>
+                          <HelpButton label="% Taxa / Repasse" onOpen={setHelpKey} />
+                        </div>
                         <Icon name="percent" size={18} className="text-zinc-500" />
                       </div>
                       <p className="mt-2 text-3xl font-semibold text-white">
@@ -297,8 +451,8 @@ export function MetricasView({
         )}
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2">
-          <StatCard label="Itens Vendidos" value={fmtInt(totals.items)} icon="inventory_2" />
-          <StatCard label="Receita Líquida" value={fmtBrl(totals.net)} icon="account_balance_wallet" tone="green" />
+          <StatCard label="Itens Vendidos" value={fmtInt(totals.items)} icon="inventory_2" onHelp={setHelpKey} />
+          <StatCard label="Receita Líquida" value={fmtBrl(totals.net)} icon="account_balance_wallet" tone="green" onHelp={setHelpKey} />
         </div>
 
         <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
@@ -311,7 +465,7 @@ export function MetricasView({
               <tr className="border-b border-zinc-800">
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Data</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Pedidos</th>
-                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Cancelados</th>
+                <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Cancel + Reemb</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Itens</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Bruto</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Líquido</th>
@@ -340,6 +494,7 @@ export function MetricasView({
           </table>
         </div>
       </main>
+      <InfoModal infoKey={helpKey} onClose={() => setHelpKey(null)} />
     </>
   )
 }
