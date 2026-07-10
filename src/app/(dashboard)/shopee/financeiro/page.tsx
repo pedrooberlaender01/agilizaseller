@@ -183,7 +183,7 @@ export default async function ShopeeFinanceiroPage({
     })
   }
 
-  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList] = await Promise.all([
+  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList, { data: incomeOverview }] = await Promise.all([
     fetchAllTransactions(),
     supabase
       .from('shopee_payouts')
@@ -206,6 +206,11 @@ export default async function ShopeeFinanceiroPage({
       .lte('date', toDate)
       .order('date', { ascending: true }),
     fetchOrderFeesList(),
+    supabase
+      .from('shopee_income_overview')
+      .select('pending_amount_cents, released_amount_cents, snapshot_at')
+      .eq('connection_id', connId)
+      .maybeSingle(),
   ])
 
   return (
@@ -224,6 +229,8 @@ export default async function ShopeeFinanceiroPage({
       typeFilter={typeFilter}
       nickname={conn.nickname}
       orderFeesList={orderFeesList}
+      pendingAmountCents={incomeOverview?.pending_amount_cents ?? null}
+      releasedAmountCents={incomeOverview?.released_amount_cents ?? null}
     />
   )
 }
