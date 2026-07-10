@@ -23,9 +23,9 @@ function periodRangeIso(period: Period, customFrom: string | null, customTo: str
   const today = new Date()
   const toIso = today.toISOString()
   if (period === 'custom' && customFrom && customTo) {
-    // Interpretar em SGT (fuso Shein) pra bater com painel oficial.
-    const f = new Date(customFrom + 'T00:00:00+08:00')
-    const t = new Date(customTo + 'T00:00:00+08:00')
+    // BRT (data local BR) — bate painel Meus Pedidos Shein.
+    const f = new Date(customFrom + 'T00:00:00-03:00')
+    const t = new Date(customTo + 'T00:00:00-03:00')
     t.setDate(t.getDate() + 1)
     return { from: f.toISOString(), to: t.toISOString() }
   }
