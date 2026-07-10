@@ -107,10 +107,10 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; d
     oQueE: 'Comissão + Taxa de Serviço brutas cobradas pela Shopee em cada pedido. A Taxa de Serviço inclui o custo do programa Frete Grátis (é assim que a Shopee cobra o subsídio de frete) e a taxa de transação. O % é calculado sobre as vendas de produto (preço de venda, sem frete/cupons). Parte dessas taxas volta como desconto quando a loja participa de campanhas ("Ajuste por Participação em Ação Comercial") — veja a taxa líquida no Financeiro.',
     origem: 'Campos "taxa de comissão" e "taxa de serviço" do extrato financeiro (escrow) que a Shopee retorna por pedido — mesma fonte da tela "Minha Renda". Validado 99%+ vs Relatório de Renda oficial.',
   },
-  'Antecipações': {
-    title: 'Antecipações',
-    oQueE: 'Taxa cobrada pelo Repasse Rápido (Shopee Acelera) — quando a loja antecipa o recebimento antes da liberação normal. Zerado = a loja não usou antecipação no período.',
-    origem: 'Transações do tipo "ajuste do Shopee Acelera" no extrato da carteira Shopee Pay, somadas por data.',
+  'Repasse Liberado': {
+    title: 'Repasse Liberado',
+    oQueE: 'Dinheiro que a Shopee retém por pedido (escrow) e libera quando o pedido conclui — quanto efetivamente caiu na sua carteira no período. É o repasse real, não o depósito bancário consolidado (a Shopee não expõe esse no BR).',
+    origem: 'Transações do tipo escrow liberado (ESCROW_VERIFIED_ADD) no extrato da carteira Shopee Pay, somadas por data.',
   },
 }
 
@@ -386,8 +386,8 @@ export function MetricasView({
   period,
   customFrom,
   customTo,
-  antecipacoesCur,
-  antecipacoesPrev,
+  repasseCur,
+  repassePrev,
   comissaoAfiliadosCur,
   comissaoAfiliadosPrev,
   nickname,
@@ -397,8 +397,8 @@ export function MetricasView({
   period: PeriodKey
   customFrom: string | null
   customTo: string | null
-  antecipacoesCur: number
-  antecipacoesPrev: number
+  repasseCur: number
+  repassePrev: number
   comissaoAfiliadosCur: number
   comissaoAfiliadosPrev: number
   nickname: string | null
@@ -530,11 +530,11 @@ export function MetricasView({
     { label: 'Comissão Afiliados',     value: `R$ ${fmtBrl(comissaoAfiliadosCur)}`,     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
     { label: 'Frete Vendedor',         value: `R$ ${fmtBrl(totalFrete)}`,               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
     { label: 'Taxas Shopee',           value: `R$ ${fmtBrl(totalComissao)}`,            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: vendasProduto > 0 ? `comissão + serviço · ${fmtPct((totalComissao / vendasProduto) * 100)} das vendas de produto` : 'comissão + serviço' },
-    { label: 'Antecipações',           value: `R$ ${fmtBrl(antecipacoesCur)}`,          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
+    { label: 'Repasse Liberado',       value: `R$ ${fmtBrl(repasseCur)}`,               ...deltaPct(repasseCur, repassePrev),                             icon: 'account_balance', iconClass: 'text-secondary', valueClass: 'text-secondary-fixed', invert: false, sub: 'escrow liberado no período' },
   ]
-  // Total despesas pra mostrar acima da linha
-  const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao + antecipacoesCur
-  const prevTotalDespesas = prevAdsSpend + comissaoAfiliadosPrev + prevFrete + prevComissao + antecipacoesPrev
+  // Total despesas pra mostrar acima da linha (Repasse é receita liberada, não entra na soma)
+  const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao
+  const prevTotalDespesas = prevAdsSpend + comissaoAfiliadosPrev + prevFrete + prevComissao
   const totalDespesasDelta = deltaPct(totalDespesas, prevTotalDespesas)
 
   const dailyRows = [...current].reverse().slice(0, 5)
