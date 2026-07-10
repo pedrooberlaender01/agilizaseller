@@ -84,11 +84,10 @@ export default async function MercadoLivreMetricasPage({
   const pFrom = isCustom ? `${customFrom}T00:00:00-03:00` : periodFromIso(period)
   const pTo = isCustom ? `${customTo}T23:59:59-03:00` : null
 
-  const { data } = await supabase.rpc('ml_daily_metrics', {
-    p_connection_id: conn.id,
-    p_from: pFrom,
-    p_to: pTo,
-  })
+  const [{ data }, { data: devolData }] = await Promise.all([
+    supabase.rpc('ml_daily_metrics', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
+    supabase.rpc('ml_returns_periodo', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo ?? new Date().toISOString() }),
+  ])
 
   const rows: DailyRow[] = ((data ?? []) as RpcRow[]).map((r) => ({
     date: r.date,
@@ -97,9 +96,15 @@ export default async function MercadoLivreMetricasPage({
     fat: Number(r.fat) || 0,
   }))
 
+  const devol = ((devolData ?? []) as Array<{ qtd: number; valor: number | string }>)[0]
+  const devolQtd = Number(devol?.qtd) || 0
+  const devolValor = Number(devol?.valor) || 0
+
   return (
     <MetricasView
       rows={rows}
+      devolQtd={devolQtd}
+      devolValor={devolValor}
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}

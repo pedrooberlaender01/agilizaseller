@@ -31,11 +31,15 @@ function shortDate(iso: string): string {
 
 export function MetricasView({
   rows,
+  devolQtd,
+  devolValor,
   period,
   customFrom,
   customTo,
 }: {
   rows: DailyRow[]
+  devolQtd: number
+  devolValor: number
   period: Period
   customFrom: string | null
   customTo: string | null
@@ -87,6 +91,8 @@ export function MetricasView({
     { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticket)}`, icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-on-surface', inDev: false },
     { label: 'Margem Média', value: '', icon: 'construction', iconClass: 'text-amber-400', valueClass: 'text-amber-300', inDev: true },
     { label: 'Cancelamentos', value: `${cancelPct.toFixed(1).replace('.', ',')}%`, icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false },
+    { label: 'Devoluções', value: devolQtd.toLocaleString('pt-BR'), icon: 'assignment_return', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false },
+    { label: 'Valor Devolvido', value: `R$ ${fmtBrl(devolValor)}`, icon: 'currency_exchange', iconClass: 'text-error', valueClass: 'text-error', inDev: false },
   ]
 
   const chartData: MetricsChartData = useMemo(() => {

@@ -61,6 +61,203 @@ const avgMargemReal = (arr: ShopeeDailyMetric[]): number => {
 
 type Trend = 'up' | 'down' | 'flat'
 
+// Explicações dos cards — o que é + de onde vem + por que pode diferir do painel Shopee
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; difere?: string }> = {
+  'Faturamento': {
+    title: 'Faturamento',
+    oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
+    origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
+    difere: 'Dois motivos: (1) por padrão EXCLUÍMOS pedidos cancelados — mesmo os que chegaram a pagar — pra mostrar a receita que realmente vira repasse; o painel da Shopee (Informações Gerenciais, "Produto Pago") INCLUI pedidos pagos que cancelaram depois. Dá pra espelhar o critério deles no botão Funil acima. (2) O período: confira sempre com datas idênticas (o botão "30d" aqui termina HOJE, que ainda está incompleto). Mesmo com o Funil no critério Shopee, sobra ~0,3% de diferença: nosso número inclui também cancelados que nunca chegaram a pagar (a API não expõe se o pagamento ocorreu antes do cancelamento). É uma diferença residual constante e conhecida — validado em 99,7%.',
+  },
+  'Pedidos': {
+    title: 'Pedidos',
+    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente.',
+    origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, filtrados pelo status do pedido, por data de criação.',
+    difere: 'Mesmos motivos do Faturamento: excluímos cancelados (a Shopee "Produto Pago" conta pedidos pagos que cancelaram depois) e o range de datas precisa ser idêntico. Use o botão Funil pra espelhar o critério da Shopee. Diferença residual esperada de ~70 pedidos (0,3%): cancelamentos sem pagamento que a API não permite separar dos cancelamentos pós-pagamento.',
+  },
+  'Ticket Médio': {
+    title: 'Ticket Médio',
+    oQueE: 'Faturamento dividido pelo número de pedidos do período.',
+    origem: 'Calculado: Faturamento ÷ Pedidos (mesmas fontes dos dois cards).',
+    difere: 'Herda as diferenças dos dois cards acima. Próximo do "Vendas por Comprador" da Shopee, mas lá o divisor é compradores únicos, não pedidos.',
+  },
+  'Cancelamentos': {
+    title: 'Cancelamentos',
+    oQueE: 'Percentual de pedidos cancelados sobre o total criado no período. Inclui cancelamentos do comprador, do vendedor e do antifraude.',
+    origem: 'Campo "status" que a API da Shopee retorna em cada pedido (cancelado / em cancelamento). O número pequeno abaixo mostra a contagem absoluta.',
+    difere: 'Nosso número é MAIOR que o "Pedidos Cancelados" das Informações Gerenciais: contamos TODOS os cancelamentos (inclusive de pedidos que nunca chegaram a pagar); a Shopee só conta cancelamentos de pedidos pagos. Ex: 165 aqui vs 78 lá — os ~87 extras desistiram antes de pagar.',
+  },
+  'Gasto em Ads': {
+    title: 'Gasto em Ads',
+    oQueE: 'Total investido em Shopee Ads no período (todas as campanhas: manual, GMV Max, etc). Validado 1:1 com a Central de Ads da Shopee.',
+    origem: 'Campo "despesa" do relatório diário de performance de anúncios que a API de Ads da Shopee retorna — o mesmo número da Central de Ads. Atualizado de hora em hora.',
+  },
+  'Comissão Afiliados': {
+    title: 'Comissão Afiliados',
+    oQueE: 'Comissão estimada paga aos afiliados/influenciadores do programa de Afiliados do Vendedor. Limitação da Shopee: ela só entrega o acumulado dos últimos 7 ou 30 dias — não dia a dia. O valor mostrado é o snapshot que melhor cobre o período filtrado.',
+    origem: 'Campo "comissão estimada" por afiliado, retornado pela API de Marketing de Afiliados da Shopee (app dedicado aprovado por eles). Corresponde à "Taxa de comissão Afiliados do Vendedor" do Relatório de Renda.',
+  },
+  'Frete Vendedor': {
+    title: 'Frete Vendedor',
+    oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora MENOS o subsídio da Shopee MENOS a parte paga pelo comprador. Normalmente fica perto de zero — a sobra vem de discrepâncias de peso (frete real maior que o declarado). O custo do programa Frete Grátis NÃO está aqui: ele é cobrado dentro da Taxa de Serviço.',
+    origem: 'Três campos do extrato financeiro (escrow) que a Shopee retorna por pedido: frete real cobrado, subsídio da Shopee e frete pago pelo comprador. Mesma fonte da tela "Minha Renda". Validado vs "Subtotal de Envio" do Relatório de Renda.',
+  },
+  'Taxas Shopee': {
+    title: 'Taxas Shopee',
+    oQueE: 'Comissão + Taxa de Serviço brutas cobradas pela Shopee em cada pedido. A Taxa de Serviço inclui o custo do programa Frete Grátis (é assim que a Shopee cobra o subsídio de frete) e a taxa de transação. O % é calculado sobre as vendas de produto (preço de venda, sem frete/cupons). Parte dessas taxas volta como desconto quando a loja participa de campanhas ("Ajuste por Participação em Ação Comercial") — veja a taxa líquida no Financeiro.',
+    origem: 'Campos "taxa de comissão" e "taxa de serviço" do extrato financeiro (escrow) que a Shopee retorna por pedido — mesma fonte da tela "Minha Renda". Validado 99%+ vs Relatório de Renda oficial.',
+  },
+  'Repasse Liberado': {
+    title: 'Repasse Liberado',
+    oQueE: 'Dinheiro que a Shopee retém por pedido (escrow) e libera quando o pedido conclui — quanto efetivamente caiu na sua carteira no período. É o repasse real, não o depósito bancário consolidado (a Shopee não expõe esse no BR).',
+    origem: 'Transações do tipo escrow liberado (ESCROW_VERIFIED_ADD) no extrato da carteira Shopee Pay, somadas por data.',
+  },
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-primary">help</span>
+            {info.title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Fechar"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Por que pode diferir do painel Shopee</div>
+              <p className="text-sm leading-relaxed text-zinc-400">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Configurações da tela (engrenagem) — persistem em localStorage ──
+type MetricasConfig = { incluirCancelados: boolean }
+const CONFIG_KEY = 'shopee-metricas-config'
+const DEFAULT_CONFIG: MetricasConfig = { incluirCancelados: false }
+
+function loadConfig(): MetricasConfig {
+  if (typeof window === 'undefined') return DEFAULT_CONFIG
+  try {
+    return { ...DEFAULT_CONFIG, ...JSON.parse(localStorage.getItem(CONFIG_KEY) ?? '{}') }
+  } catch {
+    return DEFAULT_CONFIG
+  }
+}
+
+function ConfigModal({ open, config, onSave, onClose }: {
+  open: boolean
+  config: MetricasConfig
+  onSave: (c: MetricasConfig) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState(config)
+  useEffect(() => { if (open) setDraft(config) }, [open, config])
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[460px] rounded-2xl border border-zinc-700 shadow-2xl" style={{ background: 'rgba(22,27,34,0.97)' }}>
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-zinc-400">filter_alt</span>
+            Funil de Pedidos
+          </h3>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white" aria-label="Fechar">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={draft.incluirCancelados}
+              onChange={(e) => setDraft({ ...draft, incluirCancelados: e.target.checked })}
+              className="mt-1 h-4 w-4 accent-emerald-400 cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm font-medium text-zinc-200 group-hover:text-white">Incluir pedidos cancelados (critério Shopee)</span>
+              <span className="block text-xs text-zinc-500 mt-1 leading-relaxed">
+                Faturamento e Pedidos passam a incluir pedidos pagos que foram cancelados depois — igual ao funil &quot;Produto Pago&quot; das Informações Gerenciais da Shopee (~99,7% de match).
+                Desligado, mostra o dado conservador: só a receita que fica de pé e vira repasse.
+              </span>
+            </span>
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-zinc-800 px-5 py-3">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 hover:text-white transition-colors">Cancelar</button>
+          <button
+            onClick={() => { onSave(draft); onClose() }}
+            className="rounded-lg bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoButton({ label, onOpen }: { label: string; onOpen: (k: string) => void }) {
+  if (!KPI_INFO[label]) return null
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onOpen(label) }}
+      className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 hover:bg-white/10 hover:text-zinc-300 transition-colors"
+      aria-label={`Explicação: ${label}`}
+    >
+      <span className="material-symbols-outlined text-[14px]">help</span>
+    </button>
+  )
+}
+
 function deltaPct(curr: number, prev: number): { delta: string; trend: Trend } {
   if (prev === 0) return { delta: '—', trend: 'flat' }
   const pct = ((curr - prev) / prev) * 100
@@ -189,8 +386,8 @@ export function MetricasView({
   period,
   customFrom,
   customTo,
-  antecipacoesCur,
-  antecipacoesPrev,
+  repasseCur,
+  repassePrev,
   comissaoAfiliadosCur,
   comissaoAfiliadosPrev,
   nickname,
@@ -200,8 +397,8 @@ export function MetricasView({
   period: PeriodKey
   customFrom: string | null
   customTo: string | null
-  antecipacoesCur: number
-  antecipacoesPrev: number
+  repasseCur: number
+  repassePrev: number
   comissaoAfiliadosCur: number
   comissaoAfiliadosPrev: number
   nickname: string | null
@@ -210,6 +407,14 @@ export function MetricasView({
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [infoKey, setInfoKey] = useState<string | null>(null)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [config, setConfig] = useState<MetricasConfig>(DEFAULT_CONFIG)
+  useEffect(() => { setConfig(loadConfig()) }, [])
+  function saveConfig(c: MetricasConfig) {
+    setConfig(c)
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(c))
+  }
   const popoverRef = useRef<HTMLDivElement>(null)
   const isCustom = !!(customFrom && customTo)
 
@@ -246,8 +451,16 @@ export function MetricasView({
   const sumCents = (arr: ShopeeDailyMetric[], key: keyof ShopeeDailyMetric): number =>
     arr.reduce((a, x) => a + (Number(x[key]) || 0), 0) / 100
 
-  const faturamento = sum(current, 'gross_revenue')
-  const pedidos = sum(current, 'orders_count')
+  // Engrenagem: critério Shopee inclui pedidos pagos que cancelaram depois
+  const incl = config.incluirCancelados
+  const faturamento = incl
+    ? (sum(current, 'gross_revenue_incl_cancel') || sum(current, 'gross_revenue'))
+    : sum(current, 'gross_revenue')
+  // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
+  const vendasProduto = sum(current, 'total_product_sales') || faturamento
+  const pedidos = incl
+    ? (sum(current, 'orders_count_incl_cancel') || sum(current, 'orders_count'))
+    : sum(current, 'orders_count')
   const totalComissao = sum(current, 'total_commission')
   const totalFrete = sum(current, 'total_shipping_cost')
   const taxasShopee = totalComissao + totalFrete
@@ -270,8 +483,12 @@ export function MetricasView({
   const pctVendasAds = faturamento > 0 ? (adsGmv / faturamento) * 100 : 0
   const ctrGlobal = adsImpressions > 0 ? (adsClicks / adsImpressions) * 100 : 0
 
-  const prevFat = sum(previous, 'gross_revenue')
-  const prevPed = sum(previous, 'orders_count')
+  const prevFat = incl
+    ? (sum(previous, 'gross_revenue_incl_cancel') || sum(previous, 'gross_revenue'))
+    : sum(previous, 'gross_revenue')
+  const prevPed = incl
+    ? (sum(previous, 'orders_count_incl_cancel') || sum(previous, 'orders_count'))
+    : sum(previous, 'orders_count')
   const prevComissao = sum(previous, 'total_commission')
   const prevFrete = sum(previous, 'total_shipping_cost')
   const prevTaxasShopee = prevComissao + prevFrete
@@ -291,8 +508,8 @@ export function MetricasView({
 
   // Card #58 (call João 18/06): KPIs topo = 4 cards. Lucro Bruto + Margem Líquida removidos (cálculo ainda não confiável).
   const kpis = [
-    { label: 'Faturamento', value: fmtBrlInt(faturamento), ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: undefined as string | undefined },
-    { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: undefined },
+    { label: 'Faturamento', value: `R$ ${fmtBrl(faturamento)}`, ...deltaPct(faturamento, prevFat), icon: 'payments', iconClass: 'text-zinc-50', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
+    { label: 'Pedidos', value: fmtNum(pedidos), ...deltaPct(pedidos, prevPed), icon: 'shopping_cart', iconClass: 'text-primary', valueClass: 'text-zinc-50', sub: (incl ? 'critério Shopee: inclui cancelados pagos' : undefined) as string | undefined },
     { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticketMedio)}`, ...deltaPct(ticketMedio, prevTicket), icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-zinc-50', sub: undefined },
     { label: 'Cancelamentos', value: fmtPct(taxaCancel), ...deltaPct(taxaCancel, prevTaxaCancel), icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-zinc-50', sub: `${fmtNum(cancelados)} de ${fmtNum(pedidos + cancelados)}` },
   ]
@@ -309,15 +526,15 @@ export function MetricasView({
   // Card #59 (call João 18/06): linha Despesas/Financeiro — 5 cards do período
   // comissaoAfiliados vem de shopee_affiliate_performance (card #62)
   const despesasKpis = [
-    { label: 'Gasto em Ads',           value: fmtBrlInt(adsSpend),                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
-    { label: 'Comissão Afiliados',     value: fmtBrlInt(comissaoAfiliadosCur),     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
-    { label: 'Frete Vendedor',         value: fmtBrlInt(totalFrete),               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
-    { label: 'Taxas Shopee',           value: fmtBrlInt(totalComissao),            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: faturamento > 0 ? `comissão + serviço · ${fmtPct((totalComissao / faturamento) * 100)} do faturamento` : 'comissão + serviço' },
-    { label: 'Antecipações',           value: fmtBrlInt(antecipacoesCur),          ...deltaPct(antecipacoesCur, antecipacoesPrev),                   icon: 'bolt',             iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'Repasse Rápido (FAST_ESCROW)' },
+    { label: 'Gasto em Ads',           value: `R$ ${fmtBrl(adsSpend)}`,                 ...deltaPct(adsSpend, prevAdsSpend),                              icon: 'campaign',         iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: `Shopee Ads do período` },
+    { label: 'Comissão Afiliados',     value: `R$ ${fmtBrl(comissaoAfiliadosCur)}`,     ...deltaPct(comissaoAfiliadosCur, comissaoAfiliadosPrev),         icon: 'group',            iconClass: 'text-zinc-500', valueClass: 'text-zinc-50',        invert: true,  sub: 'Snapshot últimos 30d (AMS)' },
+    { label: 'Frete Vendedor',         value: `R$ ${fmtBrl(totalFrete)}`,               ...deltaPct(totalFrete, prevFrete),                               icon: 'local_shipping',   iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: 'frete pago pelo vendedor' },
+    { label: 'Taxas Shopee',           value: `R$ ${fmtBrl(totalComissao)}`,            ...deltaPct(totalComissao, prevComissao),                         icon: 'percent',          iconClass: 'text-error',   valueClass: 'text-error',          invert: true,  sub: vendasProduto > 0 ? `comissão + serviço · ${fmtPct((totalComissao / vendasProduto) * 100)} das vendas de produto` : 'comissão + serviço' },
+    { label: 'Repasse Liberado',       value: `R$ ${fmtBrl(repasseCur)}`,               ...deltaPct(repasseCur, repassePrev),                             icon: 'account_balance', iconClass: 'text-secondary', valueClass: 'text-secondary-fixed', invert: false, sub: 'escrow liberado no período' },
   ]
-  // Total despesas pra mostrar acima da linha
-  const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao + antecipacoesCur
-  const prevTotalDespesas = prevAdsSpend + comissaoAfiliadosPrev + prevFrete + prevComissao + antecipacoesPrev
+  // Total despesas pra mostrar acima da linha (Repasse é receita liberada, não entra na soma)
+  const totalDespesas = adsSpend + comissaoAfiliadosCur + totalFrete + totalComissao
+  const prevTotalDespesas = prevAdsSpend + comissaoAfiliadosPrev + prevFrete + prevComissao
   const totalDespesasDelta = deltaPct(totalDespesas, prevTotalDespesas)
 
   const dailyRows = [...current].reverse().slice(0, 5)
@@ -330,6 +547,8 @@ export function MetricasView({
   return (
     <>
       <TopBar showSearch />
+      <InfoModal infoKey={infoKey} onClose={() => setInfoKey(null)} />
+      <ConfigModal open={configOpen} config={config} onSave={saveConfig} onClose={() => setConfigOpen(false)} />
       <div className={cn('p-margin flex flex-col gap-gutter flex-1 overflow-y-auto', pending && 'opacity-70 pointer-events-none transition-opacity')}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -395,6 +614,24 @@ export function MetricasView({
                 />
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setConfigOpen(true)}
+              className={cn(
+                'flex h-[36px] items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
+                config.incluirCancelados
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/60'
+                  : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-50',
+              )}
+              aria-label="Filtro do funil de pedidos"
+              title="Filtro do funil de pedidos"
+            >
+              <span className="material-symbols-outlined text-[18px]">filter_alt</span>
+              <span className="text-[10px] font-semibold uppercase">
+                {config.incluirCancelados ? 'Produto Pago (Shopee)' : 'Funil'}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -409,8 +646,9 @@ export function MetricasView({
                   className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden group hover:bg-zinc-900/70 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">
+                    <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                       {kpi.label}
+                      <InfoButton label={kpi.label} onOpen={setInfoKey} />
                     </span>
                     <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>
                       {kpi.icon}
@@ -445,7 +683,7 @@ export function MetricasView({
                 'normal-case tracking-normal text-[10px] flex items-center gap-1',
                 totalDespesasDelta.trend === 'flat' ? 'text-zinc-500' : totalDespesasDelta.trend === 'up' ? 'text-error' : 'text-secondary',
               )}>
-                Total: <span className="text-zinc-300 font-mono font-semibold">{fmtBrlInt(totalDespesas)}</span>
+                Total: <span className="text-zinc-300 font-mono font-semibold">{`R$ ${fmtBrl(totalDespesas)}`}</span>
                 <span className="material-symbols-outlined text-[12px]">
                   {totalDespesasDelta.trend === 'up' ? 'trending_up' : totalDespesasDelta.trend === 'down' ? 'trending_down' : 'trending_flat'}
                 </span>
@@ -465,7 +703,10 @@ export function MetricasView({
                     className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 relative overflow-hidden hover:bg-zinc-900/70 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">{kpi.label}</span>
+                      <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                        {kpi.label}
+                        <InfoButton label={kpi.label} onOpen={setInfoKey} />
+                      </span>
                       <span className={cn('material-symbols-outlined text-lg', kpi.iconClass)}>{kpi.icon}</span>
                     </div>
                     <div className={cn('font-h2 text-h2', kpi.valueClass)}>{kpi.value}</div>

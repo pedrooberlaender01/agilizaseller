@@ -324,6 +324,8 @@ export function FinanceiroView({
         {/* Lucro Bruto Macro — fórmula João: Vendas − Taxas Shopee − Ads */}
         {(() => {
           const vendas = dailyMetrics.reduce((a, m) => a + (Number(m.gross_revenue) || 0), 0)
+          // Base % de taxa: preço de venda dos produtos (sem frete comprador/vouchers Shopee)
+          const vendasProduto = dailyMetrics.reduce((a, m) => a + (Number(m.total_product_sales) || 0), 0) || vendas
           const comissaoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_fee) || 0), 0)
           const servicoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_service_fee) || 0), 0)
           const comissaoNet = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_net) || 0), 0)
@@ -363,7 +365,7 @@ export function FinanceiroView({
                   </div>
                   {subsidioCampanha > 0 && (
                     <div className="text-[10px] text-emerald-400/80 mt-1">
-                      +{fmtBrlInt(subsidioCampanha)} devolvidos pela Shopee via campanhas (taxa líquida real: {fmtBrlInt(comissaoNet + servicoNet)})
+                      +{fmtBrlInt(subsidioCampanha)} de Ajuste por Participação em Ação Comercial — desconto nas taxas por campanhas Shopee (taxa líquida real: {fmtBrlInt(comissaoNet + servicoNet)})
                     </div>
                   )}
                 </div>
@@ -376,7 +378,9 @@ export function FinanceiroView({
                     <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Comissão</div>
                     <div className="text-error font-h3 text-h3 mt-1">−{fmtBrlInt(comissao)}</div>
                     <div className="text-[10px] text-zinc-600 mt-0.5">
-                      {temSeparado && comissaoNet > 0 ? `líquida ${fmtBrlInt(comissaoNet)}` : vendas > 0 ? `${((comissao / vendas) * 100).toFixed(1)}% das vendas` : '—'}
+                      {temSeparado && comissaoNet > 0
+                        ? `líquida ${fmtBrlInt(comissaoNet)} · ${((comissao / vendasProduto) * 100).toFixed(1)}% das vendas de produto`
+                        : vendasProduto > 0 ? `${((comissao / vendasProduto) * 100).toFixed(1)}% das vendas de produto` : '—'}
                     </div>
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-md">

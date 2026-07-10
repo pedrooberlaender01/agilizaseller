@@ -112,16 +112,11 @@ export default async function ShopeeMetricasPage({
     ? customRange(customFrom, customTo)
     : periodRange(period)
 
-  const curFromTs = `${cur.from}T00:00:00`
-  const curToTs = `${cur.to}T23:59:59`
-  const prevFromTs = `${prev.from}T00:00:00`
-  const prevToTs = `${prev.to}T23:59:59`
-
   const [
     { data: currentRows },
     { data: previousRows },
-    { data: walletCur },
-    { data: walletPrev },
+    { data: escrowCentsCur },
+    { data: escrowCentsPrev },
     { data: affiliateCur },
     { data: affiliatePrev },
   ] = await Promise.all([
@@ -139,20 +134,9 @@ export default async function ShopeeMetricasPage({
       .gte('date', prev.from)
       .lte('date', prev.to)
       .order('date', { ascending: true }),
-    supabase
-      .from('shopee_wallet_transactions')
-      .select('transaction_type,amount_cents')
-      .eq('connection_id', conn.id)
-      .in('transaction_type', ['FAST_ESCROW_DEDUCT', 'SPM_DEDUCT', 'SPM_DEDUCT_DIRECT', 'ADJUSTMENT_CENTER_DEDUCT', 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED'])
-      .gte('create_time', curFromTs)
-      .lte('create_time', curToTs),
-    supabase
-      .from('shopee_wallet_transactions')
-      .select('transaction_type,amount_cents')
-      .eq('connection_id', conn.id)
-      .in('transaction_type', ['FAST_ESCROW_DEDUCT', 'SPM_DEDUCT', 'SPM_DEDUCT_DIRECT', 'ADJUSTMENT_CENTER_DEDUCT', 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED'])
-      .gte('create_time', prevFromTs)
-      .lte('create_time', prevToTs),
+    // Soma no servidor via RPC — trazer linhas estoura o cap 1000 do Supabase (5k+ tx no período).
+    supabase.rpc('sum_shopee_wallet_escrow', { p_conn: conn.id, p_from: cur.from, p_to: cur.to }),
+    supabase.rpc('sum_shopee_wallet_escrow', { p_conn: conn.id, p_from: prev.from, p_to: prev.to }),
     // AMS snapshot — period_type baseado em diff dias do filter
     (() => {
       const days = Math.round((new Date(cur.to).getTime() - new Date(cur.from).getTime()) / 86400_000) + 1
@@ -178,15 +162,10 @@ export default async function ShopeeMetricasPage({
     })(),
   ])
 
-  function sumWalletByType(rows: { transaction_type: string | null; amount_cents: number | null }[] | null, types: string[]): number {
-    if (!rows) return 0
-    return rows
-      .filter(r => r.transaction_type && types.includes(r.transaction_type))
-      .reduce((a, r) => a + Math.abs(Number(r.amount_cents) || 0), 0) / 100
-  }
-
-  const antecipacoesCur = sumWalletByType(walletCur, ['FAST_ESCROW_DEDUCT'])
-  const antecipacoesPrev = sumWalletByType(walletPrev, ['FAST_ESCROW_DEDUCT'])
+  // Repasse liberado no período = escrow que a Shopee liberou (caiu na carteira). Card #72.
+  // RPC retorna cents (bigint) somado no servidor — evita o cap 1000 de linhas do Supabase.
+  const repasseCur = Number(escrowCentsCur ?? 0) / 100
+  const repassePrev = Number(escrowCentsPrev ?? 0) / 100
 
   // Snapshot AMS Last30d: soma todas commission_cents do snapshot mais recente
   function sumAffiliateLatestSnapshot(rows: { commission_cents: number | null; period_end: string | null }[] | null): number {
@@ -207,8 +186,8 @@ export default async function ShopeeMetricasPage({
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}
-      antecipacoesCur={antecipacoesCur}
-      antecipacoesPrev={antecipacoesPrev}
+      repasseCur={repasseCur}
+      repassePrev={repassePrev}
       comissaoAfiliadosCur={comissaoAfiliadosCur}
       comissaoAfiliadosPrev={comissaoAfiliadosPrev}
       nickname={conn.nickname}

@@ -186,7 +186,7 @@ export function FinanceiroView({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
-              {(['7d', '30d', 'mes', '90d', 'all'] as Period[]).map((p) => (
+              {(['7d', '30d', 'all'] as Period[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
@@ -195,7 +195,7 @@ export function FinanceiroView({
                     period === p ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
                   )}
                 >
-                  {p === 'all' ? 'Tudo' : p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : p === '90d' ? '90 dias' : 'Este mês'}
+                  {p === 'all' ? 'Tudo' : p === '7d' ? '7 dias' : '30 dias'}
                 </button>
               ))}
             </div>

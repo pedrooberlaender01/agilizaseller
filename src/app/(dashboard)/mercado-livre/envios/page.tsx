@@ -29,7 +29,33 @@ function NoConnectionState() {
   )
 }
 
-export default async function MercadoLivreEnviosPage() {
+type EnvPeriod = '7d' | '30d' | 'custom'
+
+function parsePeriod(raw: string | undefined): EnvPeriod {
+  return raw === '7d' || raw === '30d' ? raw : '30d'
+}
+function parseIsoDateOnly(s: string | undefined): string | null {
+  if (!s) return null
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null
+}
+function periodFromIso(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - days + 1)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString()
+}
+
+export default async function MercadoLivreEnviosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; from?: string; to?: string }>
+}) {
+  const sp = await searchParams
+  const customFrom = parseIsoDateOnly(sp.from)
+  const customTo = parseIsoDateOnly(sp.to)
+  const isCustom = !!(customFrom && customTo)
+  const period: EnvPeriod = isCustom ? 'custom' : parsePeriod(sp.period)
+
   const supabase = await createClient()
 
   const { data: conn } = await supabase
@@ -42,23 +68,45 @@ export default async function MercadoLivreEnviosPage() {
 
   if (!conn) return <NoConnectionState />
 
-  const { data } = await supabase
+  // Filtra por sale_date do pedido vinculado (mesma data que o ML usa nas vendas).
+  const pFrom = isCustom ? `${customFrom}T00:00:00-03:00` : periodFromIso(period === '7d' ? 7 : 30)
+  const pTo = isCustom ? `${customTo}T23:59:59-03:00` : null
+
+  let listQuery = supabase
     .from('ml_shipments')
     .select(
-      'id, external_id, status, substatus, logistic_type, tracking_number, estimated_delivery_limit, delivered_at, cost_seller, receiver_city, receiver_state, receiver_zip, ml_orders(buyer_nickname, date_created, total_amount)',
+      'id, external_id, status, substatus, logistic_type, tracking_number, estimated_delivery_limit, delivered_at, cost_seller, receiver_city, receiver_state, receiver_zip, ml_orders!inner(buyer_nickname, date_created, total_amount, sale_date)',
     )
     .eq('connection_id', conn.id)
-    .order('synced_at', { ascending: false })
-    .limit(1000)
+    .gte('ml_orders.sale_date', pFrom)
+  if (pTo) listQuery = listQuery.lte('ml_orders.sale_date', pTo)
 
+  const { data } = await listQuery.order('synced_at', { ascending: false }).limit(1000)
   const shipments = (data ?? []) as unknown as ShipmentRow[]
 
-  // Contagem por status de TODOS os envios (não capada nos 1000 da lista).
-  const { data: bucketData } = await supabase.rpc('ml_shipment_buckets', { p_connection_id: conn.id })
+  // Contagem por status no período (não capada nos 1000 da lista).
+  const { data: bucketData } = await supabase.rpc('ml_shipment_buckets', {
+    p_connection_id: conn.id,
+    p_from: pFrom,
+    p_to: pTo,
+  })
   const counts = { transito: 0, entregue: 0, problema: 0, pendente: 0 }
-  for (const b of (bucketData ?? []) as { bucket: string; qtd: number }[]) {
-    if (b.bucket in counts) counts[b.bucket as keyof typeof counts] = b.qtd
+  const countsFull = { transito: 0, entregue: 0, problema: 0, pendente: 0 }
+  for (const b of (bucketData ?? []) as { bucket: string; qtd: number; full_qtd: number }[]) {
+    if (b.bucket in counts) {
+      counts[b.bucket as keyof typeof counts] = b.qtd
+      countsFull[b.bucket as keyof typeof countsFull] = Number(b.full_qtd) || 0
+    }
   }
 
-  return <EnviosView shipments={shipments} counts={counts} />
+  return (
+    <EnviosView
+      shipments={shipments}
+      counts={counts}
+      countsFull={countsFull}
+      period={period}
+      customFrom={isCustom ? customFrom : null}
+      customTo={isCustom ? customTo : null}
+    />
+  )
 }

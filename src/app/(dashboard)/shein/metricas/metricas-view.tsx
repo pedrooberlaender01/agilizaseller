@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
+import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 import { cn } from '@/lib/utils'
 
-type Period = '7d' | '30d' | '90d'
+type Period = '7d' | '30d' | '90d' | 'mes' | 'custom'
 
 export type DailyMetric = {
   connection_id: string
@@ -64,24 +65,59 @@ export type CostAgg = {
 export function MetricasView({
   rows,
   period,
+  customFrom,
+  customTo,
   nickname,
   costAgg,
 }: {
   rows: DailyMetric[]
   period: Period
+  customFrom: string | null
+  customTo: string | null
   nickname?: string | null
   costAgg?: CostAgg
 }) {
   const router = useRouter()
   const sp = useSearchParams()
   const [pending, startTransition] = useTransition()
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const datePickerRef = useRef<HTMLDivElement | null>(null)
 
-  function setPeriod(p: Period) {
+  useEffect(() => {
+    if (!showDatePicker) return
+    function onDown(e: MouseEvent) {
+      if (!datePickerRef.current) return
+      if (!datePickerRef.current.contains(e.target as Node)) setShowDatePicker(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showDatePicker])
+
+  function pushParams(updater: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(sp.toString())
-    next.set('period', p)
+    updater(next)
     startTransition(() => {
       router.replace(`?${next.toString()}`, { scroll: false })
     })
+  }
+
+  function setPeriod(p: Period) {
+    pushParams((next) => {
+      next.set('period', p)
+      if (p !== 'custom') {
+        next.delete('from')
+        next.delete('to')
+      }
+    })
+  }
+
+  function applyCustomRange(from: string, to: string) {
+    pushParams((next) => {
+      next.set('period', 'custom')
+      next.set('from', from)
+      next.set('to', to)
+    })
+    setShowDatePicker(false)
   }
 
   const totals = useMemo(() => {
@@ -110,19 +146,45 @@ export function MetricasView({
             <h2 className="text-h2 font-semibold text-white">Visão geral</h2>
             {nickname && <p className="mt-1 text-xs text-slate-400">Conexão: {nickname}</p>}
           </div>
-          <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
-            {(['7d', '30d', '90d'] as Period[]).map((p) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
+              {(['7d', '30d'] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    'rounded px-3 py-1 text-xs font-medium transition-colors',
+                    period === p ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
+                  )}
+                >
+                  {p === '7d' ? '7 dias' : '30 dias'}
+                </button>
+              ))}
+            </div>
+            <div className="relative" ref={datePickerRef}>
               <button
-                key={p}
-                onClick={() => setPeriod(p)}
+                type="button"
+                onClick={() => setShowDatePicker((v) => !v)}
                 className={cn(
-                  'rounded px-3 py-1 text-xs font-medium transition-colors',
-                  period === p ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
+                  'inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#050507] px-3 py-1.5 text-xs font-medium transition-colors',
+                  period === 'custom' ? 'border-zinc-50/40 text-white' : 'text-slate-400 hover:text-white',
                 )}
               >
-                {p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : '90 dias'}
+                <span className="material-symbols-outlined text-[14px]">event</span>
+                {period === 'custom' && customFrom && customTo
+                  ? `${fmtDateBRShort(customFrom)} → ${fmtDateBRShort(customTo)}`
+                  : 'Personalizado'}
               </button>
-            ))}
+              {showDatePicker && (
+                <DateRangePopover
+                  from={customFrom}
+                  to={customTo}
+                  onApply={applyCustomRange}
+                  onClose={() => setShowDatePicker(false)}
+                  align="right"
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -138,18 +200,11 @@ export function MetricasView({
             <div className="mb-lg">
               {(() => {
                 const taxaTotal = costAgg.totalCommission + costAgg.totalServiceCharge
-                const taxaPct = costAgg.totalGross > 0 ? (taxaTotal / costAgg.totalGross) * 100 : 0
-                const repassePct = costAgg.totalGross > 0 ? (costAgg.estimated / costAgg.totalGross) * 100 : 0
+                const denom = totals.gross > 0 ? totals.gross : costAgg.totalGross
+                const taxaPct = denom > 0 ? (taxaTotal / denom) * 100 : 0
+                const repassePct = denom > 0 ? (costAgg.estimated / denom) * 100 : 0
                 return (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Faturamento Bruto</span>
-                        <Icon name="payments" size={18} className="text-zinc-500" />
-                      </div>
-                      <p className="mt-2 text-3xl font-semibold text-white">{fmtBrl(costAgg.totalGross)}</p>
-                      <p className="mt-1 text-[10px] text-zinc-500">Receita gross dos itens vendidos</p>
-                    </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Taxa Shein Total</span>

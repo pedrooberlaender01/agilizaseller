@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import { EnviosView, STATUS_CATEGORY, type Category, type Period, type ShipmentRow } from './envios-view'
+import { EnviosView, type Period, type ShipmentRow } from './envios-view'
+import { statusesForCategory, type Category } from './status-map'
 
 const PAGE_SIZE = 50
 
@@ -19,12 +20,6 @@ function periodCutoffIso(period: Period): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
   return d.toISOString()
-}
-
-function statusesForCategory(cat: Category): string[] {
-  return Object.entries(STATUS_CATEGORY)
-    .filter(([, c]) => c === cat)
-    .map(([s]) => s)
 }
 
 function NoConnectionState() {
@@ -75,16 +70,18 @@ export default async function ShopeeEnviosPage({
 
   const cutoff = periodCutoffIso(period)
 
-  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase
+  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase.
+  // GET com limit(1) em vez de head:true — HEAD retorna count nulo no fetch do Next RSC.
   const categories: Category[] = ['in_transit', 'delivered', 'problem', 'pending']
   const countResults = await Promise.all(
     categories.map((cat) =>
       supabase
         .from('shopee_shipments')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'exact' })
         .eq('connection_id', conn.id)
         .gte('created_at', cutoff)
         .in('logistics_status', statusesForCategory(cat))
+        .limit(1)
         .then((r) => r.count ?? 0),
     ),
   )
