@@ -37,6 +37,15 @@ function statusTone(s: string | null): string {
   return 'bg-zinc-700/40 text-zinc-400'
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  NORMAL: 'Ativo',
+  UNLIST: 'Não publicado',
+  BANNED: 'Violação',
+  REVIEWING: 'Sob análise',
+  DELETED: 'Excluído',
+}
+const statusLabel = (s: string | null) => (s ? STATUS_LABEL[s] ?? s : '—')
+
 function useDebounced<T>(value: T, delay: number): T {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -63,7 +72,7 @@ export function ProdutosView({
   status: string
   statuses: string[]
   sort: string
-  stats: { totalProducts: number; totalStock: number; totalSold: number }
+  stats: { totalProducts: number; totalStock: number; totalSold: number; ativos: number; naoPublicados: number }
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -123,6 +132,16 @@ export function ProdutosView({
               <Icon name="inventory_2" size={18} className="text-blue-400" />
             </div>
             <p className="mt-2 text-3xl font-semibold text-white">{fmtInt(stats.totalProducts)}</p>
+            <div className="mt-2 flex items-center gap-3 text-xs">
+              <span className="inline-flex items-center gap-1 text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {fmtInt(stats.ativos)} ativos
+              </span>
+              <span className="inline-flex items-center gap-1 text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                {fmtInt(stats.naoPublicados)} não publicados
+              </span>
+            </div>
           </div>
           <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
             <div className="flex items-center justify-between">
@@ -159,7 +178,7 @@ export function ProdutosView({
               >
                 <option value="">Todos status</option>
                 {statuses.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>{statusLabel(s)}</option>
                 ))}
               </select>
             )}
@@ -237,7 +256,7 @@ export function ProdutosView({
                       <td className="px-6 py-4 text-right text-xs text-zinc-300">{fmtInt(p.sold_quantity)}</td>
                       <td className="px-6 py-4">
                         <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-medium', statusTone(p.item_status))}>
-                          {p.item_status || '—'}
+                          {statusLabel(p.item_status)}
                         </span>
                       </td>
                     </tr>

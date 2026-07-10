@@ -106,6 +106,7 @@ export default async function ShopeePedidosPage({
   })
   const kpiRow = (kpiRowsRaw ?? [])[0] as {
     total_orders: number | string | null
+    valid_orders: number | string | null
     total_revenue: number | string | null
     cancelled: number | string | null
     net_real: number | string | null
@@ -113,6 +114,7 @@ export default async function ShopeePedidosPage({
     avg_ticket: number | string | null
   } | undefined
   const totalOrders = Number(kpiRow?.total_orders ?? 0)
+  const validOrders = Number(kpiRow?.valid_orders ?? 0)
   const totalRevenue = Number(kpiRow?.total_revenue ?? 0)
   const cancelled = Number(kpiRow?.cancelled ?? 0)
   const netReal = Number(kpiRow?.net_real ?? 0)
@@ -129,6 +131,7 @@ export default async function ShopeePedidosPage({
       search={search}
       kpis={{
         totalOrders,
+        validOrders,
         totalRevenue,
         netReal,
         avgTicket,

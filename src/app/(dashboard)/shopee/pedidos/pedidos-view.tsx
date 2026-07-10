@@ -31,6 +31,7 @@ export type OrderRow = ShopeeOrder & {
 
 export type PedidosKpis = {
   totalOrders: number
+  validOrders: number
   totalRevenue: number
   netReal: number
   avgTicket: number
@@ -575,7 +576,7 @@ export function PedidosView({
         {/* KPIs */}
         <div className="mb-lg grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
           {[
-            { label: 'Pedidos', value: fmtNum(kpis.totalOrders), icon: 'shopping_cart', tone: 'text-zinc-50' },
+            { label: 'Pedidos', value: fmtNum(kpis.totalOrders), icon: 'shopping_cart', tone: 'text-zinc-50', sub: `${fmtNum(kpis.validOrders)} válidos (faturáveis)` },
             { label: 'Faturamento', value: fmtBrlInt(kpis.totalRevenue), icon: 'payments', tone: 'text-secondary' },
             { label: 'Repasse Real', value: fmtBrlInt(kpis.netReal), icon: 'account_balance_wallet', tone: 'text-primary' },
             { label: 'Ticket Médio', value: fmtBrlInt(kpis.avgTicket), icon: 'receipt_long', tone: 'text-zinc-50' },
@@ -591,6 +592,7 @@ export function PedidosView({
                 <span className={cn('material-symbols-outlined text-lg', kpi.tone)}>{kpi.icon}</span>
               </div>
               <div className={cn('text-h2 font-semibold', kpi.tone)}>{kpi.value}</div>
+              {kpi.sub && <div className="text-[11px] text-zinc-500 -mt-1">{kpi.sub}</div>}
             </div>
           ))}
         </div>

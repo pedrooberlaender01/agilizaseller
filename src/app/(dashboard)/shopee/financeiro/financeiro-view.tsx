@@ -6,10 +6,103 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { TopBar } from '@/components/top-bar'
 import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 import { cn } from '@/lib/utils'
+import { InfoModal, InfoButton, type KpiInfo } from '@/components/kpi-info'
 import type { ShopeeWalletTransaction, ShopeePayout, ShopeeDailyMetric } from '@/types'
 import type { Period } from '@/components/metrics-chart'
 
 export type FinanceiroPeriod = Period | 'custom'
+
+// Explicação de cada KPI/aba do Financeiro — o que é, de onde vem, por que pode diferir da Shopee.
+const FIN_INFO: Record<string, KpiInfo> = {
+  'Saldo Realizado': {
+    title: 'Saldo Realizado',
+    oQueE: 'Saldo da carteira Shopee Pay já efetivado — o valor da última transação sincronizada (campo current_balance).',
+    origem: 'Campo current_balance da transação mais recente do extrato da carteira (get_wallet_transaction_list), sincronizado a cada 6h.',
+    difere: 'NÃO bate com o "Saldo da Carteira" no topo da tela da Shopee por dois motivos: (1) o saldo do topo é atualizado em tempo real e o nosso é do último sync (cron 6h) — no meio do dia entra escrow e defasa; (2) a Shopee NÃO expõe um endpoint de "saldo total" na API do Brasil (só o current_balance das transações, que tem lag em relação ao topo). Para a visão de caixa, use "Saldo Realizado" (o que já caiu) + "A Liberar" (o que ainda vai cair).',
+  },
+  'A Liberar': {
+    title: 'A Liberar',
+    oQueE: 'Total de escrow retido pela Shopee que ainda vai ser repassado — pedidos pagos que ainda não concluíram/liberaram.',
+    origem: 'Campo pending_amount do endpoint get_income_overview (Finanças da API Shopee), sincronizado a cada 6h.',
+    difere: 'Bate com o "Pendente Total" no topo da tela Finanças → Minha Renda da Shopee. Pequenas diferenças são timing: o valor muda a cada pedido que conclui (sai de "A Liberar" e vira "Repasse de Venda" na carteira).',
+  },
+  'Repasses (vendas)': {
+    title: 'Repasses (vendas)',
+    oQueE: 'Total que a Shopee liberou (repassou) na carteira no período do filtro — escrow de pedidos concluídos.',
+    origem: 'Soma das transações do tipo "Repasse de Venda" (ESCROW_VERIFIED_ADD) do extrato da carteira, no período.',
+    difere: 'Bate com o filtro "Renda do pedido" (Entrada) do extrato Saldo da Carteira da Shopee no mesmo período. Confira sempre com datas idênticas.',
+  },
+  'Saques Bancários': {
+    title: 'Saques Bancários',
+    oQueE: 'Total transferido da carteira Shopee Pay para a conta bancária no período.',
+    origem: 'Soma das transações "Saque Solicitado" (WITHDRAWAL_CREATED) do extrato da carteira.',
+    difere: 'Bate com o filtro "Saques" (Saída) do extrato Saldo da Carteira. Cada saque também deve cruzar com o extrato bancário (Bradesco **7483).',
+  },
+  'Gastos Marketing': {
+    title: 'Gastos Marketing',
+    oQueE: 'Débitos de marketing pagos direto pelo saldo da carteira (programas SPM da Shopee).',
+    origem: 'Soma das transações SPM_DEDUCT + SPM_DEDUCT_DIRECT do extrato da carteira.',
+    difere: 'NÃO é o mesmo que "Gasto em Ads" das Métricas (R$ do card #69) — aquele é o investimento em Shopee Ads; este é o débito de programas de marketing pago via saldo (podem incluir outros custos além de Ads). São fontes e conceitos diferentes.',
+  },
+  'Total Entradas': {
+    title: 'Total Entradas',
+    oQueE: 'Soma de tudo que ENTROU na carteira no período (repasses de venda, ajustes de crédito, compensações).',
+    origem: 'Soma de todas as transações com valor positivo do extrato da carteira, no período.',
+    difere: 'Bate com o "Valor total" do filtro Fluxo = Entrada no extrato Saldo da Carteira da Shopee (mesmo período).',
+  },
+  'Total Saídas': {
+    title: 'Total Saídas',
+    oQueE: 'Soma de tudo que SAIU da carteira no período (saques, taxas, marketing, ajustes de débito).',
+    origem: 'Soma de todas as transações com valor negativo do extrato da carteira, no período.',
+    difere: 'Bate com o "Valor total" do filtro Fluxo = Saída no extrato Saldo da Carteira da Shopee (mesmo período).',
+  },
+}
+
+// Explicação dos cards de resumo da aba Taxas (todos do extrato escrow por pedido, validados no card #71).
+const TAXAS_INFO: Record<string, KpiInfo> = {
+  'Subtotal dos Produtos': {
+    title: 'Subtotal dos Produtos',
+    oQueE: 'Preço de venda dos produtos (sem frete, sem cupom) dos pedidos do período.',
+    origem: 'Campo order_selling_price do extrato financeiro (escrow) que a Shopee retorna por pedido — mesma fonte da tela Minha Renda.',
+    difere: 'Bate com o "Subtotal dos Produtos" do detalhe de renda por pedido na Shopee. No agregado, só considera pedidos válidos com escrow já sincronizado.',
+  },
+  'Valor do Reembolso': {
+    title: 'Valor do Reembolso',
+    oQueE: 'Total reembolsado ao comprador em pedidos com devolução no período.',
+    origem: 'Campo seller_return_refund do extrato financeiro (escrow) por pedido.',
+    difere: 'Bate com a linha "Valor do Reembolso" do Relatório de Renda da Shopee.',
+  },
+  'Taxa de comissão líquida': {
+    title: 'Taxa de comissão líquida',
+    oQueE: 'Comissão cobrada pela Shopee já descontando o que volta em campanhas ("Ajuste por Participação em Ação Comercial"). A bruta aparece no subtítulo.',
+    origem: 'Campos net_commission_fee (líquida) e commission_fee (bruta) do extrato escrow por pedido.',
+    difere: 'Bate com "Taxa de comissão líquida" do detalhe de renda da Shopee (validado 99%+ vs Relatório de Renda no card #71).',
+  },
+  'Taxa de serviço líquida': {
+    title: 'Taxa de serviço líquida',
+    oQueE: 'Taxa de serviço já líquida de ajustes de campanha. Inclui o custo do programa Frete Grátis e a taxa de transação. Bruta no subtítulo.',
+    origem: 'Campos net_service_fee (líquida) e service_fee (bruta) do extrato escrow por pedido.',
+    difere: 'Bate com "Taxa de serviço líquida" do detalhe de renda da Shopee (validado no card #71).',
+  },
+  'Taxa de Devolução Fácil': {
+    title: 'Taxa de Devolução Fácil',
+    oQueE: 'Taxa do programa Devolução Fácil da Shopee (proteção de envio reverso), cobrada por pedido.',
+    origem: 'Campo shipping_seller_protection_fee_amount do extrato escrow por pedido.',
+    difere: 'Bate com "Taxa de Devolução Fácil Shopee" do detalhe de renda. Em pedidos muito recentes pode faltar R$ 0,49: a Shopee às vezes lança essa taxa na tela antes de refleti-la no escrow da API (lag interno da Shopee, não erro nosso).',
+  },
+  'Frete pago pelo vendedor': {
+    title: 'Frete pago pelo vendedor',
+    oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora − subsídio Shopee − parte paga pelo comprador. Fica perto de zero (sobra vem de discrepância de peso).',
+    origem: 'Três campos do extrato escrow por pedido (frete real, subsídio Shopee, frete do comprador).',
+    difere: 'Bate com o "Subtotal de Envio" do Relatório de Renda. Validado no card #71 (R$ 193 no mês, confirmado por 2 rotas independentes do relatório).',
+  },
+  'Renda dos pedidos': {
+    title: 'Renda dos pedidos',
+    oQueE: 'Valor líquido que sobra por pedido depois de todas as taxas e frete — o que a Shopee vai repassar (escrow).',
+    origem: 'Campo escrow_amount do extrato financeiro (escrow) por pedido.',
+    difere: 'Bate com "Renda do pedido" da tela Minha Renda (validado pedido a pedido no card #97). Divergências residuais de centavos = lag da Devolução Fácil na API da Shopee.',
+  },
+}
 
 const periods: { key: FinanceiroPeriod; label: string }[] = [
   { key: '7d', label: '7d' },
@@ -129,6 +222,8 @@ export function FinanceiroView({
   typeFilter,
   nickname,
   orderFeesList,
+  pendingAmountCents,
+  releasedAmountCents,
 }: {
   transactions: ShopeeWalletTransaction[]
   payouts: ShopeePayout[]
@@ -140,6 +235,8 @@ export function FinanceiroView({
   typeFilter: string
   nickname: string | null
   orderFeesList?: OrderFeeRow[] | null
+  pendingAmountCents?: number | null
+  releasedAmountCents?: number | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -156,6 +253,8 @@ export function FinanceiroView({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [showDatePicker])
+
+  const [infoKey, setInfoKey] = useState<string | null>(null)
 
   type ViewMode = 'overview' | 'transacoes' | 'saques' | 'payouts' | 'taxas'
   const rawView = searchParams.get('view') as ViewMode | null
@@ -407,24 +506,29 @@ export function FinanceiroView({
         })()}
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-gutter">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-gutter">
           {[
-            { label: 'Saldo Atual', value: latestBalanceCents !== null ? fmtBrlInt(latestBalanceCents / 100) : '—', icon: 'account_balance_wallet', tone: 'text-zinc-50' },
-            { label: 'Repasses (vendas)', value: fmtBrlInt(escrowVendas), icon: 'shopping_bag', tone: 'text-secondary' },
-            { label: 'Saques Bancários', value: fmtBrlInt(totalSaques), icon: 'arrow_circle_down', tone: 'text-primary' },
-            { label: 'Gastos Marketing', value: fmtBrlInt(gastosSpm), icon: 'campaign', tone: 'text-error' },
-            { label: 'Total Entradas', value: fmtBrlInt(totalIn), icon: 'trending_up', tone: 'text-secondary' },
-            { label: 'Total Saídas', value: fmtBrlInt(Math.abs(totalOut)), icon: 'trending_down', tone: 'text-error' },
+            { label: 'Saldo Realizado', value: latestBalanceCents !== null ? fmtBrlInt(latestBalanceCents / 100) : '—', icon: 'account_balance_wallet', tone: 'text-zinc-50', sub: 'última tx sincronizada' },
+            { label: 'A Liberar', value: pendingAmountCents != null ? fmtBrlInt(pendingAmountCents / 100) : '—', icon: 'schedule', tone: 'text-tertiary', sub: 'escrow retido a receber' },
+            { label: 'Repasses (vendas)', value: fmtBrlInt(escrowVendas), icon: 'shopping_bag', tone: 'text-secondary', sub: null },
+            { label: 'Saques Bancários', value: fmtBrlInt(totalSaques), icon: 'arrow_circle_down', tone: 'text-primary', sub: null },
+            { label: 'Gastos Marketing', value: fmtBrlInt(gastosSpm), icon: 'campaign', tone: 'text-error', sub: null },
+            { label: 'Total Entradas', value: fmtBrlInt(totalIn), icon: 'trending_up', tone: 'text-secondary', sub: null },
+            { label: 'Total Saídas', value: fmtBrlInt(Math.abs(totalOut)), icon: 'trending_down', tone: 'text-error', sub: null },
           ].map((kpi) => (
             <div
               key={kpi.label}
               className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2 hover:bg-zinc-900/70 transition-colors"
             >
               <div className="flex items-center justify-between">
-                <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">{kpi.label}</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-label-md text-label-md text-zinc-400 uppercase tracking-wider">{kpi.label}</span>
+                  <InfoButton show={!!FIN_INFO[kpi.label]} label={kpi.label} onOpen={() => setInfoKey(kpi.label)} />
+                </div>
                 <span className={cn('material-symbols-outlined text-lg', kpi.tone)}>{kpi.icon}</span>
               </div>
               <div className={cn('font-h2 text-h2', kpi.tone)}>{kpi.value}</div>
+              {kpi.sub && <div className="text-[11px] text-zinc-500 -mt-1">{kpi.sub}</div>}
             </div>
           ))}
         </div>
@@ -796,6 +900,7 @@ export function FinanceiroView({
 
         {view === 'taxas' && <TaxasTab rows={orderFeesList ?? []} />}
       </main>
+      <InfoModal info={infoKey ? FIN_INFO[infoKey] ?? null : null} onClose={() => setInfoKey(null)} />
     </>
   )
 }
@@ -812,6 +917,7 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
   const [busca, setBusca] = useState('')
   const [page, setPage] = useState(1)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [infoKey, setInfoKey] = useState<string | null>(null)
   const PAGE = 50
 
   const filtered = useMemo(() => {
@@ -866,7 +972,10 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-gutter">
         {resumoCards.map((c) => (
           <div key={c.label} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-md">
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">{c.label}</div>
+            <div className="flex items-center gap-1">
+              <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">{c.label}</div>
+              <InfoButton show={!!TAXAS_INFO[c.label]} label={c.label} onOpen={() => setInfoKey(c.label)} />
+            </div>
             <div className={cn('font-h3 text-h3 mt-1', c.tone)}>
               {c.value < 0 ? '−' : ''}{Math.abs(c.value) < 100 ? `R$ ${fmtBrl(Math.abs(c.value))}` : fmtBrlInt(Math.abs(c.value))}
             </div>
@@ -987,6 +1096,7 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
           </div>
         </div>
       </div>
+      <InfoModal info={infoKey ? TAXAS_INFO[infoKey] ?? null : null} onClose={() => setInfoKey(null)} />
     </div>
   )
 }

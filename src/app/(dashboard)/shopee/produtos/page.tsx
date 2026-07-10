@@ -63,6 +63,8 @@ export default async function ShopeeProdutosPage({
   ])
 
   const uniqueStatuses = Array.from(new Set((statusesRow ?? []).map(r => r.item_status).filter(Boolean) as string[]))
+  const ativos = (statusesRow ?? []).filter(r => r.item_status === 'NORMAL').length
+  const naoPublicados = (statusesRow ?? []).filter(r => r.item_status === 'UNLIST').length
   const totalStock = (totals ?? []).reduce((a, r) => a + (Number(r.stock) || 0), 0)
   const totalSold = (totals ?? []).reduce((a, r) => a + (Number(r.sold_quantity) || 0), 0)
 
@@ -92,7 +94,7 @@ export default async function ShopeeProdutosPage({
       status={statusFilter}
       statuses={uniqueStatuses}
       sort={sort}
-      stats={{ totalProducts: count ?? 0, totalStock, totalSold }}
+      stats={{ totalProducts: count ?? 0, totalStock, totalSold, ativos, naoPublicados }}
     />
   )
 }
