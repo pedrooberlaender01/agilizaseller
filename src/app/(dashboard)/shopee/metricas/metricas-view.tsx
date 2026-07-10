@@ -67,13 +67,13 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; d
     title: 'Faturamento',
     oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
     origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
-    difere: 'Dois motivos: (1) por padrão EXCLUÍMOS pedidos cancelados — mesmo os que chegaram a pagar — pra mostrar a receita que realmente vira repasse; o painel da Shopee (Informações Gerenciais, "Produto Pago") INCLUI pedidos pagos que cancelaram depois. Dá pra espelhar o critério deles no botão Funil acima. (2) O período: confira sempre com datas idênticas (o botão "30d" aqui termina HOJE, que ainda está incompleto). Mesmo com o Funil no critério Shopee, sobra ~0,3% de diferença: nosso número inclui também cancelados que nunca chegaram a pagar (a API não expõe se o pagamento ocorreu antes do cancelamento). É uma diferença residual constante e conhecida — validado em 99,7%.',
+    difere: 'A Shopee tem DOIS funis nas Informações Gerenciais e nós temos TRÊS modos no botão Funil — case cada um antes de comparar:\n\n• Modo "Pedido Feito (Shopee)" ↔ funil "Pedido Feito" da Shopee: a QUANTIDADE de pedidos bate 100% exato (todo pedido criado, inclusive Pix gerado e nunca pago). A receita fica ~1-2% abaixo: a Shopee mostra o valor "cheio" da venda; nosso número é o valor real do pedido (o total que o comprador pagou). É diferença de definição, não de dado faltando.\n\n• Modo "Produto Pago (Shopee)" ↔ funil "Produto Pago" da Shopee: aproxima mas NÃO fica exato. A Shopee conta só os cancelamentos que chegaram a pagar; nós incluímos todos os cancelados porque a API não devolve a hora do pagamento por pedido — não dá pra separar quem cancelou antes de quem cancelou depois de pagar. Por isso nosso número fica um pouco acima do "Produto Pago" deles.\n\n• Modo "Padrão" (nosso): o mais conservador — tira TODO cancelado e todo não-pago. Sempre menor que os dois funis da Shopee. É a receita que efetivamente vira repasse.\n\nEm qualquer comparação, use o MESMO período dos dois lados (o botão "30d" aqui termina hoje, que ainda está incompleto).',
   },
   'Pedidos': {
     title: 'Pedidos',
-    oQueE: 'Quantidade de pedidos pagos no período. Exclui: não pagos, cancelados e nota pendente.',
-    origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, filtrados pelo status do pedido, por data de criação.',
-    difere: 'Mesmos motivos do Faturamento: excluímos cancelados (a Shopee "Produto Pago" conta pedidos pagos que cancelaram depois) e o range de datas precisa ser idêntico. Use o botão Funil pra espelhar o critério da Shopee. Diferença residual esperada de ~70 pedidos (0,3%): cancelamentos sem pagamento que a API não permite separar dos cancelamentos pós-pagamento.',
+    oQueE: 'Quantidade de pedidos do período. O botão Funil escolhe o critério: Padrão (só válidos), Produto Pago ou Pedido Feito.',
+    origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, por status e data de criação.',
+    difere: 'Para bater 100% exato com a Shopee, ponha o Funil em "Pedido Feito (Shopee)" e compare com o funil "Pedido Feito" das Informações Gerenciais — esse modo conta todo pedido criado, inclusive Pix nunca pago. O modo "Produto Pago" fica um pouco acima do funil equivalente da Shopee porque incluímos todos os cancelados (a API não expõe a hora do pagamento, então não dá pra separar cancelado-antes de cancelado-depois de pagar). O modo Padrão exclui todos os cancelados e é sempre o menor.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
@@ -164,7 +164,7 @@ function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () =
           {info.difere && (
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Por que pode diferir do painel Shopee</div>
-              <p className="text-sm leading-relaxed text-zinc-400">{info.difere}</p>
+              <p className="text-sm leading-relaxed text-zinc-400 whitespace-pre-line">{info.difere}</p>
             </div>
           )}
         </div>
@@ -174,14 +174,26 @@ function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () =
 }
 
 // ── Configurações da tela (engrenagem) — persistem em localStorage ──
-type MetricasConfig = { incluirCancelados: boolean }
+// 'padrao' = só pedidos válidos (excl. cancelados + nunca pagos)
+// 'produto_pago' = + cancelados que chegaram a pagar (funil "Produto Pago" da Shopee)
+// 'pedido_feito' = todos os pedidos feitos, inclusive nunca pagos (funil "Pedido Feito" da Shopee)
+type FunilCriterio = 'padrao' | 'produto_pago' | 'pedido_feito'
+type MetricasConfig = { criterio: FunilCriterio }
 const CONFIG_KEY = 'shopee-metricas-config'
-const DEFAULT_CONFIG: MetricasConfig = { incluirCancelados: false }
+const DEFAULT_CONFIG: MetricasConfig = { criterio: 'padrao' }
+
+function loadConfigLegacy(raw: unknown): MetricasConfig {
+  // migra config antiga (booleana) sem quebrar quem já tinha salvo
+  if (raw && typeof raw === 'object' && 'incluirCancelados' in raw) {
+    return { criterio: (raw as { incluirCancelados: boolean }).incluirCancelados ? 'produto_pago' : 'padrao' }
+  }
+  return { ...DEFAULT_CONFIG, ...(raw as object ?? {}) }
+}
 
 function loadConfig(): MetricasConfig {
   if (typeof window === 'undefined') return DEFAULT_CONFIG
   try {
-    return { ...DEFAULT_CONFIG, ...JSON.parse(localStorage.getItem(CONFIG_KEY) ?? '{}') }
+    return loadConfigLegacy(JSON.parse(localStorage.getItem(CONFIG_KEY) ?? '{}'))
   } catch {
     return DEFAULT_CONFIG
   }
@@ -214,22 +226,38 @@ function ConfigModal({ open, config, onSave, onClose }: {
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
-        <div className="px-5 py-4 flex flex-col gap-4">
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={draft.incluirCancelados}
-              onChange={(e) => setDraft({ ...draft, incluirCancelados: e.target.checked })}
-              className="mt-1 h-4 w-4 accent-emerald-400 cursor-pointer"
-            />
-            <span>
-              <span className="block text-sm font-medium text-zinc-200 group-hover:text-white">Incluir pedidos cancelados (critério Shopee)</span>
-              <span className="block text-xs text-zinc-500 mt-1 leading-relaxed">
-                Faturamento e Pedidos passam a incluir pedidos pagos que foram cancelados depois — igual ao funil &quot;Produto Pago&quot; das Informações Gerenciais da Shopee (~99,7% de match).
-                Desligado, mostra o dado conservador: só a receita que fica de pé e vira repasse.
+        <div className="px-5 py-4 flex flex-col gap-3">
+          {([
+            {
+              value: 'padrao' as const,
+              titulo: 'Padrão (conservador)',
+              desc: 'Só pedidos válidos: exclui cancelados e nunca pagos. A receita que realmente vira repasse.',
+            },
+            {
+              value: 'produto_pago' as const,
+              titulo: 'Produto Pago (Shopee)',
+              desc: 'Inclui pedidos pagos que cancelaram depois — igual ao funil "Produto Pago" das Informações Gerenciais (~99,7% de match).',
+            },
+            {
+              value: 'pedido_feito' as const,
+              titulo: 'Pedido Feito (Shopee)',
+              desc: 'Todos os pedidos feitos, inclusive os nunca pagos (Pix gerado e abandonado) — igual ao funil "Pedido Feito" das Informações Gerenciais (contagem 100% exata).',
+            },
+          ]).map((opt) => (
+            <label key={opt.value} className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="radio"
+                name="funil-criterio"
+                checked={draft.criterio === opt.value}
+                onChange={() => setDraft({ criterio: opt.value })}
+                className="mt-1 h-4 w-4 accent-emerald-400 cursor-pointer"
+              />
+              <span>
+                <span className="block text-sm font-medium text-zinc-200 group-hover:text-white">{opt.titulo}</span>
+                <span className="block text-xs text-zinc-500 mt-1 leading-relaxed">{opt.desc}</span>
               </span>
-            </span>
-          </label>
+            </label>
+          ))}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-zinc-800 px-5 py-3">
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 hover:text-white transition-colors">Cancelar</button>
@@ -451,16 +479,18 @@ export function MetricasView({
   const sumCents = (arr: ShopeeDailyMetric[], key: keyof ShopeeDailyMetric): number =>
     arr.reduce((a, x) => a + (Number(x[key]) || 0), 0) / 100
 
-  // Engrenagem: critério Shopee inclui pedidos pagos que cancelaram depois
-  const incl = config.incluirCancelados
-  const faturamento = incl
-    ? (sum(current, 'gross_revenue_incl_cancel') || sum(current, 'gross_revenue'))
-    : sum(current, 'gross_revenue')
+  // Funil: 3 critérios de contagem, o padrão é o mais conservador (só pedidos válidos)
+  const incl = config.criterio !== 'padrao'
+  const faturamentoField = config.criterio === 'pedido_feito' ? 'gross_revenue_all'
+    : config.criterio === 'produto_pago' ? 'gross_revenue_incl_cancel'
+    : 'gross_revenue'
+  const pedidosField = config.criterio === 'pedido_feito' ? 'orders_count_all'
+    : config.criterio === 'produto_pago' ? 'orders_count_incl_cancel'
+    : 'orders_count'
+  const faturamento = sum(current, faturamentoField) || sum(current, 'gross_revenue')
   // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
   const vendasProduto = sum(current, 'total_product_sales') || faturamento
-  const pedidos = incl
-    ? (sum(current, 'orders_count_incl_cancel') || sum(current, 'orders_count'))
-    : sum(current, 'orders_count')
+  const pedidos = sum(current, pedidosField) || sum(current, 'orders_count')
   const totalComissao = sum(current, 'total_commission')
   const totalFrete = sum(current, 'total_shipping_cost')
   const taxasShopee = totalComissao + totalFrete
@@ -483,12 +513,8 @@ export function MetricasView({
   const pctVendasAds = faturamento > 0 ? (adsGmv / faturamento) * 100 : 0
   const ctrGlobal = adsImpressions > 0 ? (adsClicks / adsImpressions) * 100 : 0
 
-  const prevFat = incl
-    ? (sum(previous, 'gross_revenue_incl_cancel') || sum(previous, 'gross_revenue'))
-    : sum(previous, 'gross_revenue')
-  const prevPed = incl
-    ? (sum(previous, 'orders_count_incl_cancel') || sum(previous, 'orders_count'))
-    : sum(previous, 'orders_count')
+  const prevFat = sum(previous, faturamentoField) || sum(previous, 'gross_revenue')
+  const prevPed = sum(previous, pedidosField) || sum(previous, 'orders_count')
   const prevComissao = sum(previous, 'total_commission')
   const prevFrete = sum(previous, 'total_shipping_cost')
   const prevTaxasShopee = prevComissao + prevFrete
@@ -620,7 +646,7 @@ export function MetricasView({
               onClick={() => setConfigOpen(true)}
               className={cn(
                 'flex h-[36px] items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
-                config.incluirCancelados
+                incl
                   ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/60'
                   : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-50',
               )}
@@ -629,7 +655,9 @@ export function MetricasView({
             >
               <span className="material-symbols-outlined text-[18px]">filter_alt</span>
               <span className="text-[10px] font-semibold uppercase">
-                {config.incluirCancelados ? 'Produto Pago (Shopee)' : 'Funil'}
+                {config.criterio === 'pedido_feito' ? 'Pedido Feito (Shopee)'
+                  : config.criterio === 'produto_pago' ? 'Produto Pago (Shopee)'
+                  : 'Funil'}
               </span>
             </button>
           </div>
