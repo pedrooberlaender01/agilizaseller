@@ -16,16 +16,14 @@ function parseIsoDateOnly(s: string | undefined): string | null {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s) ? s : null
 }
 
-// Shein painel usa fuso SGT (UTC+8, China). Interpretar datas selecionadas em SGT
-// pra bater com painel Shein oficial. 08/06 00:00 SGT = 07/06 13:00 BRT.
+// Painel Shein Meus Pedidos usa BRT (data local BR). Interpretar em BRT.
 function periodRangeIso(period: Period, customFrom: string | null, customTo: string | null): { from: string; to: string | null } {
   const today = new Date()
   const toIso = today.toISOString()
   if (period === 'custom' && customFrom && customTo) {
-    // Interpretar data como SGT: 08/06 vira 08/06 00:00:00+08 (= 07/06 16:00 UTC)
-    const f = new Date(customFrom + 'T00:00:00+08:00')
-    // Fim do dia SGT: 08/07 vira 09/07 00:00:00+08 (exclusivo)
-    const t = new Date(customTo + 'T00:00:00+08:00')
+    // Interpretar data em BRT: 08/06 vira 08/06 00:00:00-03 (fim exclusivo 09/07)
+    const f = new Date(customFrom + 'T00:00:00-03:00')
+    const t = new Date(customTo + 'T00:00:00-03:00')
     t.setDate(t.getDate() + 1)
     return { from: f.toISOString(), to: t.toISOString() }
   }
