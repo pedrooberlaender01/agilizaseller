@@ -3,6 +3,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import type { Period } from '@/components/metrics-chart'
 import { FinanceiroView, type FinDailyRow, type PaymentMixRow } from './financeiro-view'
+import type { AffiliateEntry } from '@/app/actions/mercadolivre'
 
 export const revalidate = 60
 
@@ -85,14 +86,32 @@ export default async function MercadoLivreFinanceiroPage({
   const adsFrom = isCustom ? customFrom! : periodFromIso(period).slice(0, 10)
   const adsTo = isCustom ? customTo! : new Date().toISOString().slice(0, 10)
 
-  const [{ data: finData }, { data: mixData }, { data: freteMlData }, { data: adsData }] = await Promise.all([
+  const [{ data: finData }, { data: mixData }, { data: freteMlData }, { data: adsData }, { data: affData }, { data: affListData }] = await Promise.all([
     supabase.rpc('ml_financeiro_daily', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_payment_mix', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_frete_por_venda', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_ads_total', { p_connection_id: conn.id, p_from: adsFrom, p_to: adsTo }),
+    supabase.rpc('ml_affiliates_periodo', { p_connection_id: conn.id, p_from: adsFrom, p_to: adsTo }),
+    supabase.rpc('ml_affiliates_list', { p_connection_id: conn.id }),
   ])
   const freteMl = Number(freteMlData) || 0
   const adsCost = Number(adsData) || 0
+
+  const aff = ((affData ?? []) as Array<{ cost: number | string; vendas: number | string; unidades: number | string; afiliados: number }>)[0]
+  const afiliadoCost = Number(aff?.cost) || 0
+  const afiliadoVendas = Number(aff?.vendas) || 0
+  const afiliadoUnidades = Number(aff?.unidades) || 0
+  const afiliadoCount = aff?.afiliados ?? 0
+
+  const affiliateEntries: AffiliateEntry[] = ((affListData ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    id: String(r.id),
+    date_from: String(r.date_from),
+    date_to: String(r.date_to),
+    affiliates_count: Number(r.affiliates_count) || 0,
+    sold_amount: Number(r.sold_amount) || 0,
+    sold_units: Number(r.sold_units) || 0,
+    estimated_cost: Number(r.estimated_cost) || 0,
+  }))
 
   const rows: FinDailyRow[] = ((finData ?? []) as RpcRow[]).map((r) => ({
     date: r.date,
@@ -115,6 +134,13 @@ export default async function MercadoLivreFinanceiroPage({
       paymentMix={paymentMix}
       freteMl={freteMl}
       adsCost={adsCost}
+      afiliadoCost={afiliadoCost}
+      afiliadoVendas={afiliadoVendas}
+      afiliadoUnidades={afiliadoUnidades}
+      afiliadoCount={afiliadoCount}
+      affiliateEntries={affiliateEntries}
+      defaultFrom={adsFrom}
+      defaultTo={adsTo}
       period={period}
       customFrom={isCustom ? customFrom : null}
       customTo={isCustom ? customTo : null}

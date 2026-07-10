@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type {
   MlOrder,
@@ -11,6 +12,85 @@ import type {
 } from '@/types'
 
 const ML_MARKETPLACE = 'mercado_livre'
+
+export type AffiliateInput = {
+  id?: string // presente = edição de um registro existente
+  from: string // 'YYYY-MM-DD'
+  to: string // 'YYYY-MM-DD'
+  affiliatesCount: number
+  soldAmount: number
+  soldUnits: number
+  estimatedCost: number
+}
+
+export type AffiliateEntry = {
+  id: string
+  date_from: string
+  date_to: string
+  affiliates_count: number
+  sold_amount: number
+  sold_units: number
+  estimated_cost: number
+}
+
+/**
+ * Lançamento manual dos dados de afiliados do ML (não há API — vem do Seller Central).
+ * Grava um registro (período + totais). Com `id`, edita o registro existente.
+ * O card do financeiro agrega os registros por sobreposição proporcional ao filtro (RPC ml_affiliates_periodo).
+ */
+export async function saveMlAffiliateData(input: AffiliateInput): Promise<{ ok: boolean; error?: string }> {
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateRe.test(input.from) || !dateRe.test(input.to)) return { ok: false, error: 'Datas inválidas' }
+  if (input.from > input.to) return { ok: false, error: 'Início depois do fim' }
+  const nums = [input.affiliatesCount, input.soldAmount, input.soldUnits, input.estimatedCost]
+  if (!nums.every((n) => Number.isFinite(n) && n >= 0)) return { ok: false, error: 'Valores inválidos' }
+
+  const supabase = await createClient()
+  const { data: conn } = await supabase
+    .from('marketplace_connections')
+    .select('id')
+    .eq('marketplace', ML_MARKETPLACE)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+  if (!conn) return { ok: false, error: 'Sem conexão Mercado Livre ativa' }
+
+  const row = {
+    connection_id: conn.id,
+    date_from: input.from,
+    date_to: input.to,
+    affiliates_count: Math.round(input.affiliatesCount),
+    sold_amount: input.soldAmount,
+    sold_units: Math.round(input.soldUnits),
+    estimated_cost: input.estimatedCost,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error } = input.id
+    ? await supabase.from('ml_affiliates_entries').update(row).eq('id', input.id).eq('connection_id', conn.id)
+    : await supabase.from('ml_affiliates_entries').insert(row)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/mercado-livre/financeiro')
+  return { ok: true }
+}
+
+/** Remove um registro de afiliados. */
+export async function deleteMlAffiliateEntry(id: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: conn } = await supabase
+    .from('marketplace_connections')
+    .select('id')
+    .eq('marketplace', ML_MARKETPLACE)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+  if (!conn) return { ok: false, error: 'Sem conexão Mercado Livre ativa' }
+
+  const { error } = await supabase.from('ml_affiliates_entries').delete().eq('id', id).eq('connection_id', conn.id)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/mercado-livre/financeiro')
+  return { ok: true }
+}
 
 /** Resolve a conexão Mercado Livre ativa (igual ao padrão Shopee). */
 async function resolveConnectionId(
