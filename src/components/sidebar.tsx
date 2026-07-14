@@ -77,6 +77,18 @@ const baseNav: NavItem[] = [
       { href: '/shein/saude', label: 'Saúde', icon: 'monitor_heart' },
     ],
   },
+  {
+    label: 'TikTok Shop',
+    icon: 'storefront',
+    brand: 'tiktok_shop',
+    basePath: '/tiktok',
+    children: [
+      { href: '/tiktok/metricas', label: 'Métricas', icon: 'monitoring' },
+      { href: '/tiktok/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
+      { href: '/tiktok/produtos', label: 'Produtos', icon: 'inventory_2' },
+      { href: '/tiktok/financeiro', label: 'Financeiro', icon: 'payments' },
+    ],
+  },
   { href: '/alertas', label: 'Alertas', icon: 'notifications_active' },
 ]
 
