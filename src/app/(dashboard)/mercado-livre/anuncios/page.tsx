@@ -48,6 +48,7 @@ export default async function MercadoLivreAnunciosPage() {
       'id, external_id, seller_sku, title, category_id, price, available_quantity, sold_quantity, listing_type_id, status, permalink, thumbnail',
     )
     .eq('connection_id', conn.id)
+    .neq('status', 'closed') // encerrados no ML somem da listagem (espelha "Gestão de anúncios")
     .order('sold_quantity', { ascending: false })
     .limit(1000)
 

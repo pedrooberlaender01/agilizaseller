@@ -2,24 +2,32 @@ import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import { EnviosView, type Period, type ShipmentRow } from './envios-view'
-import { statusesForCategory, type Category } from './status-map'
+import { type Category } from './status-map'
 
 const PAGE_SIZE = 50
 
 function parsePeriod(raw: string | undefined): Period {
-  return raw === '7d' || raw === '90d' ? raw : '30d'
+  if (raw === '7d' || raw === 'all' || raw === 'custom') return raw
+  return '30d'
 }
 
 function parseCategory(raw: string | undefined): Category | 'all' {
-  if (raw === 'in_transit' || raw === 'delivered' || raw === 'problem' || raw === 'pending') return raw
+  if (raw === 'in_transit' || raw === 'delivered' || raw === 'problem' || raw === 'pending' || raw === 'cancelled') return raw
   return 'all'
 }
 
-function periodCutoffIso(period: Period): string {
-  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+function isoDate(s: string | undefined): string | null {
+  return s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null
+}
+
+// Bounds de created_at pra listagem (os cards são por status atual, sem filtro de data).
+function listingBounds(period: Period, from: string | null, to: string | null): { gte: string | null; lte: string | null } {
+  if (period === 'custom' && from && to) return { gte: `${from}T00:00:00.000Z`, lte: `${to}T23:59:59.999Z` }
+  if (period === 'all') return { gte: null, lte: null }
+  const days = period === '7d' ? 7 : 30
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return d.toISOString()
+  return { gte: d.toISOString(), lte: null }
 }
 
 function NoConnectionState() {
@@ -49,10 +57,14 @@ function NoConnectionState() {
 export default async function ShopeeEnviosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; period?: string; q?: string; page?: string }>
+  searchParams: Promise<{ status?: string; period?: string; from?: string; to?: string; q?: string; page?: string }>
 }) {
   const sp = await searchParams
-  const period = parsePeriod(sp.period)
+  const rawPeriod = parsePeriod(sp.period)
+  const from = isoDate(sp.from)
+  const to = isoDate(sp.to)
+  // custom sem range válido cai pra 30d
+  const period: Period = rawPeriod === 'custom' && !(from && to) ? '30d' : rawPeriod
   const activeCategory = parseCategory(sp.status)
   const search = (sp.q ?? '').trim()
   const page = Math.max(1, Number(sp.page ?? 1) || 1)
@@ -68,43 +80,35 @@ export default async function ShopeeEnviosPage({
 
   if (!conn) return <NoConnectionState />
 
-  const cutoff = periodCutoffIso(period)
+  const bounds = listingBounds(period, from, to)
 
-  // Contagem no servidor (count exato) — baixar rows estoura no cap 1000 do Supabase.
-  // GET com limit(1) em vez de head:true — HEAD retorna count nulo no fetch do Next RSC.
-  const categories: Category[] = ['in_transit', 'delivered', 'problem', 'pending']
-  const countResults = await Promise.all(
-    categories.map((cat) =>
-      supabase
-        .from('shopee_shipments')
-        .select('id', { count: 'exact' })
-        .eq('connection_id', conn.id)
-        .gte('created_at', cutoff)
-        .in('logistics_status', statusesForCategory(cat))
-        .limit(1)
-        .then((r) => r.count ?? 0),
-    ),
-  )
+  // Cards contam PEDIDOS por order_status (mesma fonte das abas "Meus Pedidos" da Shopee =
+  // get_order_list), sem filtro de data — espelha a aba exatamente. O período/busca abaixo
+  // filtra só a listagem detalhada, igual à Shopee (filtro aplica na lista, não na aba).
+  const { data: countRows } = await supabase.rpc('shopee_envios_counts', { p_conn: conn.id })
   const counts: Record<Category, number> = {
-    in_transit: countResults[0],
-    delivered: countResults[1],
-    problem: countResults[2],
-    pending: countResults[3],
+    in_transit: 0,
+    delivered: 0,
+    problem: 0,
+    pending: 0,
+    cancelled: 0,
+  }
+  for (const row of (countRows ?? []) as { categoria: string; total: number }[]) {
+    if (row.categoria in counts) counts[row.categoria as Category] = Number(row.total)
   }
 
   const offset = (page - 1) * PAGE_SIZE
   let query = supabase
-    .from('shopee_shipments')
-    .select(
-      '*, shopee_orders(buyer_username, date_created, total_amount)',
-      { count: 'exact' },
-    )
+    .from('shopee_shipments_active')
+    .select('*', { count: 'exact' })
     .eq('connection_id', conn.id)
-    .gte('created_at', cutoff)
+    .neq('categoria', 'excluded')
+
+  if (bounds.gte) query = query.gte('created_at', bounds.gte)
+  if (bounds.lte) query = query.lte('created_at', bounds.lte)
 
   if (activeCategory !== 'all') {
-    const statuses = statusesForCategory(activeCategory)
-    if (statuses.length > 0) query = query.in('logistics_status', statuses)
+    query = query.eq('categoria', activeCategory)
   }
 
   if (search) {
@@ -116,16 +120,31 @@ export default async function ShopeeEnviosPage({
     .order('synced_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  const totalAcrossAll = countResults.reduce((a, n) => a + n, 0)
+  const totalAcrossAll = Object.values(counts).reduce((a, n) => a + n, 0)
+
+  // View traz campos do pedido flat (order_*) — remonta o shape shopee_orders que a view espera.
+  const shipments = (data ?? []).map((r) => {
+    const row = r as Record<string, unknown>
+    return {
+      ...row,
+      shopee_orders: {
+        buyer_username: row.order_buyer_username ?? null,
+        date_created: row.order_date_created ?? null,
+        total_amount: row.order_total_amount ?? 0,
+      },
+    }
+  }) as unknown as ShipmentRow[]
 
   return (
     <EnviosView
-      shipments={(data ?? []) as ShipmentRow[]}
+      shipments={shipments}
       totalCount={count ?? 0}
       page={page}
       counts={counts}
       activeCategory={activeCategory}
       period={period}
+      from={from}
+      to={to}
       search={search}
       hasAnyShipments={totalAcrossAll > 0}
     />

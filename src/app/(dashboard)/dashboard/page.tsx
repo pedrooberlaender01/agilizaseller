@@ -3,7 +3,7 @@ import { TopBar } from '@/components/top-bar'
 import { RevenueChart } from '@/components/revenue-chart'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
-import { PeriodFilter, type Period } from './period-filter'
+import { PeriodFilter, type Period } from '@/components/period-filter'
 
 export const revalidate = 60
 

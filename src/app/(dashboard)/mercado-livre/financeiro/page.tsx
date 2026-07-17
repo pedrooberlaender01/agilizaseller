@@ -86,16 +86,23 @@ export default async function MercadoLivreFinanceiroPage({
   const adsFrom = isCustom ? customFrom! : periodFromIso(period).slice(0, 10)
   const adsTo = isCustom ? customTo! : new Date().toISOString().slice(0, 10)
 
-  const [{ data: finData }, { data: mixData }, { data: freteMlData }, { data: adsData }, { data: affData }, { data: affListData }] = await Promise.all([
+  const [{ data: finData }, { data: mixData }, { data: adsData }, { data: affData }, { data: affListData }, { data: billingData }] = await Promise.all([
     supabase.rpc('ml_financeiro_daily', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_payment_mix', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
-    supabase.rpc('ml_frete_por_venda', { p_connection_id: conn.id, p_from: pFrom, p_to: pTo }),
     supabase.rpc('ml_ads_total', { p_connection_id: conn.id, p_from: adsFrom, p_to: adsTo }),
     supabase.rpc('ml_affiliates_periodo', { p_connection_id: conn.id, p_from: adsFrom, p_to: adsTo }),
     supabase.rpc('ml_affiliates_list', { p_connection_id: conn.id }),
+    supabase.rpc('ml_billing_resumo_all', { p_conn: conn.id }),
   ])
-  const freteMl = Number(freteMlData) || 0
   const adsCost = Number(adsData) || 0
+
+  const billingAll = (billingData ?? []) as Array<{ period_key: string; date_from: string; date_to: string; period_status: string; categoria: string; valor: number | string }>
+  const bp = new Map<string, { key: string; from: string; to: string; status: string; rows: { categoria: string; valor: number }[] }>()
+  for (const r of billingAll) {
+    if (!bp.has(r.period_key)) bp.set(r.period_key, { key: r.period_key, from: r.date_from, to: r.date_to, status: r.period_status, rows: [] })
+    bp.get(r.period_key)!.rows.push({ categoria: r.categoria, valor: Number(r.valor) || 0 })
+  }
+  const billingPeriods = Array.from(bp.values()).map((p) => ({ ...p, total: p.rows.reduce((a, x) => a + x.valor, 0) }))
 
   const aff = ((affData ?? []) as Array<{ cost: number | string; vendas: number | string; unidades: number | string; afiliados: number }>)[0]
   const afiliadoCost = Number(aff?.cost) || 0
@@ -132,13 +139,13 @@ export default async function MercadoLivreFinanceiroPage({
     <FinanceiroView
       rows={rows}
       paymentMix={paymentMix}
-      freteMl={freteMl}
       adsCost={adsCost}
       afiliadoCost={afiliadoCost}
       afiliadoVendas={afiliadoVendas}
       afiliadoUnidades={afiliadoUnidades}
       afiliadoCount={afiliadoCount}
       affiliateEntries={affiliateEntries}
+      billingPeriods={billingPeriods}
       defaultFrom={adsFrom}
       defaultTo={adsTo}
       period={period}

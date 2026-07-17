@@ -77,8 +77,8 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; o
     title: 'Repasse (Líquido)',
     oQueE: 'Valor líquido REAL que cai na conta do vendedor = Preço Total - Comissão - Service Charge. É o "estimatedGrossIncome" do payload.',
     origem: 'Campo `estimatedGrossIncome` order-level do raw Shein, somado por pedido. Shein ZERA este campo quando o pedido é reembolsado → repasse de reembolsado conta como 0 (dinheiro devolvido).',
-    onde: 'Painel Shein → Meus Pedidos → coluna "Receita estimada de mercadorias".',
-    difere: 'Validado via CSV export pedido-a-pedido: 1.503 pedidos batem ao centavo. Reembolsados aparecem zerados (igual painel). Diferença residual vs CSV antigo = snapshot desatualizado (nosso raw é mais fresco).',
+    onde: 'Painel Shein → Meus Pedidos → linha de resumo "Valor total resumido da receita estimada".',
+    difere: 'Validado via CSV pedido-a-pedido: taxa e preço batem ao centavo. Repasse fica ~0,6% ABAIXO do painel de propósito. Motivo: usamos o campo oficial da Shein, que zera o repasse assim que o reembolso ABRE. O painel só zera quando o reembolso FECHA — então ele ainda conta reembolsos em processamento como receita. DECISÃO: manter o nosso (mais conservador e mais fresco) — não conta dinheiro que provavelmente será devolvido. O gap é só timing de reembolso em curso (flutua diariamente), não erro. Não é replicável ao centavo pois a API Shein não expõe o campo `refundStatus` (concluído vs pendente).',
   },
   '% Taxa / Repasse': {
     title: '% Taxa / Repasse',

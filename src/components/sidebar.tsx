@@ -86,6 +86,8 @@ const baseNav: NavItem[] = [
       { href: '/tiktok/metricas', label: 'Métricas', icon: 'monitoring' },
       { href: '/tiktok/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
       { href: '/tiktok/produtos', label: 'Produtos', icon: 'inventory_2' },
+      { href: '/tiktok/envios', label: 'Envios', icon: 'local_shipping' },
+      { href: '/tiktok/devolucoes', label: 'Devoluções', icon: 'keyboard_return' },
       { href: '/tiktok/financeiro', label: 'Financeiro', icon: 'payments' },
     ],
   },

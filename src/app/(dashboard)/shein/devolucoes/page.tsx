@@ -93,6 +93,13 @@ export default async function SheinDevolucoesPage({
     .eq('connection_id', conn.id)
     .eq('return_order_status', 3)
 
+  // Fechada(1) + Aguardando entrega(7) + Trânsito armazém(8) = em processo / finalizadas fora dos cards principais.
+  const { count: fechadasCount } = await supabase
+    .from('shein_returns')
+    .select('*', { count: 'exact', head: true })
+    .eq('connection_id', conn.id)
+    .in('return_order_status', [1, 7, 8])
+
   return (
     <DevolucoesView
       returns={(data ?? []) as ReturnRow[]}
@@ -108,6 +115,7 @@ export default async function SheinDevolucoesPage({
         recebidas: recebidasCount ?? 0,
         concluidas: concluidasCount ?? 0,
         canceladas: canceladasCount ?? 0,
+        emProcesso: fechadasCount ?? 0,
       }}
       nickname={conn.nickname}
     />

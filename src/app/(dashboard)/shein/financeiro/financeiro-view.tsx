@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
@@ -70,6 +70,7 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
 export function FinanceiroView({
   rows,
   totalCount,
+  periodTotals,
   page,
   period,
   customFrom,
@@ -79,6 +80,7 @@ export function FinanceiroView({
 }: {
   rows: SettlementRow[]
   totalCount: number
+  periodTotals: { gross: number; fee: number; commission: number; service: number; estimated: number; net: number }
   page: number
   period: Period
   customFrom: string | null
@@ -148,20 +150,8 @@ export function FinanceiroView({
     }, false)
   }
 
-  const totals = useMemo(() => {
-    return rows.reduce(
-      (acc, r) => {
-        acc.gross += Number(r.gross_amount ?? r.amount ?? 0)
-        acc.fee += Number(r.fee ?? 0)
-        acc.commission += Number(r.commission ?? 0)
-        acc.service += Number(r.service_charge ?? 0)
-        acc.estimated += Number(r.estimated_income ?? 0)
-        acc.net += Number(r.net_amount ?? 0)
-        return acc
-      },
-      { gross: 0, fee: 0, commission: 0, service: 0, estimated: 0, net: 0 },
-    )
-  }, [rows])
+  // Totais do PERÍODO inteiro (RPC agregada), não só página atual.
+  const totals = periodTotals
   const taxaPct = totals.gross > 0 ? (totals.fee / totals.gross) * 100 : 0
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -175,7 +165,7 @@ export function FinanceiroView({
             <h2 className="text-h2 font-semibold text-white">Liquidações</h2>
             {nickname && <p className="mt-1 text-xs text-slate-400">Conexão: {nickname}</p>}
             <div className="mt-3 inline-flex gap-2 rounded-lg border border-zinc-800 bg-[#050507] p-1 text-xs">
-              <span className="rounded bg-white/10 px-3 py-1 font-medium text-white">Settlements</span>
+              <span className="rounded bg-white/10 px-3 py-1 font-medium text-white">Extrato</span>
               <Link
                 href="/shein/financeiro/saques"
                 className="rounded px-3 py-1 font-medium text-slate-400 transition-colors hover:text-white"
