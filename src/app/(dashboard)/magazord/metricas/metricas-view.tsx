@@ -967,9 +967,11 @@ export function MetricasView({
                     : 'border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-zinc-50',
                 )}
               >
-                <option value="all">Todas origens</option>
+                <option value="all" disabled>Todas origens (em breve)</option>
                 {Object.entries(origemLabel).map(([k, label]) => (
-                  <option key={k} value={k}>{label}</option>
+                  <option key={k} value={k} disabled={k !== '1'}>
+                    {label}{k !== '1' ? ' (em breve)' : ''}
+                  </option>
                 ))}
               </select>
               <Icon name="expand_more" size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />

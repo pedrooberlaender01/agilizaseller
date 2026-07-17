@@ -425,9 +425,11 @@ export function PedidosView({
                 origem != null ? 'border-tertiary/50 text-tertiary' : 'border-white/10 text-white hover:border-tertiary',
               )}
             >
-              <option value="all">Todas origens</option>
+              <option value="all" disabled>Todas origens (em breve)</option>
               {Object.entries(origemLabel).map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
+                <option key={k} value={k} disabled={k !== '1'}>
+                  {label}{k !== '1' ? ' (em breve)' : ''}
+                </option>
               ))}
             </select>
             {marketplaces.length > 0 && (
