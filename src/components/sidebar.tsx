@@ -55,6 +55,7 @@ const baseNav: NavItem[] = [
     basePath: '/magazord',
     children: [
       { href: '/magazord/metricas', label: 'Métricas', icon: 'monitoring' },
+      { href: '/magazord/financeiro', label: 'Financeiro', icon: 'account_balance_wallet' },
       { href: '/magazord/pedidos', label: 'Pedidos', icon: 'shopping_cart' },
       { href: '/magazord/produtos', label: 'Produtos', icon: 'inventory_2' },
       { href: '/magazord/estoque', label: 'Estoque', icon: 'warehouse' },
