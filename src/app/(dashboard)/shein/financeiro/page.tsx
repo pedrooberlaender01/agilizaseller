@@ -86,14 +86,40 @@ export default async function SheinFinanceiroPage({
     query = query.or(`settlement_id.ilike.%${term}%,order_no.ilike.%${term}%`)
   }
 
-  const { data, count } = await query
-    .order('settlement_date', { ascending: false, nullsFirst: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+  const [{ data, count }, totalsResult] = await Promise.all([
+    query
+      .order('settlement_date', { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('shein_settlements_totals', {
+      p_connection_id: conn.id,
+      p_from: from,
+      p_to: to,
+      p_search: search || null,
+    }),
+  ])
+
+  const tr = ((totalsResult.data ?? []) as Array<{
+    gross: number | string | null
+    fee: number | string | null
+    commission: number | string | null
+    service: number | string | null
+    estimated: number | string | null
+    net: number | string | null
+  }>)[0]
+  const periodTotals = {
+    gross: Number(tr?.gross ?? 0),
+    fee: Number(tr?.fee ?? 0),
+    commission: Number(tr?.commission ?? 0),
+    service: Number(tr?.service ?? 0),
+    estimated: Number(tr?.estimated ?? 0),
+    net: Number(tr?.net ?? 0),
+  }
 
   return (
     <FinanceiroView
       rows={(data ?? []) as SettlementRow[]}
       totalCount={count ?? 0}
+      periodTotals={periodTotals}
       page={page}
       period={period}
       customFrom={period === 'custom' ? customFrom : null}

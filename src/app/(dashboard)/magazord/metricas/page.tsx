@@ -68,8 +68,9 @@ export default async function MagazordMetricasPage({
   const customTo = parseIsoDateOnly(sp.to)
   // Multi-select: lista separada por virgula (vazio = todos)
   const mktList = (sp.mkt ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-  const origemRaw = (sp.origem ?? '').trim()
-  const origemFilter = origemRaw && /^[0-9]+$/.test(origemRaw) ? Number(origemRaw) : null
+  // Default = Site (origem=1). Sentinel 'all' = todas origens (distingue de "nao setado").
+  const origemRaw = (sp.origem ?? '1').trim()
+  const origemFilter = origemRaw === 'all' ? null : /^[0-9]+$/.test(origemRaw) ? Number(origemRaw) : 1
 
   let cutoff: Date
   let endAt: Date | null = null
@@ -107,8 +108,10 @@ export default async function MagazordMetricasPage({
     )
   }
 
-  const [{ data: rawRows, error }, { data: mktRows }, { data: freteRaw }] = await Promise.all([
-    supabase.rpc('mag_faturamento_realtime', {
+  // Base "Consulta de Pedidos": valorTotal + pedidos + 2 fretes, por data_hora,
+  // situacao faturavel (4,5,6,7,8,12). Mesma base que o painel Magazord usa na tela de pedidos.
+  const [{ data: pedidoRaw, error }, { data: mktRows }] = await Promise.all([
+    supabase.rpc('mag_pedidos_realtime', {
       p_connection_id: conn.id,
       p_cutoff: isoBRTStart(cutoff),
       p_end: endAt ? isoBRTEnd(endAt) : null,
@@ -116,43 +119,41 @@ export default async function MagazordMetricasPage({
       p_origem: origemFilter,
     }),
     supabase.rpc('mag_marketplaces', { p_connection_id: conn.id }),
-    // Frete = valorFreteTransportadora, pedidos situacao 4,5,6,7,8,12, por data do pedido
-    supabase.rpc('mag_frete_realtime', {
-      p_connection_id: conn.id,
-      p_cutoff: isoBRTStart(cutoff),
-      p_end: endAt ? isoBRTEnd(endAt) : null,
-      p_marketplace: null,
-      p_origem: origemFilter,
-    }),
   ])
 
-  const freteRows = ((freteRaw ?? []) as Array<{ marketplace_origem: string | null; frete: number | string }>).map(
-    (r) => ({ marketplace_origem: r.marketplace_origem, frete: Number(r.frete) }),
-  )
-
-  // Eixo = data de faturamento (emissão NF venda). Mapeia p/ shape da view.
-  const rows = ((rawRows ?? []) as Array<{
-    connection_id: string
+  const pedidoRows = (pedidoRaw ?? []) as Array<{
     date: string
     origem: number | null
     marketplace_origem: string | null
-    orders_faturados: number
-    faturamento: number | string
-    total_frete: number | string
-    ticket_medio: number | string
-  }>).map((r) => ({
-    connection_id: r.connection_id,
-    date: r.date,
-    origem: r.origem,
+    orders: number | string
+    valor_total: number | string
+    frete_total: number | string
+    frete_transportadora: number | string
+  }>
+
+  const freteRows = pedidoRows.map((r) => ({
     marketplace_origem: r.marketplace_origem,
-    orders_count: r.orders_faturados,
-    orders_cancelled_count: 0,
-    orders_aprovados_count: r.orders_faturados,
-    gross_revenue: r.faturamento,
-    total_frete: r.total_frete,
-    total_desconto: 0,
-    ticket_medio: r.ticket_medio,
+    frete_total: Number(r.frete_total),
+    frete_transportadora: Number(r.frete_transportadora),
   }))
+
+  const rows = pedidoRows.map((r) => {
+    const orders = Number(r.orders)
+    const revenue = Number(r.valor_total)
+    return {
+      connection_id: conn.id,
+      date: r.date,
+      origem: r.origem,
+      marketplace_origem: r.marketplace_origem,
+      orders_count: orders,
+      orders_cancelled_count: 0,
+      orders_aprovados_count: orders,
+      gross_revenue: revenue,
+      total_frete: Number(r.frete_transportadora),
+      total_desconto: 0,
+      ticket_medio: orders > 0 ? revenue / orders : 0,
+    }
+  })
 
   if (error) {
     return (

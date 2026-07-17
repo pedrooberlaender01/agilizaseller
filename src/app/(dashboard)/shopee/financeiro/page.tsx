@@ -3,7 +3,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import type { ShopeeWalletTransaction, ShopeePayout, ShopeeDailyMetric } from '@/types'
 import type { Period } from '@/components/metrics-chart'
-import { FinanceiroView } from './financeiro-view'
+import { FinanceiroView, type IncomeSummary } from './financeiro-view'
 
 export const revalidate = 60
 
@@ -17,6 +17,10 @@ function parsePeriod(raw: string | undefined): FinanceiroPeriod {
 function parseIsoDateOnly(s: string | undefined): string | null {
   if (!s) return null
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s) ? s : null
+}
+
+function ymdLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function periodRange(period: FinanceiroPeriod, customFrom: string | null, customTo: string | null): { from: string; to: string } {
@@ -116,8 +120,10 @@ export default async function ShopeeFinanceiroPage({
     return all
   }
 
-  const fromDate = from.slice(0, 10)
-  const toDate = to.slice(0, 10)
+  // Datas-calendário LOCAIS. NÃO derivar de toISOString(): 23:59:59 em BRT (UTC-3) vira o dia
+  // SEGUINTE em UTC, e o filtro passava a incluir 1 dia a mais (renda de 15/07 trazia 16/07 junto).
+  const fromDate = period === 'custom' && customFrom ? customFrom : ymdLocal(new Date(from))
+  const toDate = period === 'custom' && customTo ? customTo : ymdLocal(new Date(to))
 
   // Aba Taxas: todos os pedidos do período com breakdown de taxas (paginado server → completo)
   async function fetchOrderFeesList() {
@@ -183,7 +189,7 @@ export default async function ShopeeFinanceiroPage({
     })
   }
 
-  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList, { data: incomeOverview }] = await Promise.all([
+  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList, { data: incomeOverview }, incomeSummaryRes] = await Promise.all([
     fetchAllTransactions(),
     supabase
       .from('shopee_payouts')
@@ -211,7 +217,9 @@ export default async function ShopeeFinanceiroPage({
       .select('pending_amount_cents, released_amount_cents, snapshot_at')
       .eq('connection_id', connId)
       .maybeSingle(),
+    supabase.rpc('shopee_income_summary', { p_conn: conn.id, p_from: fromDate, p_to: toDate }),
   ])
+  const incomeSummary = (incomeSummaryRes?.data ?? null) as IncomeSummary
 
   return (
     <FinanceiroView
@@ -231,6 +239,7 @@ export default async function ShopeeFinanceiroPage({
       orderFeesList={orderFeesList}
       pendingAmountCents={incomeOverview?.pending_amount_cents ?? null}
       releasedAmountCents={incomeOverview?.released_amount_cents ?? null}
+      incomeSummary={incomeSummary}
     />
   )
 }

@@ -11,9 +11,21 @@ import type { ShopeeShipment, ShopeeShipmentHistory } from '@/types'
 const PAGE_SIZE = 50
 
 import { categoryOf, type Category } from './status-map'
+import { InfoButton, InfoModal, type KpiInfo } from '@/components/kpi-info'
+import { PeriodFilter, type Period } from '@/components/period-filter'
+export type { Period }
+
+const ENVIOS_INFO: KpiInfo = {
+  title: 'Envios',
+  oQueE:
+    'Os cards contam PEDIDOS pelo status oficial da Shopee, espelhando as abas de "Meus Pedidos": A Enviar (aguardando despacho), Enviado (despachado / aguardando confirmação de recebimento), Concluído (finalizado), Problema (devolução) e Cancelado. O período/busca abaixo filtram apenas a listagem detalhada — os cards refletem o estado atual completo da loja, igual às abas da Shopee.',
+  origem:
+    'Endpoint get_order_list da Shopee Open Platform — a mesma fonte que alimenta as abas de "Meus Pedidos" no Seller Centre. Um workflow reconcilia o status oficial de todos os pedidos a cada 30 min, então o painel pode estar até ~30 min atrás do tempo real.',
+  difere:
+    '• Números são VIVOS: a loja recebe pedidos o tempo todo, então "A Enviar" e "Enviado" sobem e descem minuto a minuto. Comparar painel e Shopee no mesmo instante.\n• "Enviado": a UI da Shopee às vezes mostra um total maior que a própria API dela (get_order_list) retorna — o painel segue a API, que é a fonte oficial programática.\n• "Cancelado" conta TODOS os pedidos cancelados; a aba "Retornos e Pedidos cancelados" da Shopee mostra só devoluções ativas.\n• O número de "A Enviar" da Shopee = Em aberto + Concluído (NF pronta), ambos ainda a despachar.',
+}
 
 export type { Category }
-export type Period = '7d' | '30d' | '90d'
 
 export type ShipmentRow = ShopeeShipment & {
   shopee_orders: {
@@ -38,6 +50,10 @@ const statusMeta: Record<string, { label: string; cls: string; tone: 'blue' | 'g
   LOGISTICS_PICKUP_REQUESTED: { label: 'Coleta agendada',     cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/20',     tone: 'yellow' },
   LOGISTICS_READY:            { label: 'Pronto p/ retirada',  cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/20',     tone: 'yellow' },
   LOGISTICS_INVOICE_PENDING:  { label: 'NF pendente',         cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/30',     tone: 'yellow' },
+  LOGISTICS_PENDING:          { label: 'Pendente',            cls: 'bg-zinc-800/60 text-zinc-50 border border-zinc-50/20',     tone: 'yellow' },
+  LOGISTICS_CANCELLED:        { label: 'Cancelado',           cls: 'bg-zinc-800/50 text-zinc-500 border border-zinc-600/30',   tone: 'yellow' },
+  LOGISTICS_INVALID:          { label: 'Inválido',            cls: 'bg-error/15 text-error border border-error/25',           tone: 'red' },
+  LOGISTICS_LOST:             { label: 'Extraviado',          cls: 'bg-error/15 text-error border border-error/25',           tone: 'red' },
 }
 
 function statusLabel(status: string | null): string {
@@ -79,6 +95,7 @@ const categoryColor: Record<Category, { text: string; ring: string; bg: string; 
   delivered:  { text: 'text-secondary', ring: 'ring-secondary/40', bg: 'bg-secondary/10', border: 'border-secondary/50' },
   problem:    { text: 'text-error',     ring: 'ring-error/40',     bg: 'bg-error/10',     border: 'border-error/50' },
   pending:    { text: 'text-zinc-50',  ring: 'ring-tertiary/40',  bg: 'bg-zinc-800/60',  border: 'border-zinc-50/50' },
+  cancelled:  { text: 'text-zinc-500', ring: 'ring-zinc-600/40',  bg: 'bg-zinc-800/40',  border: 'border-zinc-600/50' },
 }
 
 function useDebounced<T>(value: T, delay: number): T {
@@ -287,6 +304,8 @@ export function EnviosView({
   counts,
   activeCategory,
   period,
+  from,
+  to,
   search,
   hasAnyShipments,
 }: {
@@ -296,6 +315,8 @@ export function EnviosView({
   counts: Record<Category, number>
   activeCategory: Category | 'all'
   period: Period
+  from: string | null
+  to: string | null
   search: string
   hasAnyShipments: boolean
 }) {
@@ -305,6 +326,7 @@ export function EnviosView({
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebounced(searchInput, 300)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [info, setInfo] = useState<KpiInfo | null>(null)
 
   function pushParams(updater: (next: URLSearchParams) => void, resetPage = true) {
     const next = new URLSearchParams(sp.toString())
@@ -338,10 +360,6 @@ export function EnviosView({
     })
   }
 
-  function setPeriod(p: Period) {
-    pushParams((next) => next.set('period', p))
-  }
-
   function setPage(n: number) {
     pushParams((next) => {
       if (n <= 1) next.delete('page')
@@ -358,15 +376,23 @@ export function EnviosView({
       <main className={cn('relative flex flex-1 overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
         <div className={cn('mx-auto flex w-full flex-1 flex-col gap-gutter', selected ? 'max-w-[calc(100%-400px)] pr-gutter' : 'max-w-7xl')}>
           <div>
-            <h2 className="mb-sm text-h1 font-semibold text-on-background">Envios</h2>
-            <p className="text-sm text-zinc-400">Rastreie e gerencie envios da loja Shopee.</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-h1 font-semibold text-on-background">Envios</h2>
+              <InfoButton show label="Envios" onOpen={() => setInfo(ENVIOS_INFO)} />
+            </div>
+            <p className="mt-sm text-sm text-zinc-400">Rastreie e gerencie envios da loja Shopee.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-gutter md:grid-cols-4">
-            <SummaryCard label="Em Trânsito" value={counts.in_transit} icon="local_shipping"   category="in_transit" active={activeCategory === 'in_transit'} onClick={() => setCategory('in_transit')} />
-            <SummaryCard label="Entregues"   value={counts.delivered}  icon="check_circle"     category="delivered"  active={activeCategory === 'delivered'}  onClick={() => setCategory('delivered')} />
+          <div className="flex items-center justify-end">
+            <PeriodFilter period={period} from={from} to={to} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-gutter md:grid-cols-5">
+            <SummaryCard label="Enviado"    value={counts.in_transit} icon="local_shipping"   category="in_transit" active={activeCategory === 'in_transit'} onClick={() => setCategory('in_transit')} />
+            <SummaryCard label="Concluído"  value={counts.delivered}  icon="check_circle"     category="delivered"  active={activeCategory === 'delivered'}  onClick={() => setCategory('delivered')} />
             <SummaryCard label="Problema"    value={counts.problem}    icon="error"            category="problem"    active={activeCategory === 'problem'}    onClick={() => setCategory('problem')} />
-            <SummaryCard label="Pendente"    value={counts.pending}    icon="pending_actions"  category="pending"    active={activeCategory === 'pending'}    onClick={() => setCategory('pending')} />
+            <SummaryCard label="A Enviar"    value={counts.pending}    icon="pending_actions"  category="pending"    active={activeCategory === 'pending'}    onClick={() => setCategory('pending')} />
+            <SummaryCard label="Cancelado"   value={counts.cancelled}  icon="cancel"           category="cancelled"  active={activeCategory === 'cancelled'}  onClick={() => setCategory('cancelled')} />
           </div>
 
           <div className="border border-zinc-800 bg-zinc-900/40 flex flex-wrap items-center justify-between gap-md rounded-xl p-md">
@@ -386,25 +412,12 @@ export function EnviosView({
                 className="h-10 appearance-none rounded-lg border border-zinc-800 bg-[#050507] px-md py-sm pr-xl text-sm text-on-background outline-none transition-all focus:ring-1 focus:ring-tertiary"
               >
                 <option value="all">Todos os Status</option>
-                <option value="in_transit">Em Trânsito</option>
-                <option value="delivered">Entregue</option>
+                <option value="in_transit">Enviado</option>
+                <option value="delivered">Concluído</option>
                 <option value="problem">Problema</option>
-                <option value="pending">Pendente</option>
+                <option value="pending">A Enviar</option>
+                <option value="cancelled">Cancelado</option>
               </select>
-              <div className="flex h-10 rounded-lg border border-zinc-800 bg-[#050507] p-1">
-                {(['7d', '30d', '90d'] as Period[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={cn(
-                      'rounded px-3 text-xs font-medium transition-colors',
-                      period === p ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
-                    )}
-                  >
-                    {p === '7d' ? '7d' : p === '30d' ? '30d' : '90d'}
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="flex items-center gap-md">
               <span className="text-xs text-zinc-400">{totalCount} envios</span>
@@ -502,6 +515,7 @@ export function EnviosView({
 
         {selected && <ShipmentDrawer shipment={selected} onClose={() => setSelectedId(null)} />}
       </main>
+      <InfoModal info={info} onClose={() => setInfo(null)} />
     </>
   )
 }

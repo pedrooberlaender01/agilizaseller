@@ -58,7 +58,114 @@ const MONTH_NAMES = [
 ]
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
-function StatCard({ label, value, icon, tone = 'default' }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue' }) {
+// Explicação de cada card (?). Foco: o que é, de onde vem o valor, quais filtros.
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; difere?: string }> = {
+  'Faturamento': {
+    title: 'Faturamento',
+    oQueE: 'Soma do valor total dos pedidos do período — o mesmo "Valor Total" da tela Consulta de Pedidos do Magazord.',
+    origem: 'Valor total de cada pedido, somado por data do pedido (fuso Brasil). Conta só pedidos nas situações faturáveis: Aprovado, Aprovado e Integrado, Nota Fiscal Emitida, Transporte, Entregue e Aprovado (análise de pagamento). Respeita os filtros de Origem e Marketplace do topo (padrão: Site).',
+    difere: 'Bate 100% com o Magazord quando você aplica os MESMOS filtros na tela de pedidos: mesma origem, mesmas situações e mesmo período. É uma métrica viva — conforme os pedidos avançam de situação ao longo do dia, o valor sobe. Não é o "Total Faturado" (esse é baseado na nota fiscal emitida, que depende de alguém emitir).',
+  },
+  'Pedidos Faturados': {
+    title: 'Pedidos Faturados',
+    oQueE: 'Quantidade de pedidos do período nas situações faturáveis.',
+    origem: 'Contagem dos pedidos por data do pedido, nas 6 situações faturáveis (Aprovado → Entregue). Respeita os filtros de Origem e Marketplace.',
+    difere: 'Bate com a contagem da tela de Consulta de Pedidos usando os mesmos filtros.',
+  },
+  'Ticket Médio': {
+    title: 'Ticket Médio',
+    oQueE: 'Valor médio por pedido: Faturamento dividido pela quantidade de pedidos do período.',
+    origem: 'Calculado: Faturamento ÷ Pedidos (mesmas fontes dos dois cards).',
+  },
+  'Frete Total': {
+    title: 'Frete Total',
+    oQueE: 'Frete pago pelo cliente nos pedidos do período — a coluna "Valor Frete" do Magazord.',
+    origem: 'Campo "valor frete" de cada pedido, somado por data do pedido, nas situações faturáveis. Respeita Origem/Marketplace. Em pedido de marketplace costuma ser zero (o cliente paga o frete dentro do marketplace, não no pedido).',
+    difere: 'Bate com a coluna "Valor Frete" da tela de pedidos com os mesmos filtros.',
+  },
+  'Frete Transportadora': {
+    title: 'Frete Transportadora',
+    oQueE: 'Custo de frete que o vendedor paga à transportadora — a coluna "Valor Frete Transportadora" do Magazord.',
+    origem: 'Somado das remessas de cada pedido, por data do pedido, nas situações faturáveis. Respeita Origem/Marketplace. É uma métrica viva: o valor da transportadora é ajustado conforme a remessa é postada e entregue.',
+    difere: 'Bate com a coluna "Valor Frete Transportadora" da tela de pedidos com os mesmos filtros.',
+  },
+}
+
+function InfoButton({ label, onOpen }: { label: string; onOpen: (k: string) => void }) {
+  if (!KPI_INFO[label]) return null
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpen(label) }}
+      className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-white/10 hover:text-zinc-300"
+      aria-label={`Explicação: ${label}`}
+    >
+      <Icon name="help" size={14} />
+    </button>
+  )
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-zinc-50">
+            <Icon name="help" size={18} className="text-primary" />
+            {info.title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Fechar"
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-4 px-5 py-4">
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400/90">Como comparar com o painel Magazord</div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, icon, tone = 'default', onInfo }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue'; onInfo?: (label: string) => void }) {
   const toneCls = {
     default: 'text-white',
     green: 'text-secondary',
@@ -68,7 +175,10 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-slate-400">
+          {label}
+          {onInfo && <InfoButton label={label} onOpen={onInfo} />}
+        </span>
         <Icon name={icon} size={18} className="text-outline" />
       </div>
       <p className={cn('mt-2 text-3xl font-semibold', toneCls)}>{value}</p>
@@ -710,12 +820,13 @@ export function MetricasView({
   marketplaces: string[]
   origem: number | null
   nickname?: string | null
-  freteRows: Array<{ marketplace_origem: string | null; frete: number }>
+  freteRows: Array<{ marketplace_origem: string | null; frete_total: number; frete_transportadora: number }>
 }) {
   const router = useRouter()
   const sp = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [infoKey, setInfoKey] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -775,8 +886,8 @@ export function MetricasView({
 
   function setOrigem(value: string) {
     const next = new URLSearchParams(sp.toString())
-    if (!value) next.delete('origem')
-    else next.set('origem', value)
+    // 'all' = todas origens (sentinel); default sem param = Site
+    next.set('origem', value)
     startTransition(() => {
       router.replace(`?${next.toString()}`, { scroll: false })
     })
@@ -807,14 +918,13 @@ export function MetricasView({
 
   const ticketMedio = totals.orders > 0 ? totals.revenue / totals.orders : 0
 
-  // Frete transportadora (eixo data do pedido, situacao 4-8,12) - filtra por marketplace selecionado
-  const freteTotal = useMemo(
-    () =>
-      freteRows
-        .filter((r) => !mkt.length || mkt.includes(r.marketplace_origem ?? '__unknown__'))
-        .reduce((acc, r) => acc + r.frete, 0),
+  // Frete (por data do pedido, filtro origem/marketplace) - Magazord tem 2: total e transportadora
+  const freteFiltered = useMemo(
+    () => freteRows.filter((r) => !mkt.length || mkt.includes(r.marketplace_origem ?? '__unknown__')),
     [freteRows, mkt],
   )
+  const freteTotal = useMemo(() => freteFiltered.reduce((a, r) => a + r.frete_total, 0), [freteFiltered])
+  const freteTransp = useMemo(() => freteFiltered.reduce((a, r) => a + r.frete_transportadora, 0), [freteFiltered])
 
   const customLabel = period === 'custom' && from && to
     ? `${fmtDateBRShort(from)} – ${fmtDateBRShort(to)}`
@@ -827,6 +937,7 @@ export function MetricasView({
   return (
     <>
       <TopBar title="Métricas — Magazord" />
+      <InfoModal infoKey={infoKey} onClose={() => setInfoKey(null)} />
       <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -847,7 +958,7 @@ export function MetricasView({
             <div className="relative">
               <Icon name="public" size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
               <select
-                value={origem ?? ''}
+                value={origem == null ? 'all' : String(origem)}
                 onChange={(e) => setOrigem(e.target.value)}
                 className={cn(
                   'h-[34px] appearance-none rounded-lg border bg-zinc-900/60 py-1.5 pl-8 pr-8 text-xs font-medium outline-none transition-colors',
@@ -856,7 +967,7 @@ export function MetricasView({
                     : 'border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-zinc-50',
                 )}
               >
-                <option value="">Todas origens</option>
+                <option value="all">Todas origens</option>
                 {Object.entries(origemLabel).map(([k, label]) => (
                   <option key={k} value={k}>{label}</option>
                 ))}
@@ -907,17 +1018,18 @@ export function MetricasView({
           </div>
         </div>
 
-        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Faturamento" value={fmtBrl(totals.revenue)} icon="payments" tone="green" />
-          <StatCard label="Pedidos Faturados" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" />
-          <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" />
-          <StatCard label="Total Frete" value={fmtBrl(freteTotal)} icon="local_shipping" />
+        <div className="mb-lg grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <StatCard label="Faturamento" value={fmtBrl(totals.revenue)} icon="payments" tone="green" onInfo={setInfoKey} />
+          <StatCard label="Pedidos Faturados" value={fmtInt(totals.orders)} icon="shopping_cart" tone="blue" onInfo={setInfoKey} />
+          <StatCard label="Ticket Médio" value={fmtBrl(ticketMedio)} icon="trending_up" onInfo={setInfoKey} />
+          <StatCard label="Frete Total" value={fmtBrl(freteTotal)} icon="local_shipping" onInfo={setInfoKey} />
+          <StatCard label="Frete Transportadora" value={fmtBrl(freteTransp)} icon="local_shipping" onInfo={setInfoKey} />
         </div>
 
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="border-b border-white/10 px-6 py-4">
             <h3 className="text-sm font-semibold text-white">Faturamento diário — {sectionTitle}</h3>
-            <p className="mt-1 text-xs text-slate-400">Pedidos por data de faturamento (emissão da NF de venda), direto de mag_orders.</p>
+            <p className="mt-1 text-xs text-slate-400">Valor total dos pedidos por data do pedido, situação faturável (aprovado → entregue).</p>
           </div>
           <table className="w-full border-collapse text-left">
             <thead>

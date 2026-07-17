@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils'
 const periods: { key: Period; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
   { key: 'mes', label: 'Este Mês' },
 ]
 
@@ -294,13 +293,13 @@ function AffiliateModal({
 export function FinanceiroView({
   rows,
   paymentMix,
-  freteMl,
   adsCost,
   afiliadoCost,
   afiliadoVendas,
   afiliadoUnidades,
   afiliadoCount,
   affiliateEntries,
+  billingPeriods,
   defaultFrom,
   defaultTo,
   period,
@@ -309,13 +308,13 @@ export function FinanceiroView({
 }: {
   rows: FinDailyRow[]
   paymentMix: PaymentMixRow[]
-  freteMl: number
   adsCost: number
   afiliadoCost: number
   afiliadoVendas: number
   afiliadoUnidades: number
   afiliadoCount: number
   affiliateEntries: AffiliateEntry[]
+  billingPeriods: { key: string; from: string; to: string; status: string; rows: { categoria: string; valor: number }[]; total: number }[]
   defaultFrom: string
   defaultTo: string
   period: Period
@@ -328,6 +327,10 @@ export function FinanceiroView({
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [openInfo, setOpenInfo] = useState<string | null>(null)
   const [affiliateModal, setAffiliateModal] = useState(false)
+  const [billingKey, setBillingKey] = useState(billingPeriods[0]?.key ?? '')
+  const [billingOpen, setBillingOpen] = useState(false)
+  const billingRef = useRef<HTMLDivElement>(null)
+  const selBilling = billingPeriods.find((b) => b.key === billingKey) ?? billingPeriods[0] ?? null
   const popoverRef = useRef<HTMLDivElement>(null)
   const infoRef = useRef<HTMLDivElement>(null)
   const isCustom = !!(customFrom && customTo)
@@ -349,6 +352,15 @@ export function FinanceiroView({
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [openInfo])
+
+  useEffect(() => {
+    if (!billingOpen) return
+    function onDoc(e: MouseEvent) {
+      if (billingRef.current && !billingRef.current.contains(e.target as Node)) setBillingOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [billingOpen])
 
   function setPeriod(p: Period) {
     const sp = new URLSearchParams(searchParams.toString())
@@ -372,10 +384,7 @@ export function FinanceiroView({
   const frete = rows.reduce((a, r) => a + r.frete, 0)
   const cupom = rows.reduce((a, r) => a + r.cupom, 0)
   const ads = adsCost
-  const afiliados = afiliadoCost
-  const afiliadosVendas = afiliadoVendas
-  const afiliadosUnidades = Math.round(afiliadoUnidades)
-  const margem = faturamento - comissao - frete - ads - afiliados
+  const margem = faturamento - comissao - frete - ads
   const comissaoPct = faturamento > 0 ? (comissao / faturamento) * 100 : 0
   const pedidos = rows.reduce((a, r) => a + r.pedidos, 0)
   const ticket = pedidos > 0 ? faturamento / pedidos : 0
@@ -385,26 +394,38 @@ export function FinanceiroView({
   type MacroSub = { label: string; value: string; sign: string; tone: string; sub: string; info: ReactNode; action?: 'affiliate' }
   const macroSubs: MacroSub[] = [
     {
-      label: 'Faturamento', value: fmtBrlInt(faturamento), sign: '', tone: 'text-on-surface', sub: 'vendas brutas (data fechamento)',
+      label: 'Faturamento', value: fmtBrlInt(faturamento), sign: '', tone: 'text-on-surface', sub: 'vendas concluídas (líquido)',
       info: (
-        <>Soma de todas as vendas do período por <span className="text-on-surface">data de fechamento</span> (inclui as que foram canceladas depois). É o mesmo critério do <span className="text-on-surface">&quot;Vendas brutas&quot;</span> do painel do Mercado Livre.</>
+        <>Vendas do período <span className="text-on-surface">já sem canceladas e devolvidas</span>, por data de fechamento. Bate com o <span className="text-on-surface">&quot;Total de vendas concluídas&quot;</span> do painel do ML (Vendas brutas − Devoluções e cancelamentos). A visão bruta fica na aba Métricas.</>
       ),
     },
     {
       label: 'Comissão', value: fmtBrlInt(comissao), sign: '−', tone: 'text-error', sub: `${comissaoPct.toFixed(1).replace('.', ',')}% do faturamento`,
       info: (
-        <>Tarifa de venda que o ML cobra (~12,5%), somada de cada item dos pedidos (campo <span className="font-mono">sale_fee</span>). É o quanto o Mercado Livre desconta por vender.</>
+        <>
+          Tarifa de venda que o ML cobra, somada item a item das vendas concluídas. Já vem <span className="text-on-surface">líquida do desconto por campanha comercial</span>.
+          <br /><br />
+          <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → passe o mouse na barra <span className="text-on-surface">&quot;Tarifas de venda totais&quot;</span> (o hover mostra o R$; a barra só mostra %).
+          <br /><br />
+          Validado em 16/06–15/07: ML <span className="font-mono text-on-surface">R$ 51.854</span> vs nosso <span className="font-mono text-on-surface">R$ 51.637</span> — <span className="text-secondary">0,4%</span>, que é arredondamento (R$ 0,04 por pedido em ~5 mil pedidos).
+        </>
       ),
     },
     {
       label: 'Frete', value: fmtBrlInt(frete), sign: '−', tone: 'text-error', sub: 'custo real (1× por envio)',
       info: (
         <>
-          <span className="text-on-surface">Frete = tarifa total de envio − o que o comprador pagou</span> (<span className="font-mono">list_cost − cost</span> do ML), somado <span className="text-on-surface">1× por envio</span>.
+          <span className="text-on-surface">Frete = tarifa total de envio − o que o comprador pagou</span>, somado <span className="text-on-surface">1× por envio</span> (um carrinho com vários itens = um frete só).
           <br /><br />
-          É o <span className="text-secondary">custo real</span>: um carrinho (pack) com vários itens = <span className="text-on-surface">um frete só</span>. Aqui: <span className="font-mono text-on-surface">R$ {fmtBrl(frete)}</span>.
+          <span className="font-semibold text-on-background">Conferido contra a fonte de cobrança do ML:</span> comparamos <span className="text-on-surface">todos os 4.715 envios</span> do período com o que o Mercado Livre efetivamente cobrou em cada um. Bateu em <span className="text-secondary">100% deles</span>, centavo a centavo.
           <br /><br />
-          No Excel/painel do ML o mesmo período aparece como <span className="font-mono text-error">R$ {fmtBrl(freteMl)}</span> — mas lá o frete é contado <span className="text-error">por venda</span>, repetindo em cada item do pack. Isso <span className="text-error">infla</span> o valor. Por isso mostramos o real, que é menor e correto.
+          <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → passe o mouse na barra <span className="text-on-surface">&quot;Tarifas de envio&quot;</span>.
+          <br /><br />
+          Essa tela mostra <span className="text-on-surface">~0,8% a mais</span> que aqui (ex: 64.960 lá vs 64.429 aqui). Não é erro: ela decompõe bruto e desconto por uma régua própria, que <span className="text-on-surface">diverge da própria API de cobrança do ML</span>. Preferimos bater com o que é cobrado de verdade a imitar a tela.
+          <br /><br />
+          Diferente da comissão, o frete é contado <span className="text-on-surface">bruto</span>: inclui cancelados e devolvidos, porque o envio <span className="text-on-surface">aconteceu e foi cobrado igual</span> (confirmado envio a envio). O ML só estorna a comissão, não o frete.
+          <br /><br />
+          Não inclui os <span className="text-tertiary">Custos do Mercado Envios Full</span> (armazenagem) — é uma linha separada no ML e ainda não está no painel.
         </>
       ),
     },
@@ -414,35 +435,43 @@ export function FinanceiroView({
         <>Gasto em <span className="text-on-surface">Product Ads</span> (Mercado Ads) no período, somado do campo <span className="font-mono">cost</span> de todas as campanhas. Sincronizado 1×/dia da API de publicidade do ML.</>
       ),
     },
-    {
-      label: 'Afiliados', value: fmtBrlInt(afiliados), sign: '−', tone: 'text-error', sub: 'lançamento manual', action: 'affiliate',
-      info: (
-        <>
-          Comissão paga aos afiliados (<span className="text-on-surface">custo estimado</span>). O ML <span className="text-error">não expõe por API</span> — é <span className="text-on-surface">lançamento manual</span> por período (botão Preencher). O card agrega os registros na proporção do período filtrado.
-          <br /><br />
-          No período: <span className="font-mono text-on-surface">R$ {fmtBrl(afiliadosVendas)}</span> em vendas via afiliados · <span className="font-mono text-on-surface">{afiliadosUnidades}</span> unidades · <span className="font-mono text-on-surface">{afiliadoCount}</span> afiliados.
-        </>
-      ),
-    },
   ]
 
   type Kpi = { label: string; value: string; icon: string; tone: string; info: ReactNode }
   const secondaryKpis: Kpi[] = [
     {
       label: 'Pedidos', value: fmtNum(pedidos), icon: 'receipt_long', tone: 'text-on-surface',
-      info: <>Quantidade de pedidos no período (por data de fechamento). Packs contam como pedidos separados conforme o ML agrupa.</>,
+      info: (
+        <>
+          Pedidos <span className="text-on-surface">concluídos</span> no período (por data de fechamento), já sem cancelados e devolvidos. Packs contam como pedidos separados conforme o ML agrupa.
+          <br /><br />
+          A contagem <span className="text-on-surface">bruta</span> (com cancelados) fica na aba <span className="text-on-surface">Métricas</span>.
+        </>
+      ),
     },
     {
       label: 'Ticket Médio', value: `R$ ${fmtBrl(ticket)}`, icon: 'sell', tone: 'text-on-surface',
-      info: <>Faturamento ÷ pedidos. Valor médio de cada pedido no período.</>,
+      info: <>Faturamento ÷ pedidos, ambos já líquidos (sem cancelados e devolvidos). Valor médio de cada venda concluída no período.</>,
     },
     {
       label: '% Comissão', value: `${comissaoPct.toFixed(1).replace('.', ',')}%`, icon: 'pie_chart', tone: 'text-on-surface',
-      info: <>Comissão ÷ Faturamento. Percentual médio que o Mercado Livre fica de cada venda.</>,
+      info: (
+        <>
+          Comissão ÷ Faturamento — percentual médio que o Mercado Livre fica de cada venda.
+          <br /><br />
+          <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → a barra <span className="text-on-surface">&quot;Tarifas de venda totais&quot;</span> mostra o % sobre o total de tarifas (base diferente). Pra comparar direto, divida o R$ das tarifas de venda pelo <span className="text-on-surface">&quot;Total de vendas concluídas&quot;</span>.
+        </>
+      ),
     },
     {
       label: 'Cupons / Descontos', value: `R$ ${fmtBrl(cupom)}`, icon: 'redeem', tone: 'text-tertiary',
-      info: <>Descontos aplicados nas vendas (cupons do ML ou do vendedor), do campo <span className="font-mono">coupon_amount</span> dos pagamentos. Reduz o que o comprador efetivamente pagou.</>,
+      info: (
+        <>
+          Descontos aplicados nas vendas concluídas (cupons do ML ou do vendedor). Reduz o que o comprador efetivamente pagou.
+          <br /><br />
+          <span className="text-tertiary">Ainda não conferido contra o painel do ML</span> — o ML não expõe um total de cupons por período nas telas de métricas.
+        </>
+      ),
     },
   ]
 
@@ -489,7 +518,7 @@ export function FinanceiroView({
               <span className="text-primary-fixed">Mercado Livre</span>
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-              Margem de contribuição (bruto − comissão − frete − ads). Repasse líquido e custos de produto pendentes.
+              Vendas concluídas (sem canceladas e devolvidas) − comissão − frete − ads. A visão bruta fica em Métricas.
             </p>
           </div>
 
@@ -566,10 +595,10 @@ export function FinanceiroView({
                 {margem >= 0 ? '+' : ''}{fmtBrlInt(margem)}
               </div>
               <div className="text-xs text-on-surface-variant mt-1">
-                Faturamento − Comissão − Frete − Ads − Afiliados · margem {margemPct.toFixed(1).replace('.', ',')}%
+                Faturamento − Comissão − Frete − Ads · margem {margemPct.toFixed(1).replace('.', ',')}%
               </div>
               <div className="text-[10px] text-on-surface-variant/70 mt-1">
-                Não inclui custo do produto (COGS) nem o repasse líquido do Mercado Pago (antecipação, parcelamento).
+                Base: vendas concluídas. Não inclui custo do produto (COGS), outras tarifas do ML nem o repasse do Mercado Pago (antecipação, parcelamento) — por isso fica acima do &quot;Você recebeu&quot; do ML.
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full lg:w-auto lg:min-w-[600px]">
@@ -649,6 +678,78 @@ export function FinanceiroView({
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {selBilling && (
+          <div className="bg-surface-container/70 backdrop-blur-[16px] rounded-xl border border-white/10 p-lg flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-h3 text-h3 text-on-surface">Tarifas oficiais — Faturamento ML</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Direto do relatório de faturamento do ML (100% oficial, bate com <span className="text-on-surface">Faturamento → Tarifas e pagamentos</span>). Mensal por ciclo de fatura.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div ref={billingRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setBillingOpen((v) => !v)}
+                    className={cn(
+                      'flex h-[38px] items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors',
+                      billingOpen
+                        ? 'border-primary/40 bg-primary-container/60 text-on-primary-container'
+                        : 'border-white/10 bg-surface-container-high/50 text-on-surface hover:bg-surface-container-high/80',
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_month</span>
+                    <span>{fmtDateBRShort(selBilling.from)} – {fmtDateBRShort(selBilling.to)}</span>
+                    {selBilling.status !== 'CLOSED' && (
+                      <span className="rounded-full bg-tertiary/15 px-1.5 py-0.5 text-[10px] font-semibold text-tertiary">aberto</span>
+                    )}
+                    <span className={cn('material-symbols-outlined text-[16px] text-on-surface-variant transition-transform', billingOpen && 'rotate-180')}>expand_more</span>
+                  </button>
+                  {billingOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-[240px] overflow-hidden rounded-xl border border-white/10 bg-[#0d1117] p-1 shadow-2xl shadow-black/60">
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Ciclo de fatura</div>
+                      {billingPeriods.map((b) => {
+                        const active = b.key === billingKey
+                        return (
+                          <button
+                            key={b.key}
+                            type="button"
+                            onClick={() => { setBillingKey(b.key); setBillingOpen(false) }}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                              active ? 'bg-primary-container/70 text-on-primary-container' : 'text-on-surface hover:bg-white/5',
+                            )}
+                          >
+                            <span>{fmtDateBRShort(b.from)} – {fmtDateBRShort(b.to)}</span>
+                            {b.status !== 'CLOSED'
+                              ? <span className="text-[10px] font-semibold text-tertiary">aberto</span>
+                              : active && <span className="material-symbols-outlined text-[16px]">check</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total de tarifas</div>
+                  <div className="font-h3 text-h3 text-error">R$ {fmtBrl(selBilling.total)}</div>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+              {selBilling.rows.map((b) => (
+                <div key={b.categoria} className="rounded-lg border border-white/10 bg-surface-container/60 p-md">
+                  <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold">{b.categoria}</div>
+                  <div className={cn('font-h3 text-h3 mt-1', b.valor < 0 ? 'text-secondary' : 'text-error')}>
+                    {b.valor < 0 ? '+' : '−'}R$ {fmtBrl(Math.abs(b.valor))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

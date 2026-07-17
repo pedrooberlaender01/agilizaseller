@@ -35,12 +35,6 @@ function fmtDate(iso: string | null): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
-function fmtDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 function StatCard({ label, value, sub, icon, tone = 'default' }: { label: string; value: string; sub?: string; icon: string; tone?: 'default' | 'green' | 'blue' | 'yellow' }) {
   const toneCls = tone === 'green' ? 'text-emerald-300' : tone === 'blue' ? 'text-blue-300' : tone === 'yellow' ? 'text-amber-300' : 'text-white'
   return (
@@ -116,7 +110,7 @@ export default async function SheinSaquesPage() {
               href="/shein/financeiro"
               className="rounded px-3 py-1 font-medium text-slate-400 transition-colors hover:text-white"
             >
-              Settlements
+              Extrato
             </Link>
             <span className="rounded bg-white/10 px-3 py-1 font-medium text-white">Saques</span>
           </div>
@@ -164,13 +158,13 @@ export default async function SheinSaquesPage() {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-zinc-800">
+                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Data pagamento</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">ID Saque</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Período</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Receitas</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Despesas</th>
                 <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-400">Líquido</th>
                 <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Status</th>
-                <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-400">Pago em</th>
               </tr>
             </thead>
             <tbody className="text-sm text-slate-200">
@@ -199,6 +193,16 @@ export default async function SheinSaquesPage() {
                       key={p.report_no}
                       className="border-b border-zinc-800/60 transition-colors hover:bg-white/5"
                     >
+                      <td className="px-6 py-4">
+                        {p.status === 'pago' ? (
+                          <span className="text-sm font-semibold text-white">{fmtDate(p.completed_pay_time)}</span>
+                        ) : (
+                          <span className="text-sm font-medium text-amber-300">
+                            {fmtDate(p.estimate_pay_time)}
+                            <span className="ml-1 text-[10px] font-normal text-amber-400/70">prev.</span>
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <Link
                           href={`/shein/financeiro/saques/${encodeURIComponent(p.report_no)}`}
@@ -233,7 +237,6 @@ export default async function SheinSaquesPage() {
                           {statusLabel}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-slate-400">{fmtDateTime(p.completed_pay_time)}</td>
                     </tr>
                   )
                 })

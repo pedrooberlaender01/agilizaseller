@@ -4,11 +4,12 @@ import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'r
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
+import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 50
 
-type Period = '7d' | '30d' | '90d'
+type Period = '7d' | '30d' | 'custom'
 
 export type OrderItem = {
   codigo_produto: string | null
@@ -86,6 +87,14 @@ const toneClasses: Record<SitTone, string> = {
 }
 
 const allSituacoes = Object.keys(situacaoMeta).map(Number).sort((a, b) => a - b)
+
+const origemLabel: Record<number, string> = {
+  1: 'Site',
+  2: 'Marketplace Próprio',
+  3: 'Marketplace',
+  4: 'Manual',
+  5: 'PDV',
+}
 
 const fmtBrl = (n: number | string | null | undefined) => {
   const v = Number(n ?? 0)
@@ -196,12 +205,77 @@ function SituacaoMultiselect({
   )
 }
 
+const PEDIDOS_INFO = {
+  title: 'Pedidos — Magazord',
+  oQueE: 'Lista dos pedidos do período com os mesmos filtros do painel. Padrão: origem Site + situações faturáveis (Aprovado, Aprovado e Integrado, NF Emitida, Transporte, Entregue, Aprovado Análise Pagto.).',
+  origem: 'Pedidos por data do pedido (fuso Brasil), respeitando Situação, Origem, Marketplace e a busca. O "Total" de cada linha é o valor total do pedido.',
+  compara: 'A contagem no topo bate com o card "Pedidos Faturados" da tela de Métricas quando você usa os mesmos filtros (mesma origem, mesmas situações, mesmo período).',
+}
+
+function PedidosInfoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-zinc-50">
+            <Icon name="help" size={18} className="text-primary" />
+            {PEDIDOS_INFO.title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Fechar"
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-4 px-5 py-4">
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{PEDIDOS_INFO.oQueE}</p>
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{PEDIDOS_INFO.origem}</p>
+          </div>
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400/90">Como comparar</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{PEDIDOS_INFO.compara}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function PedidosView({
   orders,
   totalCount,
   page,
   period,
+  from,
+  to,
   situacao,
+  origem,
   marketplace,
   search,
   marketplaces,
@@ -210,7 +284,10 @@ export function PedidosView({
   totalCount: number
   page: number
   period: Period
+  from: string | null
+  to: string | null
   situacao: string
+  origem: number | null
   marketplace: string
   search: string
   marketplaces: string[]
@@ -221,6 +298,18 @@ export function PedidosView({
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebounced(searchInput, 300)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [dateOpen, setDateOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const dateRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dateOpen) return
+    function onDoc(e: MouseEvent) {
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) setDateOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [dateOpen])
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -260,13 +349,18 @@ export function PedidosView({
       const cur = new Set(situacaoList)
       if (cur.has(s)) cur.delete(s)
       else cur.add(s)
-      if (cur.size === 0) next.delete('situacao')
+      // vazio = 'all' (todas) — sem param volta pro padrao faturaveis
+      if (cur.size === 0) next.set('situacao', 'all')
       else next.set('situacao', Array.from(cur).join(','))
     })
   }
 
   function clearSituacao() {
-    pushParams((next) => next.delete('situacao'))
+    pushParams((next) => next.set('situacao', 'all'))
+  }
+
+  function setOrigem(v: string) {
+    pushParams((next) => next.set('origem', v))
   }
 
   function setMarketplace(m: string) {
@@ -277,8 +371,25 @@ export function PedidosView({
   }
 
   function setPeriod(p: Period) {
-    pushParams((next) => next.set('period', p))
+    pushParams((next) => {
+      next.set('period', p)
+      next.delete('from')
+      next.delete('to')
+    })
   }
+
+  function applyCustomRange(fromIso: string, toIso: string) {
+    setDateOpen(false)
+    pushParams((next) => {
+      next.set('period', 'custom')
+      next.set('from', fromIso)
+      next.set('to', toIso)
+    })
+  }
+
+  const customLabel = period === 'custom' && from && to
+    ? `${fmtDateBRShort(from)} – ${fmtDateBRShort(to)}`
+    : 'Personalizar'
 
   function setPage(n: number) {
     pushParams((next) => {
@@ -292,6 +403,7 @@ export function PedidosView({
   return (
     <>
       <TopBar title="Pedidos — Magazord" />
+      <PedidosInfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
       <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -305,6 +417,19 @@ export function PedidosView({
               />
             </div>
             <SituacaoMultiselect selected={situacaoSet} onToggle={toggleSituacao} onClear={clearSituacao} />
+            <select
+              value={origem == null ? 'all' : String(origem)}
+              onChange={(e) => setOrigem(e.target.value)}
+              className={cn(
+                'rounded-lg border bg-[#050507] px-3 py-2 text-sm outline-none transition-colors',
+                origem != null ? 'border-tertiary/50 text-tertiary' : 'border-white/10 text-white hover:border-tertiary',
+              )}
+            >
+              <option value="all">Todas origens</option>
+              {Object.entries(origemLabel).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </select>
             {marketplaces.length > 0 && (
               <select
                 value={marketplace}
@@ -318,7 +443,7 @@ export function PedidosView({
               </select>
             )}
             <div className="flex rounded-lg border border-white/10 bg-[#050507] p-1">
-              {(['7d', '30d', '90d'] as Period[]).map((p) => (
+              {(['7d', '30d'] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
@@ -327,15 +452,48 @@ export function PedidosView({
                     period === p ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
                   )}
                 >
-                  {p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : '90 dias'}
+                  {p === '7d' ? '7 dias' : '30 dias'}
                 </button>
               ))}
             </div>
+
+            <div ref={dateRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setDateOpen((v) => !v)}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                  period === 'custom'
+                    ? 'border-tertiary/50 bg-tertiary/10 text-tertiary'
+                    : 'border-white/10 bg-[#050507] text-slate-400 hover:border-tertiary/40 hover:text-white',
+                )}
+              >
+                <Icon name="event" size={14} />
+                <span className={cn(period === 'custom' && 'font-mono tracking-tight')}>{customLabel}</span>
+                <Icon name={dateOpen ? 'expand_less' : 'expand_more'} size={14} className="text-outline" />
+              </button>
+              {dateOpen && (
+                <DateRangePopover
+                  from={from}
+                  to={to}
+                  onApply={applyCustomRange}
+                  onClose={() => setDateOpen(false)}
+                />
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-slate-400">
               {totalCount} {totalCount === 1 ? 'pedido' : 'pedidos'}
             </span>
+            <button
+              type="button"
+              onClick={() => setInfoOpen(true)}
+              className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-white/10 hover:text-zinc-300"
+              aria-label="Explicação: Pedidos"
+            >
+              <Icon name="help" size={14} />
+            </button>
           </div>
         </div>
 

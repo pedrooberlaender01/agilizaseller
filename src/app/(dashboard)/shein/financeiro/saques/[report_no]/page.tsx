@@ -153,7 +153,7 @@ export default async function SaqueDetalhePage({
         <div className="border border-zinc-800 bg-zinc-900/40 mb-lg overflow-hidden rounded-2xl">
           <div className="border-b border-zinc-800 px-6 py-4">
             <h3 className="text-sm font-semibold text-white">
-              Settlements deste saque ({settlements.length})
+              Extrato deste saque ({settlements.length})
             </h3>
           </div>
           <table className="w-full border-collapse text-left">

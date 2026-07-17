@@ -31,12 +31,19 @@ function statusTone(s: string): Tone {
   return 'gray'
 }
 
-function KpiCard({ label, value, tone }: { label: string; value: string; tone?: 'white' | 'green' | 'red' }) {
+function KpiCard({ label, value, tone, soon }: { label: string; value: string; tone?: 'white' | 'green' | 'red'; soon?: boolean }) {
   const color = tone === 'green' ? 'text-secondary' : tone === 'red' ? 'text-error' : 'text-white'
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg">
-      <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={cn('mt-1 text-xl font-semibold', color)}>{value}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+        {soon && (
+          <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-medium text-blue-200">
+            Em breve
+          </span>
+        )}
+      </div>
+      <p className={cn('mt-1 text-xl font-semibold', soon ? 'text-zinc-600' : color)}>{value}</p>
     </div>
   )
 }
@@ -104,6 +111,7 @@ export function MetricasView({
           <KpiCard label="Cancelados" value={fmtInt(kpi.cancelled)} tone="red" />
           <KpiCard label="Taxas TikTok" value={fmtBrl(kpi.taxas)} tone="red" />
           <KpiCard label="Taxa cancelamento" value={`${((kpi.cancelled / (kpi.orders || 1)) * 100).toFixed(1)}%`} />
+          <KpiCard label="Amostras a criadores" value="—" soon />
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row">

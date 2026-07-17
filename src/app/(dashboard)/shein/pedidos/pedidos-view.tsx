@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { mapOrderStatus, statusToneClass } from '@/lib/shein-status'
+import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
 
 const PAGE_SIZE = 50
 
-type Period = '7d' | '30d' | '90d'
+type Period = '7d' | '30d' | '90d' | 'custom'
 
 export type OrderItem = {
   quantity?: number | null
@@ -33,6 +34,7 @@ export type OrderRow = {
   buyer_email: string | null
   order_time: string | null
   payment_time: string | null
+  raw: { estimatedGrossIncome?: string | number | null } | null
   shein_order_items: OrderItem[]
 }
 
@@ -88,8 +90,11 @@ function useDebounced<T>(value: T, delay: number): T {
 export function PedidosView({
   orders,
   totalCount,
+  periodTotals,
   page,
   period,
+  customFrom,
+  customTo,
   status,
   payment,
   shipping,
@@ -98,8 +103,11 @@ export function PedidosView({
 }: {
   orders: OrderRow[]
   totalCount: number
+  periodTotals: { gmv: number; fees: number; estimated: number }
   page: number
   period: Period
+  customFrom: string | null
+  customTo: string | null
   status: string
   payment: string
   shipping: string
@@ -111,6 +119,18 @@ export function PedidosView({
   const [pending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebounced(searchInput, 300)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const datePickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showDatePicker) return
+    function onDown(e: MouseEvent) {
+      if (!datePickerRef.current) return
+      if (!datePickerRef.current.contains(e.target as Node)) setShowDatePicker(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showDatePicker])
 
   function pushParams(updater: (next: URLSearchParams) => void, resetPage = true) {
     const next = new URLSearchParams(sp.toString())
@@ -138,7 +158,22 @@ export function PedidosView({
   }
 
   function setPeriod(p: Period) {
-    pushParams((next) => next.set('period', p))
+    pushParams((next) => {
+      next.set('period', p)
+      if (p !== 'custom') {
+        next.delete('from')
+        next.delete('to')
+      }
+    })
+  }
+
+  function applyCustomRange(f: string, t: string) {
+    pushParams((next) => {
+      next.set('period', 'custom')
+      next.set('from', f)
+      next.set('to', t)
+    })
+    setShowDatePicker(false)
   }
 
   function setPage(n: number) {
@@ -149,22 +184,6 @@ export function PedidosView({
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-
-  const totals = useMemo(() => {
-    return orders.reduce(
-      (acc, o) => {
-        acc.gmv += Number(o.total_amount ?? 0)
-        for (const it of o.shein_order_items ?? []) {
-          acc.fees += Number(it.commission ?? 0) + Number(it.service_charge ?? 0)
-          acc.estimated += Number(it.estimated_income ?? 0)
-        }
-        if (o.order_status?.toLowerCase().includes('cancel')) acc.cancel++
-        else acc.valid++
-        return acc
-      },
-      { gmv: 0, valid: 0, cancel: 0, fees: 0, estimated: 0 },
-    )
-  }, [orders])
 
   return (
     <>
@@ -207,19 +226,43 @@ export function PedidosView({
                 </button>
               ))}
             </div>
+            <div className="relative" ref={datePickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowDatePicker((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#050507] px-3 py-1.5 text-xs font-medium transition-colors',
+                  period === 'custom' ? 'border-zinc-50/40 text-white' : 'text-slate-400 hover:text-white',
+                )}
+              >
+                <span className="material-symbols-outlined text-[14px]">event</span>
+                {period === 'custom' && customFrom && customTo
+                  ? `${fmtDateBRShort(customFrom)} → ${fmtDateBRShort(customTo)}`
+                  : 'Personalizado'}
+              </button>
+              {showDatePicker && (
+                <DateRangePopover
+                  from={customFrom}
+                  to={customTo}
+                  onApply={applyCustomRange}
+                  onClose={() => setShowDatePicker(false)}
+                  align="left"
+                />
+              )}
+            </div>
           </div>
           <div className="flex gap-6 text-right">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">GMV período</p>
-              <p className="text-sm font-semibold text-white">{fmtBrl(totals.gmv)}</p>
+              <p className="text-sm font-semibold text-white">{fmtBrl(periodTotals.gmv)}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">Taxas Shein</p>
-              <p className="text-sm font-semibold text-error">{fmtBrl(totals.fees)}</p>
+              <p className="text-sm font-semibold text-error">{fmtBrl(periodTotals.fees)}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">Líquido est.</p>
-              <p className="text-sm font-semibold text-secondary">{fmtBrl(totals.estimated)}</p>
+              <p className="text-sm font-semibold text-secondary">{fmtBrl(periodTotals.estimated)}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">Pedidos</p>
@@ -252,11 +295,11 @@ export function PedidosView({
                 orders.map((o) => {
                   const items = o.shein_order_items ?? []
                   let fees = 0
-                  let estimated = 0
                   for (const it of items) {
                     fees += Number(it.commission ?? 0) + Number(it.service_charge ?? 0)
-                    estimated += Number(it.estimated_income ?? 0)
                   }
+                  // Líquido = raw estimatedGrossIncome order-level (Shein zera em reembolso), igual card Repasse.
+                  const estimated = Number(o.raw?.estimatedGrossIncome ?? 0)
                   const firstProduct = items[0]?.product_name?.trim() || '—'
                   const extraCount = items.length > 1 ? ` +${items.length - 1}` : ''
                   return (

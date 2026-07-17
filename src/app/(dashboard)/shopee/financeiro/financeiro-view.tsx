@@ -14,6 +14,12 @@ export type FinanceiroPeriod = Period | 'custom'
 
 // Explicação de cada KPI/aba do Financeiro — o que é, de onde vem, por que pode diferir da Shopee.
 const FIN_INFO: Record<string, KpiInfo> = {
+  'Lucro Bruto Macro': {
+    title: 'Lucro Bruto Macro — Shopee',
+    oQueE: 'O que sobra das vendas depois dos custos que a Shopee cobra e do que foi gasto em anúncios, no período do filtro:\n\nVendas − Comissão − Taxa de Serviço − Frete do vendedor − Ads\n\nA margem ao lado é esse lucro dividido pelas vendas. NÃO desconta custo do produto, impostos nem despesas da operação — por isso é "bruto".',
+    origem: 'Métricas diárias da loja (tabela shopee_daily_metrics), a MESMA fonte da aba Métricas — que já foi validada contra as Informações Gerenciais da Shopee. Vendas = faturamento; Comissão e Taxa de Serviço = valores brutos cobrados por pedido (a líquida aparece no detalhe de cada card); Frete = frete que sai do bolso do vendedor; Ads = gasto consumido nas campanhas do Shopee Ads.',
+    difere: 'É por DATA DA VENDA (métrica diária), não por data de liberação — então NÃO compare com o "Relatório de Renda" da Shopee, que é por liberação. Compare com as Informações Gerenciais no mesmo período.\n\nComissão e Serviço entram BRUTAS no cálculo. Quando a loja participa de campanhas, parte volta como "Ajuste por Participação em Ação Comercial" — esse valor aparece em verde abaixo do total, e a taxa líquida real fica no subtítulo dos cards Comissão/Taxa Serviço.\n\nO dia de hoje ainda está incompleto: use períodos fechados pra comparar.',
+  },
   'Saldo Realizado': {
     title: 'Saldo Realizado',
     oQueE: 'Saldo da carteira Shopee Pay já efetivado — o valor da última transação sincronizada (campo current_balance).',
@@ -28,9 +34,9 @@ const FIN_INFO: Record<string, KpiInfo> = {
   },
   'Repasses (vendas)': {
     title: 'Repasses (vendas)',
-    oQueE: 'Total que a Shopee liberou (repassou) na carteira no período do filtro — escrow de pedidos concluídos.',
-    origem: 'Soma das transações do tipo "Repasse de Venda" (ESCROW_VERIFIED_ADD) do extrato da carteira, no período.',
-    difere: 'Bate com o filtro "Renda do pedido" (Entrada) do extrato Saldo da Carteira da Shopee no mesmo período. Confira sempre com datas idênticas.',
+    oQueE: 'Dinheiro que a Shopee efetivamente liberou para a loja no período: o valor de cada pedido concluído que caiu na carteira, já descontadas todas as taxas.',
+    origem: 'API de renda da Shopee (get_income_detail), pela data em que cada pedido foi liberado — a mesma fonte que a Shopee usa para montar o Relatório de Renda.',
+    difere: 'Reconcilia com a linha "Quantidade Total Liberada" do Relatório de Renda (Finanças → Minha Renda → Exportar), desde que o período seja idêntico dos dois lados. Dois detalhes ao comparar: o card arredonda para reais inteiros, mas o valor com centavos é o mesmo do relatório; e o critério é a data em que a Shopee liberou o dinheiro, não a data do pedido.',
   },
   'Saques Bancários': {
     title: 'Saques Bancários',
@@ -38,11 +44,17 @@ const FIN_INFO: Record<string, KpiInfo> = {
     origem: 'Soma das transações "Saque Solicitado" (WITHDRAWAL_CREATED) do extrato da carteira.',
     difere: 'Bate com o filtro "Saques" (Saída) do extrato Saldo da Carteira. Cada saque também deve cruzar com o extrato bancário (Bradesco **7483).',
   },
-  'Gastos Marketing': {
-    title: 'Gastos Marketing',
-    oQueE: 'Débitos de marketing pagos direto pelo saldo da carteira (programas SPM da Shopee).',
-    origem: 'Soma das transações SPM_DEDUCT + SPM_DEDUCT_DIRECT do extrato da carteira.',
-    difere: 'NÃO é o mesmo que "Gasto em Ads" das Métricas (R$ do card #69) — aquele é o investimento em Shopee Ads; este é o débito de programas de marketing pago via saldo (podem incluir outros custos além de Ads). São fontes e conceitos diferentes.',
+  'Recarga Ads': {
+    title: 'Recarga Ads',
+    oQueE: 'Dinheiro que saiu do saldo da carteira pra abastecer o crédito de Shopee Ads (recargas, quase sempre R$ 1.000/dia automático).',
+    origem: 'Soma das transações SPM_DEDUCT do extrato da carteira.',
+    difere: 'Bate exato com o filtro "Saldo da Carteira - Pagamento" (Saída) do extrato Shopee. NÃO é o mesmo que "Gasto em Ads" das Métricas (#69): aquele é quanto foi CONSUMIDO nas campanhas; este é quanto saiu do saldo pra RECARREGAR o crédito. Recarga maior que consumo = sobra saldo de Ads acumulado.',
+  },
+  'Pagto Empréstimo': {
+    title: 'Pagto Empréstimo',
+    oQueE: 'Parcelas do "Empréstimo para Vendedores" da Shopee pagas no período, debitadas direto do saldo.',
+    origem: 'Transações SPM_DEDUCT_DIRECT do extrato da carteira (transaction_tab_type = seller_loan, descrição "Pagamento do Empréstimo para Vendedores").',
+    difere: 'Bate com o filtro "Empréstimo para Vendedores" (Saída) do extrato Shopee. Antes estava somado por engano no "Gastos Marketing" — separado agora porque é dívida, não marketing.',
   },
   'Total Entradas': {
     title: 'Total Entradas',
@@ -59,12 +71,24 @@ const FIN_INFO: Record<string, KpiInfo> = {
 }
 
 // Explicação dos cards de resumo da aba Taxas (todos do extrato escrow por pedido, validados no card #71).
+export type IncomeSummary = {
+  pedidos: number
+  renda_liberada: number
+  com_pedidos_taxa: number
+  estimados: number
+  comissao_liq: number
+  servico_liq: number
+  dev_facil: number
+  frete_liquido: number
+  produtos_bruto: number
+} | null
+
 const TAXAS_INFO: Record<string, KpiInfo> = {
   'Subtotal dos Produtos': {
     title: 'Subtotal dos Produtos',
     oQueE: 'Preço de venda dos produtos (sem frete, sem cupom) dos pedidos do período.',
     origem: 'Campo order_selling_price do extrato financeiro (escrow) que a Shopee retorna por pedido — mesma fonte da tela Minha Renda.',
-    difere: 'Bate com o "Subtotal dos Produtos" do detalhe de renda por pedido na Shopee. No agregado, só considera pedidos válidos com escrow já sincronizado.',
+    difere: 'Bate com o "Subtotal dos Produtos" do detalhe de renda por pedido na Shopee.\n\nIMPORTANTE no AGREGADO: esta aba conta pedidos por DATA DE CRIAÇÃO. O Relatório de Renda (export) da Shopee conta por DATA DE LIBERAÇÃO. Mesmo período = conjuntos de pedidos DIFERENTES (pedido criado no período pode não ter liberado, e um liberado no período pode ter sido criado antes). Por isso o total do período não bate direto com o export — pra conferir, case por NÚMERO DO PEDIDO, não por total.',
   },
   'Valor do Reembolso': {
     title: 'Valor do Reembolso',
@@ -92,15 +116,15 @@ const TAXAS_INFO: Record<string, KpiInfo> = {
   },
   'Frete pago pelo vendedor': {
     title: 'Frete pago pelo vendedor',
-    oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora − subsídio Shopee − parte paga pelo comprador. Fica perto de zero (sobra vem de discrepância de peso).',
+    oQueE: 'Frete que efetivamente sai do bolso do vendedor: frete real da transportadora − subsídio Shopee − parte paga pelo comprador. Fica perto de zero. Somado COM sinal: pedidos onde a Shopee subsidia mais que o custo entram como crédito (verde, +), igual a Shopee faz.',
     origem: 'Três campos do extrato escrow por pedido (frete real, subsídio Shopee, frete do comprador).',
-    difere: 'Bate com o "Subtotal de Envio" do Relatório de Renda. Validado no card #71 (R$ 193 no mês, confirmado por 2 rotas independentes do relatório).',
+    difere: 'Bate com o "Subtotal de Envio" do Relatório de Renda quando casado por pedido. No agregado do período diverge pelo mesmo motivo das outras taxas (esta aba é por data de CRIAÇÃO, o relatório por data de LIBERAÇÃO) + as discrepâncias de peso (aba "Shipping Fee Discrepancy" do export), onde o frete real cobrado ≠ o esperado.',
   },
   'Renda dos pedidos': {
     title: 'Renda dos pedidos',
     oQueE: 'Valor líquido que sobra por pedido depois de todas as taxas e frete — o que a Shopee vai repassar (escrow).',
     origem: 'Campo escrow_amount do extrato financeiro (escrow) por pedido.',
-    difere: 'Bate com "Renda do pedido" da tela Minha Renda (validado pedido a pedido no card #97). Divergências residuais de centavos = lag da Devolução Fácil na API da Shopee.',
+    difere: 'Pedido a pedido bate exato com "Renda do pedido" da tela Minha Renda (validado no card #97).\n\nNo AGREGADO do período pode divergir ~0,5-1% do Relatório de Renda por 3 motivos: (1) EIXO — esta aba é por data de criação, o relatório por data de liberação, então são conjuntos de pedidos diferentes; (2) pedidos com escrow ESTIMADO (ainda não finalizado pela Shopee), que convergem quando ela libera; (3) AJUSTES pós-liberação (o Summary do relatório os exclui; ficam na aba "Adjustment" do export).',
   },
 }
 
@@ -120,8 +144,8 @@ const typeLabel: Record<string, string> = {
   ESCROW_VERIFIED_MINUS: 'Estorno Repasse',
   WITHDRAWAL_CREATED: 'Saque Solicitado',
   WITHDRAWAL_COMPLETED: 'Saque Concluído',
-  SPM_DEDUCT: 'Marketing Shopee (SPM)',
-  SPM_DEDUCT_DIRECT: 'Marketing Shopee Direto',
+  SPM_DEDUCT: 'Recarga Ads (via saldo)',
+  SPM_DEDUCT_DIRECT: 'Pagamento Empréstimo',
   ADJUSTMENT_CENTER_DEDUCT: 'Ajuste — Débito',
   ADJUSTMENT_CENTER_ADD: 'Ajuste — Crédito',
   ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED: 'Ajuste Pós-Repasse',
@@ -224,6 +248,7 @@ export function FinanceiroView({
   orderFeesList,
   pendingAmountCents,
   releasedAmountCents,
+  incomeSummary,
 }: {
   transactions: ShopeeWalletTransaction[]
   payouts: ShopeePayout[]
@@ -237,6 +262,7 @@ export function FinanceiroView({
   orderFeesList?: OrderFeeRow[] | null
   pendingAmountCents?: number | null
   releasedAmountCents?: number | null
+  incomeSummary?: IncomeSummary | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -306,7 +332,10 @@ export function FinanceiroView({
   const netPeriodo = totalIn + totalOut
   const escrowVendas = transactions.filter(t => t.transaction_type === 'ESCROW_VERIFIED_ADD').reduce((a, t) => a + (Number(t.amount_cents) || 0), 0) / 100
   const totalSaques = transactions.filter(t => t.transaction_type === 'WITHDRAWAL_CREATED').reduce((a, t) => a + Math.abs(Number(t.amount_cents) || 0), 0) / 100
-  const gastosSpm = transactions.filter(t => t.transaction_type?.startsWith('SPM_')).reduce((a, t) => a + Math.abs(Number(t.amount_cents) || 0), 0) / 100
+  // SPM_DEDUCT = recarga de Ads via saldo ("Saldo da Carteira - Pagamento" na Shopee).
+  // SPM_DEDUCT_DIRECT NÃO entra aqui: é "Pagamento do Empréstimo para Vendedores" (tab seller_loan), não marketing.
+  const gastosSpm = transactions.filter(t => t.transaction_type === 'SPM_DEDUCT').reduce((a, t) => a + Math.abs(Number(t.amount_cents) || 0), 0) / 100
+  const pagtoEmprestimo = transactions.filter(t => t.transaction_type === 'SPM_DEDUCT_DIRECT').reduce((a, t) => a + Math.abs(Number(t.amount_cents) || 0), 0) / 100
 
   const filteredTxs = useMemo(() => {
     if (typeFilter === 'all') return transactions
@@ -455,6 +484,7 @@ export function FinanceiroView({
                   <div className="text-[10px] uppercase tracking-[0.15em] text-zinc-500 font-semibold flex items-center gap-2">
                     <span className="material-symbols-outlined text-[14px] text-emerald-400">savings</span>
                     Lucro Bruto Macro — Shopee
+                    <InfoButton show label="Lucro Bruto Macro" onOpen={() => setInfoKey('Lucro Bruto Macro')} />
                   </div>
                   <div className={cn('font-h1 text-h1 mt-2', lucroBruto >= 0 ? 'text-secondary' : 'text-error')}>
                     {lucroBruto >= 0 ? '+' : ''}{fmtBrlInt(lucroBruto)}
@@ -510,9 +540,10 @@ export function FinanceiroView({
           {[
             { label: 'Saldo Realizado', value: latestBalanceCents !== null ? fmtBrlInt(latestBalanceCents / 100) : '—', icon: 'account_balance_wallet', tone: 'text-zinc-50', sub: 'última tx sincronizada' },
             { label: 'A Liberar', value: pendingAmountCents != null ? fmtBrlInt(pendingAmountCents / 100) : '—', icon: 'schedule', tone: 'text-tertiary', sub: 'escrow retido a receber' },
-            { label: 'Repasses (vendas)', value: fmtBrlInt(escrowVendas), icon: 'shopping_bag', tone: 'text-secondary', sub: null },
+            { label: 'Repasses (vendas)', value: fmtBrlInt(incomeSummary?.renda_liberada ?? escrowVendas), icon: 'shopping_bag', tone: 'text-secondary', sub: incomeSummary ? 'renda liberada — bate com o export' : null },
             { label: 'Saques Bancários', value: fmtBrlInt(totalSaques), icon: 'arrow_circle_down', tone: 'text-primary', sub: null },
-            { label: 'Gastos Marketing', value: fmtBrlInt(gastosSpm), icon: 'campaign', tone: 'text-error', sub: null },
+            { label: 'Recarga Ads', value: fmtBrlInt(gastosSpm), icon: 'campaign', tone: 'text-error', sub: 'saldo → Shopee Ads' },
+            { label: 'Pagto Empréstimo', value: fmtBrlInt(pagtoEmprestimo), icon: 'account_balance', tone: 'text-error', sub: 'Empréstimo p/ Vendedores' },
             { label: 'Total Entradas', value: fmtBrlInt(totalIn), icon: 'trending_up', tone: 'text-secondary', sub: null },
             { label: 'Total Saídas', value: fmtBrlInt(Math.abs(totalOut)), icon: 'trending_down', tone: 'text-error', sub: null },
           ].map((kpi) => (
@@ -935,7 +966,9 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
         a.servico_bruta += r.servico_bruta
         a.servico_liq += r.servico_liq
         a.dev_facil += devolucaoFacil(r)
-        a.frete_vendedor += Math.max(0, r.frete_real - r.frete_rebate - r.buyer_ship)
+        // frete líquido do vendedor = real − subsídio − comprador. NÃO floorar em 0:
+        // a Shopee soma os negativos (pedidos onde ela subsidia mais que o custo).
+        a.frete_vendedor += r.frete_real - r.frete_rebate - r.buyer_ship
         a.renda += r.renda
         a.reembolso += r.reembolso
         if (r.reembolso !== 0) a.com_reembolso++
@@ -1032,7 +1065,7 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
               )}
               {pageRows.map((r) => {
                 const df = devolucaoFacil(r)
-                const freteVend = Math.max(0, r.frete_real - r.frete_rebate - r.buyer_ship)
+                const freteVend = r.frete_real - r.frete_rebate - r.buyer_ship
                 const isOpen = expanded === r.order_sn
                 return (
                   <React.Fragment key={r.order_sn}>
@@ -1052,7 +1085,7 @@ function TaxasTab({ rows }: { rows: OrderFeeRow[] }) {
                       <td className="px-md py-2.5 text-right font-mono-sm text-error">−{fmtBrl(r.comissao_liq)}</td>
                       <td className="px-md py-2.5 text-right font-mono-sm text-error">−{fmtBrl(r.servico_liq)}</td>
                       <td className="px-md py-2.5 text-right font-mono-sm text-error">{df > 0 ? `−${fmtBrl(df)}` : '—'}</td>
-                      <td className="px-md py-2.5 text-right font-mono-sm text-error">{freteVend > 0 ? `−${fmtBrl(freteVend)}` : '—'}</td>
+                      <td className={cn('px-md py-2.5 text-right font-mono-sm', freteVend >= 0 ? 'text-error' : 'text-secondary')}>{freteVend > 0 ? `−${fmtBrl(freteVend)}` : freteVend < 0 ? `+${fmtBrl(-freteVend)}` : '—'}</td>
                       <td className="px-lg py-2.5 text-right font-mono-sm text-secondary font-semibold">R$ {fmtBrl(r.renda)}</td>
                     </tr>
                     {isOpen && (

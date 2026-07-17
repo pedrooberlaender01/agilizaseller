@@ -54,12 +54,132 @@ function fmtBRL(v: number | string | null | undefined): string {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function StatCard({ label, value, icon, tone }: { label: string; value: number; icon: string; tone?: 'default' | 'green' | 'yellow' | 'blue' | 'red' }) {
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; onde: string; difere?: string }> = {
+  'Total': {
+    title: 'Total de Devoluções',
+    oQueE: 'Todas as devoluções/reembolsos abertos pelos clientes, em qualquer status. Histórico completo (não filtra período).',
+    origem: 'Tabela `shein_returns` — populada pelo endpoint `/open-api/return-order/list` (WF "Shein - Sync Returns").',
+    onde: 'Painel Shein → Pedidos → Devolução e reembolso.',
+    difere: 'Soma exata dos outros 5 cards. Sync roda continuamente — dados atualizados.',
+  },
+  'Solicitadas': {
+    title: 'Solicitadas',
+    oQueE: 'Devoluções abertas pelo cliente aguardando análise/aprovação. Ainda não despachadas de volta.',
+    origem: 'Devoluções com `return_order_status = 2` (Solicitada).',
+    onde: 'Painel Shein → Devolução e reembolso → filtro de status "Solicitada".',
+  },
+  'Em Processo': {
+    title: 'Em Processo',
+    oQueE: 'Devoluções em estados intermediários: fechada, aguardando o cliente postar, ou em trânsito para o armazém SHEIN.',
+    origem: 'Devoluções com `return_order_status` 1 (Fechada), 7 (Aguardando entrega) ou 8 (Trânsito armazém SHEIN).',
+    onde: 'Painel Shein → Devolução e reembolso → filtros de status equivalentes.',
+    difere: 'Card agrupa 3 status pouco frequentes para que a soma dos cards feche com o Total. Para ver cada um separado, use o filtro de status na lista abaixo.',
+  },
+  'Recebidas': {
+    title: 'Recebidas',
+    oQueE: 'Devoluções cujo produto já chegou de volta (recebido ou entregue no armazém).',
+    origem: 'Devoluções com `return_order_status` 5 (Recebida) ou 6 (Entregue).',
+    onde: 'Painel Shein → Devolução e reembolso → filtro "Recebida".',
+  },
+  'Concluídas': {
+    title: 'Concluídas',
+    oQueE: 'Devoluções finalizadas — processo encerrado e reembolso resolvido.',
+    origem: 'Devoluções com `return_order_status = 9` (Concluída).',
+    onde: 'Painel Shein → Devolução e reembolso → filtro "Concluída".',
+  },
+  'Canceladas': {
+    title: 'Canceladas',
+    oQueE: 'Devoluções canceladas — o cliente desistiu ou a solicitação foi recusada.',
+    origem: 'Devoluções com `return_order_status = 3` (Cancelada).',
+    onde: 'Painel Shein → Devolução e reembolso → filtro "Cancelada".',
+    difere: 'Zero é normal — a loja não teve devoluções canceladas até agora.',
+  },
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl"
+        style={{ background: 'rgba(22,27,34,0.97)' }}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-blue-400">help</span>
+            {info.title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Fechar"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Onde conferir no painel Shein</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.onde}</p>
+          </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Observação</div>
+              <p className="text-sm leading-relaxed text-zinc-400 whitespace-pre-line">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HelpButton({ label, onOpen }: { label: string; onOpen: (key: string) => void }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onOpen(label) }}
+      className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 hover:bg-white/10 hover:text-zinc-300 transition-colors"
+      aria-label={`Explicação: ${label}`}
+    >
+      <span className="material-symbols-outlined text-[14px]">help</span>
+    </button>
+  )
+}
+
+function StatCard({ label, value, icon, tone, onHelp }: { label: string; value: number; icon: string; tone?: 'default' | 'green' | 'yellow' | 'blue' | 'red'; onHelp?: (key: string) => void }) {
   const toneCls = tone === 'green' ? 'text-emerald-300' : tone === 'yellow' ? 'text-amber-300' : tone === 'blue' ? 'text-blue-300' : tone === 'red' ? 'text-rose-300' : 'text-white'
   return (
     <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+          {onHelp && <HelpButton label={label} onOpen={onHelp} />}
+        </div>
         <Icon name={icon} size={18} className="text-zinc-500" />
       </div>
       <p className={cn('mt-2 text-2xl font-semibold', toneCls)}>{value.toLocaleString('pt-BR')}</p>
@@ -96,13 +216,14 @@ export function DevolucoesView({
   status: string
   site: string
   sites: string[]
-  stats: { total: number; solicitadas: number; recebidas: number; concluidas: number; canceladas: number }
+  stats: { total: number; solicitadas: number; recebidas: number; concluidas: number; canceladas: number; emProcesso: number }
   nickname?: string | null
 }) {
   const router = useRouter()
   const sp = useSearchParams()
   const [pending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(search)
+  const [helpKey, setHelpKey] = useState<string | null>(null)
   const debouncedSearch = useDebounced(searchInput, 300)
 
   function pushParams(updater: (next: URLSearchParams) => void, resetPage = true) {
@@ -157,12 +278,13 @@ export function DevolucoesView({
           </div>
         </div>
 
-        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-5">
-          <StatCard label="Total" value={stats.total} icon="keyboard_return" />
-          <StatCard label="Solicitadas" value={stats.solicitadas} icon="hourglass_top" tone="yellow" />
-          <StatCard label="Recebidas" value={stats.recebidas} icon="inbox" tone="blue" />
-          <StatCard label="Concluídas" value={stats.concluidas} icon="check_circle" tone="green" />
-          <StatCard label="Canceladas" value={stats.canceladas} icon="cancel" tone="red" />
+        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <StatCard label="Total" value={stats.total} icon="keyboard_return" onHelp={setHelpKey} />
+          <StatCard label="Solicitadas" value={stats.solicitadas} icon="hourglass_top" tone="yellow" onHelp={setHelpKey} />
+          <StatCard label="Em Processo" value={stats.emProcesso} icon="local_shipping" tone="blue" onHelp={setHelpKey} />
+          <StatCard label="Recebidas" value={stats.recebidas} icon="inbox" tone="blue" onHelp={setHelpKey} />
+          <StatCard label="Concluídas" value={stats.concluidas} icon="check_circle" tone="green" onHelp={setHelpKey} />
+          <StatCard label="Canceladas" value={stats.canceladas} icon="cancel" tone="red" onHelp={setHelpKey} />
         </div>
 
         <div className="mb-lg flex flex-wrap items-center gap-3">
@@ -282,6 +404,7 @@ export function DevolucoesView({
           </div>
         </div>
       </main>
+      <InfoModal infoKey={helpKey} onClose={() => setHelpKey(null)} />
     </>
   )
 }

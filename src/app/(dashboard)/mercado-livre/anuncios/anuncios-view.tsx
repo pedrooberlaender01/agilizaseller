@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,16 @@ export type MlItemRow = {
 }
 
 type SortKey = 'bestseller' | 'low-stock' | 'high-price' | 'low-price'
+type StatusFilter = 'all' | 'active' | 'paused' | 'no-stock'
+
+const PAGE_SIZE = 12
+
+const statusCards: { key: StatusFilter; label: string; icon: string; accent: string }[] = [
+  { key: 'all', label: 'Total de anúncios', icon: 'inventory_2', accent: '#3b82f6' },
+  { key: 'active', label: 'Ativos', icon: 'check_circle', accent: '#34d399' },
+  { key: 'paused', label: 'Pausados', icon: 'pause_circle', accent: '#facc3c' },
+  { key: 'no-stock', label: 'Sem estoque', icon: 'error', accent: '#f87171' },
+]
 
 const listingTypeLabel: Record<string, string> = {
   gold_pro: 'Ouro Pro',
@@ -205,9 +215,31 @@ function CostDrawer({ item, onClose }: { item: MlItemRow; onClose: () => void })
 
 export function AnunciosView({ items }: { items: MlItemRow[] }) {
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused'>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sort, setSort] = useState<SortKey>('bestseller')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const infoRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!infoOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (infoRef.current && !infoRef.current.contains(e.target as Node)) setInfoOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [infoOpen])
+
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      active: items.filter((i) => i.status === 'active').length,
+      paused: items.filter((i) => i.status !== 'active').length,
+      'no-stock': items.filter((i) => (i.available_quantity ?? 0) === 0).length,
+    }),
+    [items],
+  )
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -219,7 +251,8 @@ export function AnunciosView({ items }: { items: MlItemRow[] }) {
       const matchesStatus =
         statusFilter === 'all' ||
         (statusFilter === 'active' && it.status === 'active') ||
-        (statusFilter === 'paused' && it.status !== 'active')
+        (statusFilter === 'paused' && it.status !== 'active') ||
+        (statusFilter === 'no-stock' && (it.available_quantity ?? 0) === 0)
       return matchesTerm && matchesStatus
     })
 
@@ -233,6 +266,13 @@ export function AnunciosView({ items }: { items: MlItemRow[] }) {
     })
     return arr
   }, [items, search, statusFilter, sort])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  // volta pra página 1 quando filtro/busca/ordenação muda
+  useEffect(() => setPage(1), [search, statusFilter, sort])
 
   const selected = items.find((i) => i.id === selectedId) ?? null
 
@@ -249,6 +289,62 @@ export function AnunciosView({ items }: { items: MlItemRow[] }) {
       <TopBar title="Anúncios — Mercado Livre" />
       <main className="flex items-start gap-gutter p-margin">
         <div className="flex min-w-0 flex-1 flex-col gap-lg">
+          <div className="grid grid-cols-2 gap-md md:grid-cols-4">
+            {statusCards.map((c) => {
+              const active = statusFilter === c.key
+              return (
+                <div key={c.key} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter(c.key)}
+                    className={cn(
+                      'glass-card flex w-full items-center gap-md rounded-xl p-md text-left',
+                      active && 'bg-white/[0.07] ring-1 ring-[#3b82f6]/50',
+                    )}
+                  >
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: `${c.accent}1a`, color: c.accent }}
+                    >
+                      <Icon name={c.icon} size={20} />
+                    </div>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-h1 font-semibold leading-none text-on-surface">{counts[c.key]}</span>
+                      <span className="mt-1 truncate text-xs text-on-surface-variant">{c.label}</span>
+                    </div>
+                  </button>
+
+                  {c.key === 'all' && (
+                    <span ref={infoRef} className="absolute right-2 top-2 inline-flex">
+                      <button
+                        type="button"
+                        onClick={() => setInfoOpen((v) => !v)}
+                        aria-label="Como estes números são obtidos"
+                        className="flex items-center text-on-surface-variant hover:text-on-background"
+                      >
+                        <Icon name="help" size={16} />
+                      </button>
+                      {infoOpen && (
+                        <div className="absolute right-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-white/10 bg-[#0d1117] p-4 text-left shadow-2xl shadow-black/60">
+                          <p className="mb-2 text-sm font-semibold text-on-background">De onde vêm estes números</p>
+                          <p className="text-xs leading-relaxed text-on-surface-variant">
+                            Sincronizamos todos os seus anúncios direto do Mercado Livre, no nível de <span className="text-on-background">cada item</span> — cada SKU, cor e tamanho conta como um.
+                            <br /><br />
+                            <span className="font-semibold text-on-background">Onde conferir no ML:</span> abra <span className="text-on-background">Anúncios → Editor em massa</span>. O total que aparece lá é o mesmo daqui.
+                            <br /><br />
+                            A tela <span className="text-on-background">Gestão de anúncios</span> mostra um número <span className="text-on-background">menor</span> porque agrupa as variações num anúncio-pai. É a mesma loja, só uma visão resumida.
+                            <br /><br />
+                            <span className="text-[#34d399]">Ativos</span>, <span className="text-[#facc3c]">Pausados</span> e <span className="text-[#f87171]">Sem estoque</span> seguem a situação atual de cada item.
+                          </p>
+                        </div>
+                      )}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-md rounded-xl border border-white/5 bg-surface-container/40 p-md backdrop-blur-sm">
             <div className="flex min-w-[300px] flex-1 flex-wrap items-center gap-sm">
               <div className="relative min-w-[220px] max-w-md flex-1">
@@ -260,15 +356,6 @@ export function AnunciosView({ items }: { items: MlItemRow[] }) {
                   placeholder="Buscar por título ou SKU"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'paused')}
-                className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-surface-container px-3 py-2 pr-8 text-sm text-on-surface outline-none focus:border-[#3b82f6]"
-              >
-                <option value="all">Status: Todos</option>
-                <option value="active">Ativos</option>
-                <option value="paused">Pausados</option>
-              </select>
             </div>
 
             <div className="flex items-center gap-md">
@@ -298,16 +385,49 @@ export function AnunciosView({ items }: { items: MlItemRow[] }) {
               <p className="text-sm text-on-surface-variant">Nenhum anúncio encontrado.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-md md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((item) => (
-                <ListingCard
-                  key={item.id}
-                  item={item}
-                  selected={item.id === selectedId}
-                  onClick={() => setSelectedId(item.id)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 gap-md md:grid-cols-2 lg:grid-cols-3">
+                {pageItems.map((item) => (
+                  <ListingCard
+                    key={item.id}
+                    item={item}
+                    selected={item.id === selectedId}
+                    onClick={() => setSelectedId(item.id)}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-md pt-sm">
+                  <span className="text-xs text-on-surface-variant">
+                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de {filtered.length}
+                  </span>
+                  <div className="flex items-center gap-sm">
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 rounded-lg border border-white/10 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Icon name="chevron_left" size={16} />
+                      Anterior
+                    </button>
+                    <span className="min-w-[90px] text-center text-sm text-on-surface-variant">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="flex items-center gap-1 rounded-lg border border-white/10 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Próxima
+                      <Icon name="chevron_right" size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

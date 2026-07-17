@@ -46,12 +46,19 @@ function payTone(s: string | null | undefined): Tone {
   return 'gray'
 }
 
-function KpiCard({ label, value, tone }: { label: string; value: string; tone?: 'white' | 'green' | 'red' }) {
+function KpiCard({ label, value, tone, soon }: { label: string; value: string; tone?: 'white' | 'green' | 'red'; soon?: boolean }) {
   const color = tone === 'green' ? 'text-secondary' : tone === 'red' ? 'text-error' : 'text-white'
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg">
-      <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={cn('mt-1 text-xl font-semibold', color)}>{value}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+        {soon && (
+          <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-medium text-blue-200">
+            Em breve
+          </span>
+        )}
+      </div>
+      <p className={cn('mt-1 text-xl font-semibold', soon ? 'text-zinc-600' : color)}>{value}</p>
     </div>
   )
 }
@@ -142,10 +149,12 @@ export function FinanceiroView({
           </div>
         </div>
 
-        <div className="mb-lg grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mb-lg grid grid-cols-2 gap-4 lg:grid-cols-3">
           <KpiCard label="Repasse (líquido)" value={fmtBrl(kpi.repasse)} tone="green" />
           <KpiCard label="Receita bruta" value={fmtBrl(kpi.receita)} />
           <KpiCard label="Taxas TikTok" value={fmtBrl(kpi.taxas)} tone="red" />
+          <KpiCard label="Comissão afiliados" value="—" soon />
+          <KpiCard label="Ads" value="—" soon />
           <KpiCard label="Statements" value={kpi.statements.toLocaleString('pt-BR')} />
         </div>
 

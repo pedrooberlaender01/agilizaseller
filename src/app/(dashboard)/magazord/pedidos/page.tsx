@@ -5,18 +5,27 @@ import { PedidosView, type OrderRow } from './pedidos-view'
 
 const PAGE_SIZE = 50
 
-type Period = '7d' | '30d' | '90d'
+// Situacoes faturaveis (padrao): Aprovado, Aprovado e Integrado, NF Emitida,
+// Transporte, Entregue, Aprovado Analise Pagto. Mesma base de /metricas.
+const SITUACOES_FATURAVEIS = [4, 5, 6, 7, 8, 12]
+
+type Period = '7d' | '30d' | 'custom'
 
 function parsePeriod(raw: string | undefined): Period {
-  return raw === '7d' || raw === '90d' ? raw : '30d'
+  return raw === '7d' || raw === 'custom' ? raw : '30d'
 }
 
-function periodCutoffIso(period: Period): string {
-  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+function periodCutoffIso(period: '7d' | '30d'): string {
+  const days = period === '7d' ? 7 : 30
   const d = new Date()
   d.setDate(d.getDate() - days)
   return d.toISOString()
 }
+
+// Range personalizado no fuso BRT (-03:00)
+const isDateOnly = (s: string | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s)
+const brtStart = (d: string) => `${d}T00:00:00-03:00`
+const brtEnd = (d: string) => `${d}T23:59:59-03:00`
 
 function NoConnectionState() {
   return (
@@ -45,11 +54,30 @@ function NoConnectionState() {
 export default async function MagazordPedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; situacao?: string; q?: string; page?: string; mkt?: string }>
+  searchParams: Promise<{ period?: string; situacao?: string; origem?: string; from?: string; to?: string; q?: string; page?: string; mkt?: string }>
 }) {
   const sp = await searchParams
-  const period = parsePeriod(sp.period)
-  const situacaoFilter = (sp.situacao ?? '').trim()
+  let period = parsePeriod(sp.period)
+  const fromParam = isDateOnly(sp.from) ? sp.from : null
+  const toParam = isDateOnly(sp.to) ? sp.to : null
+  let cutoffIso: string
+  let endIso: string | null = null
+  if (period === 'custom' && fromParam && toParam) {
+    cutoffIso = brtStart(fromParam)
+    endIso = brtEnd(toParam)
+  } else {
+    if (period === 'custom') period = '30d'
+    cutoffIso = periodCutoffIso(period)
+  }
+  // Situacao: sem param = faturaveis (padrao); 'all' = todas; senao csv escolhido
+  const situacaoParam = (sp.situacao ?? '').trim()
+  const situacoes =
+    situacaoParam === '' ? SITUACOES_FATURAVEIS
+    : situacaoParam === 'all' ? []
+    : situacaoParam.split(',').map(Number).filter(Number.isFinite)
+  // Origem: sem param = Site (1); 'all' = todas
+  const origemParam = (sp.origem ?? '1').trim()
+  const origemFilter = origemParam === 'all' ? null : /^[0-9]+$/.test(origemParam) ? Number(origemParam) : 1
   const marketplaceFilter = (sp.mkt ?? '').trim()
   const search = (sp.q ?? '').trim()
   const page = Math.max(1, Number(sp.page ?? 1) || 1)
@@ -73,12 +101,11 @@ export default async function MagazordPedidosPage({
       { count: 'exact' },
     )
     .eq('connection_id', conn.id)
-    .gte('data_hora', periodCutoffIso(period))
+    .gte('data_hora', cutoffIso)
 
-  if (situacaoFilter) {
-    const situacoes = situacaoFilter.split(',').map((s) => Number(s)).filter((n) => Number.isFinite(n))
-    if (situacoes.length > 0) query = query.in('situacao', situacoes)
-  }
+  if (endIso) query = query.lte('data_hora', endIso)
+  if (situacoes.length > 0) query = query.in('situacao', situacoes)
+  if (origemFilter != null) query = query.eq('origem', origemFilter)
   if (marketplaceFilter) {
     query = query.eq('marketplace_origem', marketplaceFilter)
   }
@@ -105,7 +132,10 @@ export default async function MagazordPedidosPage({
       totalCount={count ?? 0}
       page={page}
       period={period}
-      situacao={situacaoFilter}
+      from={fromParam}
+      to={toParam}
+      situacao={situacoes.join(',')}
+      origem={origemFilter}
       marketplace={marketplaceFilter}
       search={search}
       marketplaces={uniqueMarketplaces}

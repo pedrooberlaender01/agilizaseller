@@ -1,7 +1,7 @@
 // Mapa status logístico → categoria. Arquivo SEM 'use client':
 // importável tanto pelo Server Component (page) quanto pelo client (view).
 // Import de módulo 'use client' em RSC vira client-reference opaca — Object.entries() vazio.
-export type Category = 'in_transit' | 'delivered' | 'problem' | 'pending'
+export type Category = 'in_transit' | 'delivered' | 'problem' | 'pending' | 'cancelled'
 
 export const STATUS_CATEGORY: Record<string, Category> = {
   LOGISTICS_PICKUP_DONE: 'in_transit',
@@ -15,10 +15,13 @@ export const STATUS_CATEGORY: Record<string, Category> = {
   LOGISTICS_RETURNING: 'problem',
   LOGISTICS_RETURNED: 'problem',
   LOGISTICS_LOST: 'problem',
+  LOGISTICS_INVALID: 'problem',
   LOGISTICS_INVOICE_PENDING: 'pending',
   LOGISTICS_READY: 'pending',
   LOGISTICS_REQUEST_CREATED: 'pending',
   LOGISTICS_PICKUP_REQUESTED: 'pending',
+  LOGISTICS_PENDING: 'pending',
+  LOGISTICS_CANCELLED: 'cancelled',
 }
 
 export function categoryOf(status: string | null): Category {
