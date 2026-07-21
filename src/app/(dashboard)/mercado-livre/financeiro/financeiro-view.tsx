@@ -425,14 +425,22 @@ export function FinanceiroView({
           <br /><br />
           Diferente da comissão, o frete é contado <span className="text-on-surface">bruto</span>: inclui cancelados e devolvidos, porque o envio <span className="text-on-surface">aconteceu e foi cobrado igual</span> (confirmado envio a envio). O ML só estorna a comissão, não o frete.
           <br /><br />
-          Não inclui os <span className="text-tertiary">Custos do Mercado Envios Full</span> (armazenagem) — é uma linha separada no ML e ainda não está no painel.
+          Não inclui a <span className="text-tertiary">armazenagem do Full</span> — é custo separado (não frete), aparece na seção <span className="text-on-surface">Tarifas oficiais</span> como <span className="text-on-surface">&quot;Full — Armazenagem&quot;</span>.
         </>
       ),
     },
     {
       label: 'Ads', value: fmtBrlInt(ads), sign: '−', tone: 'text-error', sub: faturamento > 0 ? `${adsPct.toFixed(1).replace('.', ',')}% das vendas` : '—',
       info: (
-        <>Gasto em <span className="text-on-surface">Product Ads</span> (Mercado Ads) no período, somado do campo <span className="font-mono">cost</span> de todas as campanhas. Sincronizado 1×/dia da API de publicidade do ML.</>
+        <>
+          Gasto em <span className="text-on-surface">Product Ads</span> (Mercado Ads) no período, somado dia a dia da API de publicidade do ML.
+          <br /><br />
+          <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → hover em <span className="text-on-surface">&quot;Investimento por campanha de publicidade&quot;</span>. Ou Marketing → Publicidade.
+          <br /><br />
+          Validado em 17/06–16/07: ML e painel <span className="font-mono text-secondary">R$ 20.420,65</span> — igual ao centavo.
+          <br /><br />
+          O valor <span className="text-on-surface">se ajusta retroativamente</span> (a atribuição do ML fecha às 10h). Por isso o dia de hoje não entra e números de dias atrás podem mudar alguns reais.
+        </>
       ),
     },
   ]
@@ -464,12 +472,14 @@ export function FinanceiroView({
       ),
     },
     {
-      label: 'Cupons / Descontos', value: `R$ ${fmtBrl(cupom)}`, icon: 'redeem', tone: 'text-tertiary',
+      label: 'Descontos ao comprador (ML)', value: `R$ ${fmtBrl(cupom)}`, icon: 'redeem', tone: 'text-tertiary',
       info: (
         <>
-          Descontos aplicados nas vendas concluídas (cupons do ML ou do vendedor). Reduz o que o comprador efetivamente pagou.
+          Descontos que o <span className="text-on-surface">Mercado Livre bancou</span> pro comprador no checkout (pix, cartão, promoções de pagamento). <span className="text-on-surface">Não é custo seu</span> — você recebe o preço cheio da venda.
           <br /><br />
-          <span className="text-tertiary">Ainda não conferido contra o painel do ML</span> — o ML não expõe um total de cupons por período nas telas de métricas.
+          É informativo (mostra o quanto o ML impulsionou suas vendas com desconto), <span className="text-on-surface">não entra na margem</span>. Confirmado no pagamento de cada pedido: em 718 vendas, você recebeu o valor integral em todas.
+          <br /><br />
+          Cupom que sairia do SEU bolso é outra coisa (cupom de vendedor) — nesta janela está zerado.
         </>
       ),
     },
@@ -598,7 +608,7 @@ export function FinanceiroView({
                 Faturamento − Comissão − Frete − Ads · margem {margemPct.toFixed(1).replace('.', ',')}%
               </div>
               <div className="text-[10px] text-on-surface-variant/70 mt-1">
-                Base: vendas concluídas. Não inclui custo do produto (COGS), outras tarifas do ML nem o repasse do Mercado Pago (antecipação, parcelamento) — por isso fica acima do &quot;Você recebeu&quot; do ML.
+                Métrica <span className="text-on-surface-variant">gerencial</span>, não é o &quot;Você recebeu&quot; do ML. Fica acima dele porque não desconta as tarifas menores que o ML só fatura por ciclo mensal (outras tarifas, custos do Full, tarifa de devolução) nem o custo do produto (COGS).
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full lg:w-auto lg:min-w-[600px]">
@@ -686,7 +696,18 @@ export function FinanceiroView({
           <div className="bg-surface-container/70 backdrop-blur-[16px] rounded-xl border border-white/10 p-lg flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-h3 text-h3 text-on-surface">Tarifas oficiais — Faturamento ML</h3>
+                <h3 className="font-h3 text-h3 text-on-surface flex items-center gap-1.5">
+                  Tarifas oficiais — Faturamento ML
+                  {infoTip('billing-oficial', (
+                    <>
+                      Vem direto do relatório de faturamento do ML — <span className="text-on-surface">100% oficial</span>, bate ao centavo com <span className="text-on-surface">Faturamento → Tarifas e pagamentos</span>. Organizado por ciclo mensal de fatura.
+                      <br /><br />
+                      <span className="font-semibold text-on-background">Ciclo &quot;aberto&quot; é parcial.</span> Enquanto o ciclo não fecha, o ML vai <span className="text-on-surface">somando as cobranças ao longo do dia</span> — o valor aqui é uma foto do último sync (a cada 12h) e fica um pouco atrás da tela ao vivo do ML. Isso é normal: a API de faturamento do ML não é tempo real.
+                      <br /><br />
+                      Quando o ciclo <span className="text-on-surface">fecha</span>, o valor congela e bate <span className="text-secondary">exato</span> com o ML (validado grupo a grupo).
+                    </>
+                  ), true)}
+                </h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">
                   Direto do relatório de faturamento do ML (100% oficial, bate com <span className="text-on-surface">Faturamento → Tarifas e pagamentos</span>). Mensal por ciclo de fatura.
                 </p>
@@ -767,7 +788,7 @@ export function FinanceiroView({
                   <th className="px-md py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Faturamento</th>
                   <th className="px-md py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Comissão</th>
                   <th className="px-md py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Frete</th>
-                  <th className="px-md py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Cupom</th>
+                  <th className="px-md py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Desc. ML</th>
                   <th className="px-lg py-3 text-on-surface-variant font-medium uppercase tracking-wider text-[11px] text-right">Margem Contrib.</th>
                 </tr>
               </thead>
