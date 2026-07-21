@@ -20,13 +20,13 @@ export function FinanceiroView({ nickname }: { nickname?: string | null }) {
           </span>
         </div>
 
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-300">
-              <Icon name="construction" size={28} />
+        <div className="flex flex-1 items-center justify-center py-16">
+          <div className="flex w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-amber-500/20 bg-zinc-900/60 px-10 py-12 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
+              <Icon name="construction" size={32} />
             </span>
-            <h3 className="text-lg font-semibold text-white">Em desenvolvimento</h3>
-            <p className="text-sm leading-relaxed text-slate-400">
+            <h3 className="text-2xl font-semibold text-white">Em desenvolvimento</h3>
+            <p className="max-w-lg text-base leading-relaxed text-slate-200">
               Esperando a decisão de quais dados a equipe quer ver. A base já está
               sincronizando (Contas a Receber e a Pagar do Magazord) — os indicadores
               serão definidos assim que o time confirmar o que faz sentido acompanhar.

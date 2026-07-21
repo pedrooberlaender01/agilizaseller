@@ -3,7 +3,7 @@ import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
 import type { Period } from '@/components/metrics-chart'
 import type { ShopeeDailyMetric } from '@/types'
-import { MetricasView } from './metricas-view'
+import { MetricasView, type AdsSummary } from './metricas-view'
 
 export const revalidate = 60
 
@@ -119,6 +119,8 @@ export default async function ShopeeMetricasPage({
     { data: escrowCentsPrev },
     { data: affiliateCur },
     { data: affiliatePrev },
+    { data: adsCurRaw },
+    { data: adsPrevRaw },
   ] = await Promise.all([
     supabase
       .from('shopee_daily_metrics')
@@ -160,7 +162,14 @@ export default async function ShopeeMetricasPage({
         .order('period_end', { ascending: false })
         .limit(500)
     })(),
+    // Ads: fonte autoritativa = all_cpc da perf de campanhas (bate painel Shopee Ads).
+    // NÃO usar daily_metrics.ads_spend (sync diferente, ~0,6% fora do oficial).
+    supabase.rpc('shopee_ads_summary', { p_conn: conn.id, p_from: cur.from, p_to: cur.to }),
+    supabase.rpc('shopee_ads_summary', { p_conn: conn.id, p_from: prev.from, p_to: prev.to }),
   ])
+
+  const adsCur = (adsCurRaw ?? null) as AdsSummary
+  const adsPrev = (adsPrevRaw ?? null) as AdsSummary
 
   // Repasse liberado no período = escrow que a Shopee liberou (caiu na carteira). Card #72.
   // RPC retorna cents (bigint) somado no servidor — evita o cap 1000 de linhas do Supabase.
@@ -190,6 +199,8 @@ export default async function ShopeeMetricasPage({
       repassePrev={repassePrev}
       comissaoAfiliadosCur={comissaoAfiliadosCur}
       comissaoAfiliadosPrev={comissaoAfiliadosPrev}
+      adsCur={adsCur}
+      adsPrev={adsPrev}
       nickname={conn.nickname}
     />
   )
