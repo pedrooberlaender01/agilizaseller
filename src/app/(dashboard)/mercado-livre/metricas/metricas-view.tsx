@@ -84,15 +84,15 @@ export function MetricasView({
   const ticket = pedidos > 0 ? faturamento / pedidos : 0
   const cancelPct = pedidos > 0 ? (cancel / pedidos) * 100 : 0
 
-  const kpis = [
+  const kpis: { label: string; value: string; icon: string; iconClass: string; valueClass: string; inDev: boolean; info?: string }[] = [
     { label: 'Faturamento Bruto', value: `R$ ${fmtBrl(faturamento)}`, icon: 'payments', iconClass: 'text-primary', valueClass: 'text-on-surface', inDev: false },
     { label: 'Pedidos', value: pedidos.toLocaleString('pt-BR'), icon: 'local_shipping', iconClass: 'text-tertiary', valueClass: 'text-on-surface', inDev: false },
     { label: 'Lucro Líquido', value: '', icon: 'construction', iconClass: 'text-amber-400', valueClass: 'text-amber-300', inDev: true },
     { label: 'Ticket Médio', value: `R$ ${fmtBrl(ticket)}`, icon: 'receipt_long', iconClass: 'text-primary-fixed-dim', valueClass: 'text-on-surface', inDev: false },
     { label: 'Margem Média', value: '', icon: 'construction', iconClass: 'text-amber-400', valueClass: 'text-amber-300', inDev: true },
-    { label: 'Cancelamentos', value: `${cancelPct.toFixed(1).replace('.', ',')}%`, icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false },
-    { label: 'Devoluções', value: devolQtd.toLocaleString('pt-BR'), icon: 'assignment_return', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false },
-    { label: 'Valor Devolvido', value: `R$ ${fmtBrl(devolValor)}`, icon: 'currency_exchange', iconClass: 'text-error', valueClass: 'text-error', inDev: false },
+    { label: 'Cancelamentos', value: `${cancelPct.toFixed(1).replace('.', ',')}%`, icon: 'remove_shopping_cart', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false, info: 'Taxa operacional: pedidos cancelados ÷ total do período. O ML usa uma fórmula própria não documentada — batemos ~0,03pp da tela dele (ex: 2,71% aqui vs 2,74% no ML). A doc oficial confirma que não dá pra reproduzir exato. A taxa de reputação (60 dias, só culpa do vendedor) fica na aba Saúde, é outra métrica.' },
+    { label: 'Devoluções', value: devolQtd.toLocaleString('pt-BR'), icon: 'assignment_return', iconClass: 'text-error', valueClass: 'text-on-surface', inDev: false, info: 'Montado dos claims de devolução do ML (type=returns). A doc oficial confirma que NÃO existe endpoint com o total de devoluções por período — essa é a única fonte pública, sem número agregado oficial do ML pra bater 100%.' },
+    { label: 'Valor Devolvido', value: `R$ ${fmtBrl(devolValor)}`, icon: 'currency_exchange', iconClass: 'text-error', valueClass: 'text-error', inDev: false, info: 'Soma do valor dos pedidos devolvidos (claims type=returns). Sem número agregado oficial do ML por período pra conferir — a doc confirma que só existe detalhe por devolução, não total.' },
   ]
 
   const chartData: MetricsChartData = useMemo(() => {
@@ -195,8 +195,16 @@ export function MetricasView({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+                <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
                   {kpi.label}
+                  {kpi.info && (
+                    <span
+                      title={kpi.info}
+                      className="material-symbols-outlined text-[13px] text-on-surface-variant/60 cursor-help normal-case"
+                    >
+                      help
+                    </span>
+                  )}
                 </span>
                 <span className={`material-symbols-outlined ${kpi.iconClass} text-lg`}>{kpi.icon}</span>
               </div>

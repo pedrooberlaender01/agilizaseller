@@ -16,15 +16,15 @@ export type FinanceiroPeriod = Period | 'custom'
 const FIN_INFO: Record<string, KpiInfo> = {
   'Lucro Bruto Macro': {
     title: 'Lucro Bruto Macro — Shopee',
-    oQueE: 'O que sobra das vendas depois dos custos que a Shopee cobra e do que foi gasto em anúncios, no período do filtro:\n\nVendas − Comissão − Taxa de Serviço − Frete do vendedor − Ads\n\nA margem ao lado é esse lucro dividido pelas vendas. NÃO desconta custo do produto, impostos nem despesas da operação — por isso é "bruto".',
-    origem: 'Métricas diárias da loja (tabela shopee_daily_metrics), a MESMA fonte da aba Métricas — que já foi validada contra as Informações Gerenciais da Shopee. Vendas = faturamento; Comissão e Taxa de Serviço = valores brutos cobrados por pedido (a líquida aparece no detalhe de cada card); Frete = frete que sai do bolso do vendedor; Ads = gasto consumido nas campanhas do Shopee Ads.',
+    oQueE: 'O que sobra das vendas depois dos custos que a Shopee cobra e do que foi gasto em anúncios, no período do filtro:\n\nVendas (produto pago) − Comissão − Taxa de Serviço − Frete do vendedor − Ads\n\nA margem ao lado é esse lucro dividido pelas vendas. NÃO desconta custo do produto, impostos nem despesas da operação — por isso é "bruto".',
+    origem: 'Métricas diárias da loja (shopee_daily_metrics) + gasto de Ads oficial (all_cpc, mesma fonte da página Shopee Ads). Vendas = PREÇO DE PRODUTO PAGO (decisão João — não o valor cheio do pedido); Comissão e Taxa de Serviço = valores brutos cobrados por pedido (a líquida no detalhe de cada card); Frete = frete que sai do bolso do vendedor; Ads = gasto consumido nas campanhas do Shopee Ads.',
     difere: 'É por DATA DA VENDA (métrica diária), não por data de liberação — então NÃO compare com o "Relatório de Renda" da Shopee, que é por liberação. Compare com as Informações Gerenciais no mesmo período.\n\nComissão e Serviço entram BRUTAS no cálculo. Quando a loja participa de campanhas, parte volta como "Ajuste por Participação em Ação Comercial" — esse valor aparece em verde abaixo do total, e a taxa líquida real fica no subtítulo dos cards Comissão/Taxa Serviço.\n\nO dia de hoje ainda está incompleto: use períodos fechados pra comparar.',
   },
-  'Saldo Realizado': {
-    title: 'Saldo Realizado',
-    oQueE: 'Saldo da carteira Shopee Pay já efetivado — o valor da última transação sincronizada (campo current_balance).',
-    origem: 'Campo current_balance da transação mais recente do extrato da carteira (get_wallet_transaction_list), sincronizado a cada 6h.',
-    difere: 'NÃO bate com o "Saldo da Carteira" no topo da tela da Shopee por dois motivos: (1) o saldo do topo é atualizado em tempo real e o nosso é do último sync (cron 6h) — no meio do dia entra escrow e defasa; (2) a Shopee NÃO expõe um endpoint de "saldo total" na API do Brasil (só o current_balance das transações, que tem lag em relação ao topo). Para a visão de caixa, use "Saldo Realizado" (o que já caiu) + "A Liberar" (o que ainda vai cair).',
+  'Saldo da Carteira': {
+    title: 'Saldo da Carteira',
+    oQueE: 'Saldo atual da carteira Shopee Pay — o mesmo número do card "Saldo da Carteira" em Finanças → Saldo da Carteira da Shopee.',
+    origem: 'Campo current_balance da transação mais recente da carteira (get_wallet_transaction_list), sincronizado a cada 1h.',
+    difere: 'BATE ao centavo com o "Saldo da Carteira" da Shopee — é o mesmo campo (current_balance da última transação). O único motivo de divergir é o LAG do sync: a carteira da Shopee é ao vivo e a nossa é do último sync (a cada 1h). Se entrou escrow nos últimos minutos, a Shopee fica um pouco acima; assim que o sync roda, iguala. Para conferir, compare logo após um sync (ou rode o workflow manual). Para a visão de caixa: Saldo da Carteira (o que já caiu) + A Liberar (o que ainda vai cair).',
   },
   'A Liberar': {
     title: 'A Liberar',
@@ -249,6 +249,7 @@ export function FinanceiroView({
   pendingAmountCents,
   releasedAmountCents,
   incomeSummary,
+  adsSpendMacro,
 }: {
   transactions: ShopeeWalletTransaction[]
   payouts: ShopeePayout[]
@@ -263,6 +264,7 @@ export function FinanceiroView({
   pendingAmountCents?: number | null
   releasedAmountCents?: number | null
   incomeSummary?: IncomeSummary | null
+  adsSpendMacro?: number | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -451,9 +453,10 @@ export function FinanceiroView({
         {view === 'overview' && (<>
         {/* Lucro Bruto Macro — fórmula João: Vendas − Taxas Shopee − Ads */}
         {(() => {
-          const vendas = dailyMetrics.reduce((a, m) => a + (Number(m.gross_revenue) || 0), 0)
-          // Base % de taxa: preço de venda dos produtos (sem frete comprador/vouchers Shopee)
-          const vendasProduto = dailyMetrics.reduce((a, m) => a + (Number(m.total_product_sales) || 0), 0) || vendas
+          // Vendas = PRODUTO PAGO (total_product_sales, preço de produto), decisão João — não o
+          // valor cheio do pedido. Fallback pro gross_revenue em dias antigos sem a coluna.
+          const vendasProduto = dailyMetrics.reduce((a, m) => a + (Number(m.total_product_sales) || 0), 0)
+          const vendas = vendasProduto || dailyMetrics.reduce((a, m) => a + (Number(m.gross_revenue) || 0), 0)
           const comissaoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_fee) || 0), 0)
           const servicoBruta = dailyMetrics.reduce((a, m) => a + (Number(m.total_service_fee) || 0), 0)
           const comissaoNet = dailyMetrics.reduce((a, m) => a + (Number(m.total_commission_net) || 0), 0)
@@ -463,7 +466,8 @@ export function FinanceiroView({
           const comissao = temSeparado ? comissaoBruta : dailyMetrics.reduce((a, m) => a + (Number(m.total_commission) || 0), 0)
           const servico = temSeparado ? servicoBruta : 0
           const frete = dailyMetrics.reduce((a, m) => a + (Number(m.total_shipping_cost) || 0), 0)
-          const ads = dailyMetrics.reduce((a, m) => a + (Number(m.ads_spend_cents) || 0), 0) / 100
+          // Ads = all_cpc (mesma fonte da aba Métricas, bate painel Shopee Ads). Fallback daily_metrics.
+          const ads = adsSpendMacro ?? dailyMetrics.reduce((a, m) => a + (Number(m.ads_spend_cents) || 0), 0) / 100
           const lucroBruto = vendas - comissao - servico - frete - ads
           const margemBruta = vendas > 0 ? (lucroBruto / vendas) * 100 : 0
           const subsidioCampanha = temSeparado && comissaoNet + servicoNet > 0
@@ -538,7 +542,7 @@ export function FinanceiroView({
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-gutter">
           {[
-            { label: 'Saldo Realizado', value: latestBalanceCents !== null ? fmtBrlInt(latestBalanceCents / 100) : '—', icon: 'account_balance_wallet', tone: 'text-zinc-50', sub: 'última tx sincronizada' },
+            { label: 'Saldo da Carteira', value: latestBalanceCents !== null ? `R$ ${fmtBrl(latestBalanceCents / 100)}` : '—', icon: 'account_balance_wallet', tone: 'text-zinc-50', sub: 'saldo Shopee Pay · última sync' },
             { label: 'A Liberar', value: pendingAmountCents != null ? fmtBrlInt(pendingAmountCents / 100) : '—', icon: 'schedule', tone: 'text-tertiary', sub: 'escrow retido a receber' },
             { label: 'Repasses (vendas)', value: fmtBrlInt(incomeSummary?.renda_liberada ?? escrowVendas), icon: 'shopping_bag', tone: 'text-secondary', sub: incomeSummary ? 'renda liberada — bate com o export' : null },
             { label: 'Saques Bancários', value: fmtBrlInt(totalSaques), icon: 'arrow_circle_down', tone: 'text-primary', sub: null },

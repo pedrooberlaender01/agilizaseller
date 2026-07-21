@@ -421,7 +421,9 @@ export function FinanceiroView({
           <br /><br />
           <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → passe o mouse na barra <span className="text-on-surface">&quot;Tarifas de envio&quot;</span>.
           <br /><br />
-          Essa tela mostra <span className="text-on-surface">~0,8% a mais</span> que aqui (ex: 64.960 lá vs 64.429 aqui). Não é erro: ela decompõe bruto e desconto por uma régua própria, que <span className="text-on-surface">diverge da própria API de cobrança do ML</span>. Preferimos bater com o que é cobrado de verdade a imitar a tela.
+          Essa tela mostra <span className="text-on-surface">~1% a mais</span> que aqui (ex: 64.960 lá vs 64.429 aqui). Não é erro: ela decompõe bruto e desconto por uma régua própria, que <span className="text-on-surface">diverge da própria API de cobrança do ML</span>. Preferimos bater com o que é cobrado de verdade a imitar a tela.
+          <br /><br />
+          A <span className="text-on-surface">documentação oficial do ML confirma</span>: não existe API pública equivalente à aba Custos (é métrica interna do painel). Nosso número é o cobrado de verdade — esse ~1% é limite da própria API do ML, não erro nosso.
           <br /><br />
           Diferente da comissão, o frete é contado <span className="text-on-surface">bruto</span>: inclui cancelados e devolvidos, porque o envio <span className="text-on-surface">aconteceu e foi cobrado igual</span> (confirmado envio a envio). O ML só estorna a comissão, não o frete.
           <br /><br />
@@ -437,7 +439,9 @@ export function FinanceiroView({
           <br /><br />
           <span className="font-semibold text-on-background">Onde conferir no ML:</span> Vendas → Métricas → aba <span className="text-on-surface">Custos</span> → hover em <span className="text-on-surface">&quot;Investimento por campanha de publicidade&quot;</span>. Ou Marketing → Publicidade.
           <br /><br />
-          Validado em 17/06–16/07: ML e painel <span className="font-mono text-secondary">R$ 20.420,65</span> — igual ao centavo.
+          Validado em 17/06–16/07: <span className="text-on-surface">painel Mercado Ads</span> e o nosso = <span className="font-mono text-secondary">R$ 20.420,65</span>, igual ao centavo.
+          <br /><br />
+          A aba <span className="text-on-surface">Custos</span> mostra ~1% a menos (ex: 20.126) por régua interna própria — a <span className="text-on-surface">doc oficial confirma</span> que não há API pública dela. Batemos com o gasto real do Mercado Ads, não com essa tela.
           <br /><br />
           O valor <span className="text-on-surface">se ajusta retroativamente</span> (a atribuição do ML fecha às 10h). Por isso o dia de hoje não entra e números de dias atrás podem mudar alguns reais.
         </>
@@ -608,7 +612,7 @@ export function FinanceiroView({
                 Faturamento − Comissão − Frete − Ads · margem {margemPct.toFixed(1).replace('.', ',')}%
               </div>
               <div className="text-[10px] text-on-surface-variant/70 mt-1">
-                Métrica <span className="text-on-surface-variant">gerencial</span>, não é o &quot;Você recebeu&quot; do ML. Fica acima dele porque não desconta as tarifas menores que o ML só fatura por ciclo mensal (outras tarifas, custos do Full, tarifa de devolução) nem o custo do produto (COGS).
+                Métrica <span className="text-on-surface-variant">gerencial</span>, não é o &quot;Você recebeu&quot; do ML. Fica acima dele porque não desconta as tarifas menores que o ML só fatura por ciclo mensal (outras tarifas, custos do Full, tarifa de devolução) nem o custo do produto (COGS). A doc oficial confirma: essas tarifas só existem no billing mensal, não há líquido diário na API pública do ML — o &quot;Você recebeu&quot; carregado por dia é impossível de reproduzir.
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full lg:w-auto lg:min-w-[600px]">
@@ -670,7 +674,16 @@ export function FinanceiroView({
 
         {paymentMix.length > 0 && (
           <div className="bg-surface-container/70 backdrop-blur-[16px] rounded-xl border border-white/10 p-lg flex flex-col gap-4">
-            <h3 className="font-h3 text-h3 text-on-surface">Formas de Pagamento</h3>
+            <h3 className="font-h3 text-h3 text-on-surface flex items-center gap-1.5">
+              Formas de Pagamento
+              {infoTip('formas-pagamento', (
+                <>
+                  Distribuição dos pedidos concluídos por método de pagamento do comprador. Cada pedido conta 1× (pelo método dominante); a soma dos valores = faturamento e a soma das quantidades = pedidos.
+                  <br /><br />
+                  <span className="text-on-surface">Sem espelho oficial pra conferir:</span> forma de pagamento é conceito do Mercado Pago (nível conta) — a doc confirma que o ML não expõe esse breakdown por método/período pro vendedor. É informativo (&quot;como seus compradores pagam&quot;), validado pela consistência interna.
+                </>
+              ), true)}
+            </h3>
             <div className="flex flex-col gap-4">
               {paymentMix.map((m) => {
                 const pct = totalMix > 0 ? (m.qtd / totalMix) * 100 : 0

@@ -189,7 +189,7 @@ export default async function ShopeeFinanceiroPage({
     })
   }
 
-  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList, { data: incomeOverview }, incomeSummaryRes] = await Promise.all([
+  const [txRows, { data: payoutRows }, { data: latestTx }, { data: dailyRows }, orderFeesList, { data: incomeOverview }, incomeSummaryRes, adsSummaryRes] = await Promise.all([
     fetchAllTransactions(),
     supabase
       .from('shopee_payouts')
@@ -218,8 +218,11 @@ export default async function ShopeeFinanceiroPage({
       .eq('connection_id', connId)
       .maybeSingle(),
     supabase.rpc('shopee_income_summary', { p_conn: conn.id, p_from: fromDate, p_to: toDate }),
+    // Ads all_cpc (bate painel Shopee Ads) — usado no Lucro Bruto Macro em vez do daily_metrics.
+    supabase.rpc('shopee_ads_summary', { p_conn: conn.id, p_from: fromDate, p_to: toDate }),
   ])
   const incomeSummary = (incomeSummaryRes?.data ?? null) as IncomeSummary
+  const adsSpendMacro = adsSummaryRes?.data ? Number((adsSummaryRes.data as { spend_cents: number }).spend_cents) / 100 : null
 
   return (
     <FinanceiroView
@@ -240,6 +243,7 @@ export default async function ShopeeFinanceiroPage({
       pendingAmountCents={incomeOverview?.pending_amount_cents ?? null}
       releasedAmountCents={incomeOverview?.released_amount_cents ?? null}
       incomeSummary={incomeSummary}
+      adsSpendMacro={adsSpendMacro}
     />
   )
 }
