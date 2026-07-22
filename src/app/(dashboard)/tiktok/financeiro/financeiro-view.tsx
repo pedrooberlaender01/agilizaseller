@@ -72,7 +72,7 @@ export function FinanceiroView({
   customFrom,
   customTo,
 }: {
-  kpi: { statements: number; repasse: number; taxas: number; receita: number }
+  kpi: { statements: number; repasse: number; taxas: number; receita: number; afiliados: number }
   statements: StatementRow[]
   totalCount: number
   page: number
@@ -149,11 +149,22 @@ export function FinanceiroView({
           </div>
         </div>
 
+        {/* Tabs (espelha Shopee financeiro) */}
+        <div className="mb-lg flex flex-wrap items-center gap-1 border-b border-zinc-800">
+          <span className="border-b-2 border-white px-3 pb-2 text-sm font-medium text-white">Visão Geral</span>
+          {['Transações', 'Saques Bancários', 'Repasses', 'Taxas'].map((t) => (
+            <span key={t} className="flex items-center gap-1.5 px-3 pb-2 text-sm font-medium text-zinc-500">
+              {t}
+              <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[8px] font-medium text-blue-200">em breve</span>
+            </span>
+          ))}
+        </div>
+
         <div className="mb-lg grid grid-cols-2 gap-4 lg:grid-cols-3">
           <KpiCard label="Repasse (líquido)" value={fmtBrl(kpi.repasse)} tone="green" />
           <KpiCard label="Receita bruta" value={fmtBrl(kpi.receita)} />
           <KpiCard label="Taxas TikTok" value={fmtBrl(kpi.taxas)} tone="red" />
-          <KpiCard label="Comissão afiliados" value="—" soon />
+          <KpiCard label="Comissão afiliados" value={fmtBrl(kpi.afiliados)} tone="red" />
           <KpiCard label="Ads" value="—" soon />
           <KpiCard label="Statements" value={kpi.statements.toLocaleString('pt-BR')} />
         </div>
