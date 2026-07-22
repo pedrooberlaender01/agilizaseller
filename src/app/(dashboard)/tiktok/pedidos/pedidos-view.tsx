@@ -6,6 +6,7 @@ import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { DateRangePopover, fmtDateBRShort } from '@/components/date-range-popover'
+import { KpiCard, fmtBrl as fmtBrlUi, fmtNum, fmtPct } from '../_ui'
 
 const PAGE_SIZE = 50
 
@@ -92,7 +93,7 @@ export function PedidosView({
 }: {
   orders: OrderRow[]
   totalCount: number
-  periodTotals: { gmv: number; count: number }
+  periodTotals: { gmv: number; count: number; ticket: number; cancelled: number }
   page: number
   period: Period
   customFrom: string | null
@@ -176,6 +177,21 @@ export function PedidosView({
     <>
       <TopBar title="Pedidos — TikTok Shop" />
       <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
+        {/* KPIs do período */}
+        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <KpiCard label="Pedidos" value={fmtNum(periodTotals.count)} icon="shopping_cart" />
+          <KpiCard label="Faturamento" value={fmtBrlUi(periodTotals.gmv)} icon="payments" tone="green" />
+          <KpiCard label="Repasse Real" value="—" soon />
+          <KpiCard label="Ticket Médio" value={fmtBrlUi(periodTotals.ticket)} icon="receipt_long" />
+          <KpiCard label="Escrow Sync" value="—" soon />
+          <KpiCard
+            label="Cancelados"
+            value={fmtPct(periodTotals.count + periodTotals.cancelled > 0 ? (periodTotals.cancelled / (periodTotals.count + periodTotals.cancelled)) * 100 : 0)}
+            icon="remove_shopping_cart"
+            tone="red"
+          />
+        </div>
+
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[280px]">
@@ -236,16 +252,6 @@ export function PedidosView({
                   align="left"
                 />
               )}
-            </div>
-          </div>
-          <div className="flex gap-6 text-right">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-400">GMV período</p>
-              <p className="text-sm font-semibold text-white">{fmtBrl(periodTotals.gmv)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-400">Pedidos</p>
-              <p className="text-sm font-semibold text-white">{periodTotals.count.toLocaleString('pt-BR')}</p>
             </div>
           </div>
         </div>

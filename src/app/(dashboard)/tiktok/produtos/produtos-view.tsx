@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
+import { fmtNum } from '../_ui'
 
 const PAGE_SIZE = 50
 
@@ -50,6 +51,7 @@ export function ProdutosView({
   status,
   search,
   statuses,
+  totals,
 }: {
   products: ProductRow[]
   totalCount: number
@@ -57,6 +59,7 @@ export function ProdutosView({
   status: string
   search: string
   statuses: string[]
+  totals: { total: number; ativos: number; naoPublicados: number; estoque: number }
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -104,6 +107,26 @@ export function ProdutosView({
     <>
       <TopBar title="Produtos — TikTok Shop" />
       <main className={cn('overflow-y-auto p-margin', pending && 'opacity-70 transition-opacity')}>
+        {/* Cards resumo */}
+        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Total Produtos</p>
+            <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.total)}</p>
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">{fmtNum(totals.ativos)} ativos · {fmtNum(totals.naoPublicados)} não publicados</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Estoque Total</p>
+            <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.estoque)}</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-wider text-slate-400">Vendidos (acumulado)</p>
+              <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-medium text-blue-200">Em breve</span>
+            </div>
+            <p className="mt-1 text-3xl font-semibold text-zinc-600">—</p>
+          </div>
+        </div>
+
         <div className="mb-lg flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-[280px]">

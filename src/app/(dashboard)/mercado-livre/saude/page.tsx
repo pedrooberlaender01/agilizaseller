@@ -6,7 +6,8 @@ import type { AccountHealth } from '@/types'
 
 export const revalidate = 60
 
-const fmtPct = (n: number | null) => (n == null ? '—' : `${(Number(n) * 100).toFixed(1).replace('.', ',')}%`)
+// 2 casas: taxas de reputação são pequenas (0,01%); com 1 casa 0,01% virava "0,0%".
+const fmtPct = (n: number | null) => (n == null ? '—' : `${(Number(n) * 100).toFixed(2).replace('.', ',')}%`)
 
 function NoConnectionState() {
   return (
@@ -135,6 +136,12 @@ export default async function MercadoLivreSaudePage() {
                 <h3 className="text-xs font-medium uppercase tracking-wider text-outline">Reclamações</h3>
                 <span className="text-[32px] font-bold leading-none text-white">{fmtPct(health.claims_rate)}</span>
               </div>
+              <p className="col-span-full flex items-start gap-1.5 text-[11px] leading-relaxed text-outline-variant">
+                <Icon name="help" size={13} className="mt-0.5 shrink-0" />
+                <span title="Taxas oficiais da API de reputação do Mercado Livre (campo 'rate', janela móvel de 60 dias). Batem com Vendas → Reputação. Mostradas com 2 casas porque são pequenas (ex: cancelamentos 0,01%).">
+                  Taxas oficiais do ML — janela de 60 dias. Batem com Vendas → Reputação.
+                </span>
+              </p>
             </div>
 
             <div className="glass-card col-span-12 flex flex-col gap-4 p-lg md:col-span-6">

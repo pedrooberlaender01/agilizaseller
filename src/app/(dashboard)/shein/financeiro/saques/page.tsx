@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
-import { Icon } from '@/components/icon'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
+import { SaquesStats } from './saques-stats'
 
 export const revalidate = 60
 
@@ -33,20 +33,6 @@ function fmtDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-}
-
-function StatCard({ label, value, sub, icon, tone = 'default' }: { label: string; value: string; sub?: string; icon: string; tone?: 'default' | 'green' | 'blue' | 'yellow' }) {
-  const toneCls = tone === 'green' ? 'text-emerald-300' : tone === 'blue' ? 'text-blue-300' : tone === 'yellow' ? 'text-amber-300' : 'text-white'
-  return (
-    <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
-        <Icon name={icon} size={18} className="text-zinc-500" />
-      </div>
-      <p className={cn('mt-2 text-2xl font-semibold', toneCls)}>{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
-    </div>
-  )
 }
 
 export default async function SheinSaquesPage() {
@@ -116,43 +102,16 @@ export default async function SheinSaquesPage() {
           </div>
         </div>
 
-        <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            label="Líquido Total"
-            value={fmtBrl(totals.total)}
-            sub={`${payouts.length} saques`}
-            icon="account_balance"
-            tone="blue"
-          />
-          <StatCard
-            label="Receitas"
-            value={fmtBrl(totals.receitas)}
-            sub="Vendas líquidas"
-            icon="trending_up"
-            tone="green"
-          />
-          <StatCard
-            label="Despesas"
-            value={fmtBrl(totals.despesas)}
-            sub="Estornos / ajustes"
-            icon="trending_down"
-            tone="yellow"
-          />
-          <StatCard
-            label="Pago"
-            value={fmtBrl(totals.paid)}
-            sub={`${totals.paidCount} ${totals.paidCount === 1 ? 'transferência' : 'transferências'}`}
-            icon="check_circle"
-            tone="green"
-          />
-          <StatCard
-            label="Previsto"
-            value={fmtBrl(totals.pending)}
-            sub={`${totals.pendingCount} pendentes`}
-            icon="schedule"
-            tone="yellow"
-          />
-        </div>
+        <SaquesStats
+          total={totals.total}
+          receitas={totals.receitas}
+          despesas={totals.despesas}
+          paid={totals.paid}
+          pending={totals.pending}
+          count={payouts.length}
+          paidCount={totals.paidCount}
+          pendingCount={totals.pendingCount}
+        />
 
         <div className="border border-zinc-800 bg-zinc-900/40 overflow-hidden rounded-2xl">
           <table className="w-full border-collapse text-left">

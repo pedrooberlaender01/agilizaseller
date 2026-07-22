@@ -99,25 +99,25 @@ export default async function TiktokPedidosPage({
     query = query.or(`order_id.ilike.%${term}%,buyer_name.ilike.%${term}%`)
   }
 
-  const [pageResult, statusesResult, totalsResult] = await Promise.all([
+  const [pageResult, statusesResult, metricsResult] = await Promise.all([
     query
       .order('create_time', { ascending: false, nullsFirst: false })
       .range(offset, offset + PAGE_SIZE - 1),
     supabase.rpc('tt_distinct_order_statuses'),
-    supabase.rpc('tt_pedidos_totals', {
-      p_from: from,
-      p_to: to,
-      p_statuses: statusesArr,
-      p_search: search || null,
-    }),
+    supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
   ])
   const { data, count } = pageResult
   const uniqueStatuses = ((statusesResult.data ?? []) as Array<{ status: string | null }>)
     .map((r) => r.status)
     .filter((s): s is string => !!s)
 
-  const totals = (totalsResult.data ?? { count: 0, gmv: 0 }) as { count: number; gmv: number | string }
-  const periodTotals = { gmv: Number(totals.gmv ?? 0), count: Number(totals.count ?? 0) }
+  const m = (metricsResult.data ?? {}) as { orders_count?: number; gross_revenue?: number | string; ticket_medio?: number | string; cancelled?: number }
+  const periodTotals = {
+    gmv: Number(m.gross_revenue ?? 0),
+    count: Number(m.orders_count ?? 0),
+    ticket: Number(m.ticket_medio ?? 0),
+    cancelled: Number(m.cancelled ?? 0),
+  }
 
   return (
     <PedidosView

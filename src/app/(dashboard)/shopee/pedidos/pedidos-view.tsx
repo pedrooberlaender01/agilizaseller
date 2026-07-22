@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { Icon } from '@/components/icon'
+import { InfoButton, InfoModal, type KpiInfo } from '@/components/kpi-info'
 import { cn } from '@/lib/utils'
 import {
   exportShopeeOrdersCsv,
@@ -20,6 +21,15 @@ import type {
 
 const SHOPEE_COMMISSION_RATE = 0.20
 const PAGE_SIZE = 50
+
+const PEDIDOS_INFO: Record<string, KpiInfo> = {
+  Pedidos: {
+    title: 'Pedidos',
+    oQueE: 'Total de pedidos criados no período selecionado, contando cada pedido UMA vez (não conta produto a produto). "Válidos" = os que não foram cancelados.',
+    origem: 'Campo `date_created` de cada pedido, que vem do `create_time` da API get_order_detail da Shopee — a MESMA "Data de criação do pedido" que aparece na planilha de Exportar Pedidos. Filtramos por esse dia no fuso de Brasília e contamos IDs de pedido distintos.',
+    difere: 'Regras de como o número é montado:\n• Contamos por DATA DE CRIAÇÃO do pedido (não data de pagamento nem de envio).\n• Cada pedido conta 1x, mesmo com vários produtos. Na planilha da Shopee 1 pedido com 3 itens vira 3 LINHAS — por isso a contagem de linhas (ex: 4.936) é maior que a de pedidos (4.421).\n• Inclui TODOS os status (Concluído, Enviado, A Enviar, Cancelado, Não pago...). "Válidos" exclui só os cancelados.\n• Conferido pedido-a-pedido contra o Exportar da Shopee (21/06–21/07): 4.421 = 4.421, mesmo conjunto de IDs, zero divergência.\n• No Google Sheets, o filtro da coluna mostra "valores distintos" (horários únicos), NÃO pedidos — pra contar certo use COUNTUNIQUE dos IDs por dia.',
+  },
+}
 
 type Period = '7d' | '30d' | '90d'
 
@@ -495,6 +505,7 @@ export function PedidosView({
   const debouncedSearch = useDebounced(searchInput, 300)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [infoKey, setInfoKey] = useState<string | null>(null)
 
   function pushParams(updater: (next: URLSearchParams) => void, resetPage = true) {
     const next = new URLSearchParams(sp.toString())
@@ -588,7 +599,10 @@ export function PedidosView({
               className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-lg flex flex-col gap-2"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">{kpi.label}</span>
+                <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                  {kpi.label}
+                  <InfoButton show={!!PEDIDOS_INFO[kpi.label]} label={kpi.label} onOpen={() => setInfoKey(kpi.label)} />
+                </span>
                 <span className={cn('material-symbols-outlined text-lg', kpi.tone)}>{kpi.icon}</span>
               </div>
               <div className={cn('text-h2 font-semibold', kpi.tone)}>{kpi.value}</div>
@@ -775,6 +789,7 @@ export function PedidosView({
       </main>
 
       {selected && <OrderDrawer orderRow={selected} onClose={() => setSelectedId(null)} />}
+      <InfoModal info={infoKey ? PEDIDOS_INFO[infoKey] ?? null : null} onClose={() => setInfoKey(null)} />
     </>
   )
 }

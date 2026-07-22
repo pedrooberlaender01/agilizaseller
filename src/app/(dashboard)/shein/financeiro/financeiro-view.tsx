@@ -49,7 +49,103 @@ function useDebounced<T>(value: T, delay: number): T {
   return v
 }
 
-function StatCard({ label, value, icon, tone = 'default' }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue' }) {
+const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; onde: string; difere?: string }> = {
+  'Bruto': {
+    title: 'Bruto',
+    oQueE: 'Soma do valor bruto dos settlements (liquidações) no período — o total antes de descontar comissão e taxas.',
+    origem: '`sum(shein_settlements.gross_amount)` das liquidações com data no período.',
+    onde: 'Painel Shein → Finanças → Minha renda → Registro de liquidação → abrir um lote → coluna de preço bruto.',
+    difere: 'Só conta o que já foi LIQUIDADO (settlement gerado). Pedido vendido mas ainda não liquidado não entra — usar Extrato só pra dinheiro já processado.',
+  },
+  'Comissão Shein': {
+    title: 'Comissão Shein',
+    oQueE: 'Total de comissão da Shein cobrada nas liquidações do período (~18-20% por item).',
+    origem: '`sum(shein_settlements.commission)`.',
+    onde: 'Painel Shein → Registro de liquidação → detalhe do lote → coluna Comissão.',
+    difere: 'Validado por lote: ex. lote 22/06 comissão -5.760,80 bate ao centavo com o export do painel.',
+  },
+  'Service charge': {
+    title: 'Service charge',
+    oQueE: 'Taxa de intermediação de frete / operação (fulfillment) cobrada pela Shein nas liquidações.',
+    origem: '`sum(shein_settlements.service_charge)`.',
+    onde: 'Painel Shein → Registro de liquidação → detalhe do lote → "Taxa de intermediação de frete".',
+    difere: 'Validado por lote (ex. 22/06 = -2.414,00 exato).',
+  },
+  'Taxa total': {
+    title: 'Taxa total',
+    oQueE: 'Comissão + Service charge das liquidações. Percentual = taxa ÷ bruto.',
+    origem: 'Calculado: soma de `fee` dos settlements.',
+    onde: 'Não existe direto no painel — é a soma das duas taxas do detalhe do lote.',
+  },
+  'Receita líquida est.': {
+    title: 'Receita líquida est.',
+    oQueE: 'Valor líquido REAL que caiu na conta nas liquidações do período (o dinheiro efetivamente recebido).',
+    origem: '`sum(shein_settlements.net_amount)` = `estimateIncomeMoneyTotal` das liquidações.',
+    onde: 'Painel Shein → Registro de liquidação → "Valor liquidado" dos lotes.',
+    difere: 'Validado 100%: 7 lotes recentes batem ao centavo com o painel (ex. 01/06 = 84.914,48). Só cobre o que já foi liquidado (settlements começam 18/03; lotes anteriores parciais).',
+  },
+}
+
+function InfoModal({ infoKey, onClose }: { infoKey: string | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!infoKey) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoKey, onClose])
+
+  if (!infoKey) return null
+  const info = KPI_INFO[infoKey]
+  if (!info) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[480px] rounded-2xl border border-zinc-700 shadow-2xl" style={{ background: 'rgba(22,27,34,0.97)' }}>
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-zinc-50 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-blue-400">help</span>
+            {info.title}
+          </h3>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white transition-colors" aria-label="Fechar">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">O que é</div>
+            <p className="text-sm leading-relaxed text-zinc-300">{info.oQueE}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">De onde vem o dado</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.origem}</p>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">Onde conferir no painel Shein</div>
+            <p className="text-sm leading-relaxed text-zinc-400">{info.onde}</p>
+          </div>
+          {info.difere && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">Detalhe / validação</div>
+              <p className="text-sm leading-relaxed text-zinc-400 whitespace-pre-line">{info.difere}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HelpButton({ label, onOpen }: { label: string; onOpen: (key: string) => void }) {
+  return (
+    <button onClick={(e) => { e.stopPropagation(); onOpen(label) }} className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-600 hover:bg-white/10 hover:text-zinc-300 transition-colors" aria-label={`Explicação: ${label}`}>
+      <span className="material-symbols-outlined text-[14px]">help</span>
+    </button>
+  )
+}
+
+function StatCard({ label, value, icon, tone = 'default', helpKey, onHelp }: { label: string; value: string; icon: string; tone?: 'default' | 'green' | 'red' | 'blue'; helpKey?: string; onHelp?: (key: string) => void }) {
   const toneCls = {
     default: 'text-white',
     green: 'text-secondary',
@@ -59,7 +155,10 @@ function StatCard({ label, value, icon, tone = 'default' }: { label: string; val
   return (
     <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+          {onHelp && helpKey && <HelpButton label={helpKey} onOpen={onHelp} />}
+        </div>
         <Icon name={icon} size={18} className="text-zinc-500" />
       </div>
       <p className={cn('mt-2 text-2xl font-semibold', toneCls)}>{value}</p>
@@ -94,6 +193,7 @@ export function FinanceiroView({
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebounced(searchInput, 300)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [helpKey, setHelpKey] = useState<string | null>(null)
   const datePickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -217,11 +317,11 @@ export function FinanceiroView({
         </div>
 
         <div className="mb-lg grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <StatCard label="Bruto" value={fmtBrl(totals.gross)} icon="payments" tone="blue" />
-          <StatCard label="Comissão Shein" value={fmtBrl(totals.commission)} icon="percent" tone="red" />
-          <StatCard label="Service charge" value={fmtBrl(totals.service)} icon="local_shipping" tone="red" />
-          <StatCard label={`Taxa total (${taxaPct.toFixed(1)}%)`} value={fmtBrl(totals.fee)} icon="receipt" tone="red" />
-          <StatCard label="Receita líquida est." value={fmtBrl(totals.estimated)} icon="account_balance_wallet" tone="green" />
+          <StatCard label="Bruto" value={fmtBrl(totals.gross)} icon="payments" tone="blue" helpKey="Bruto" onHelp={setHelpKey} />
+          <StatCard label="Comissão Shein" value={fmtBrl(totals.commission)} icon="percent" tone="red" helpKey="Comissão Shein" onHelp={setHelpKey} />
+          <StatCard label="Service charge" value={fmtBrl(totals.service)} icon="local_shipping" tone="red" helpKey="Service charge" onHelp={setHelpKey} />
+          <StatCard label={`Taxa total (${taxaPct.toFixed(1)}%)`} value={fmtBrl(totals.fee)} icon="receipt" tone="red" helpKey="Taxa total" onHelp={setHelpKey} />
+          <StatCard label="Receita líquida est." value={fmtBrl(totals.estimated)} icon="account_balance_wallet" tone="green" helpKey="Receita líquida est." onHelp={setHelpKey} />
         </div>
 
         <div className="mb-lg flex flex-wrap items-center gap-4">
@@ -298,6 +398,7 @@ export function FinanceiroView({
           </div>
         </div>
       </main>
+      <InfoModal infoKey={helpKey} onClose={() => setHelpKey(null)} />
     </>
   )
 }

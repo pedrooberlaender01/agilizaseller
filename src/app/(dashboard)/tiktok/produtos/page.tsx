@@ -65,14 +65,19 @@ export default async function TiktokProdutosPage({
     .order('updated_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  // status distintos (catalogo pequeno, dedupe client-side)
-  const { data: allStatus } = await supabase
+  // catalogo pequeno: puxa status+stock de todos p/ dedupe + agregados
+  const { data: allRows } = await supabase
     .from('tt_products')
-    .select('status')
+    .select('status, stock')
     .eq('connection_id', conn.id)
-  const statuses = Array.from(
-    new Set(((allStatus ?? []) as Array<{ status: string | null }>).map((r) => r.status).filter((s): s is string => !!s)),
-  ).sort()
+  const rows = (allRows ?? []) as Array<{ status: string | null; stock: number | string | null }>
+  const statuses = Array.from(new Set(rows.map((r) => r.status).filter((s): s is string => !!s))).sort()
+  const totals = {
+    total: rows.length,
+    ativos: rows.filter((r) => r.status === 'ACTIVATE').length,
+    naoPublicados: rows.filter((r) => r.status && r.status !== 'ACTIVATE').length,
+    estoque: rows.reduce((a, r) => a + (Number(r.stock) || 0), 0),
+  }
 
   return (
     <ProdutosView
@@ -82,6 +87,7 @@ export default async function TiktokProdutosPage({
       status={statusFilter}
       search={search}
       statuses={statuses}
+      totals={totals}
     />
   )
 }

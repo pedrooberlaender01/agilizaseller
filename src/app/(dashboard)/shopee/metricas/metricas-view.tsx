@@ -67,13 +67,13 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; d
     title: 'Faturamento',
     oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
     origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
-    difere: 'A Shopee tem DOIS funis nas Informações Gerenciais e nós temos TRÊS modos no botão Funil — case cada um antes de comparar:\n\n• Modo "Pedido Feito (Shopee)" ↔ funil "Pedido Feito" da Shopee: a QUANTIDADE de pedidos bate 100% exato (todo pedido criado, inclusive Pix gerado e nunca pago). A receita fica ~1-2% abaixo: a Shopee mostra o valor "cheio" da venda; nosso número é o valor real do pedido (o total que o comprador pagou). É diferença de definição, não de dado faltando.\n\n• Modo "Produto Pago (Shopee)" ↔ funil "Produto Pago" da Shopee: aproxima mas NÃO fica exato. A Shopee conta só os cancelamentos que chegaram a pagar; nós incluímos todos os cancelados porque a API não devolve a hora do pagamento por pedido — não dá pra separar quem cancelou antes de quem cancelou depois de pagar. Por isso nosso número fica um pouco acima do "Produto Pago" deles.\n\n• Modo "Padrão" (nosso): o mais conservador — tira TODO cancelado e todo não-pago. Sempre menor que os dois funis da Shopee. É a receita que efetivamente vira repasse.\n\nEm qualquer comparação, use o MESMO período dos dois lados (o botão "30d" aqui termina hoje, que ainda está incompleto).',
+    difere: 'A Shopee tem DOIS funis nas Informações Gerenciais (Dados → Informações Gerenciais → Tipo de Pedido) e nós temos TRÊS modos no botão Funil — case cada um antes de comparar:\n\n• Modo "Produto Pago (Shopee)" ↔ funil "Produto Pago" da Shopee: fica ~1% do valor "Vendas" deles (aqui usamos o PREÇO DE PRODUTO pago, mesma base que a Shopee). NÃO crava 100% e NÃO tem como: a Shopee inclui no "Produto Pago" alguns pedidos que foram PAGOS e depois CANCELADOS — mas no nosso dado todo pedido cancelado vem com o valor do produto ZERADO no extrato financeiro (a Shopee zera ao cancelar) e sem a hora do pagamento, então não dá pra saber quais cancelados pagaram nem recuperar o valor deles. Somando esses ~1% que faltam. Além disso, a Shopee redefiniu a métrica "Vendas" em 2026 (fórmula não pública) e não existe API que devolva esse número agregado. Os ~1% são esse limite, não dado faltando.\n\n• Modo "Pedido Feito (Shopee)" ↔ funil "Pedido Feito": a QUANTIDADE de pedidos bate exato (todo pedido criado, inclusive Pix nunca pago). A receita fica ~1-2% abaixo porque usa o valor do pedido, não o preço de produto da definição nova.\n\n• Modo "Padrão" (nosso): o mais conservador — tira TODO cancelado e todo não-pago. É a receita que efetivamente vira repasse.\n\nUse SEMPRE o mesmo período dos dois lados, terminando ONTEM (o dia de hoje ainda está aberto e não fecha).',
   },
   'Pedidos': {
     title: 'Pedidos',
     oQueE: 'Quantidade de pedidos do período. O botão Funil escolhe o critério: Padrão (só válidos), Produto Pago ou Pedido Feito.',
     origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, por status e data de criação.',
-    difere: 'Para bater 100% exato com a Shopee, ponha o Funil em "Pedido Feito (Shopee)" e compare com o funil "Pedido Feito" das Informações Gerenciais — esse modo conta todo pedido criado, inclusive Pix nunca pago. O modo "Produto Pago" fica um pouco acima do funil equivalente da Shopee porque incluímos todos os cancelados (a API não expõe a hora do pagamento, então não dá pra separar cancelado-antes de cancelado-depois de pagar). O modo Padrão exclui todos os cancelados e é sempre o menor.',
+    difere: 'Para bater 100% exato com a Shopee, ponha o Funil em "Pedido Feito (Shopee)" e compare com o funil "Pedido Feito" das Informações Gerenciais — esse modo conta todo pedido criado, inclusive Pix nunca pago. O modo "Produto Pago" fica ~2% do funil equivalente da Shopee: conta os pedidos válidos (pagos), mas a Shopee ainda soma alguns pedidos que foram PAGOS e depois CANCELADOS. Não dá pra igualar: no nosso extrato todo cancelado vem sem a hora do pagamento e com o valor zerado, então não conseguimos identificar quais cancelados pagaram (todos ficam idênticos). Somando esses ~2% de pedidos que faltam. A definição do funil não é pública, a Shopee mudou em 2026 e não tem API pra ela — ~2% é o piso. O modo Padrão exclui todos os cancelados.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
@@ -408,6 +408,8 @@ function EmptyDataState({ nickname }: { nickname: string | null }) {
   )
 }
 
+export type AdsSummary = { spend_cents: number; gmv_cents: number; orders: number; clicks: number; impressions: number } | null
+
 export function MetricasView({
   current,
   previous,
@@ -418,6 +420,8 @@ export function MetricasView({
   repassePrev,
   comissaoAfiliadosCur,
   comissaoAfiliadosPrev,
+  adsCur,
+  adsPrev,
   nickname,
 }: {
   current: ShopeeDailyMetric[]
@@ -429,6 +433,8 @@ export function MetricasView({
   repassePrev: number
   comissaoAfiliadosCur: number
   comissaoAfiliadosPrev: number
+  adsCur: AdsSummary
+  adsPrev: AdsSummary
   nickname: string | null
 }) {
   const router = useRouter()
@@ -481,11 +487,16 @@ export function MetricasView({
 
   // Funil: 3 critérios de contagem, o padrão é o mais conservador (só pedidos válidos)
   const incl = config.criterio !== 'padrao'
+  // Produto Pago usa PREÇO DE PRODUTO (total_product_sales), não o valor cheio do pedido:
+  // a Shopee "Vendas (Produto Pago)" mede preço de produto pago. Bate ~0,9% (fórmula 2026 da
+  // Shopee não é documentada e não tem API — 0,9% é o melhor possível, medido).
   const faturamentoField = config.criterio === 'pedido_feito' ? 'gross_revenue_all'
-    : config.criterio === 'produto_pago' ? 'gross_revenue_incl_cancel'
+    : config.criterio === 'produto_pago' ? 'total_product_sales'
     : 'gross_revenue'
+  // Produto Pago conta orders_count (valido): incl_cancel somava TODOS os cancelados (+8% vs Shopee),
+  // mas a Shopee so conta os cancelados pagos (~poucos). orders_count fica ~2% (limite fórmula 2026).
   const pedidosField = config.criterio === 'pedido_feito' ? 'orders_count_all'
-    : config.criterio === 'produto_pago' ? 'orders_count_incl_cancel'
+    : config.criterio === 'produto_pago' ? 'orders_count'
     : 'orders_count'
   const faturamento = sum(current, faturamentoField) || sum(current, 'gross_revenue')
   // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
@@ -495,11 +506,13 @@ export function MetricasView({
   const totalFrete = sum(current, 'total_shipping_cost')
   const taxasShopee = totalComissao + totalFrete
   const lucroEscrow = sumLucroReal(current)
-  const adsSpend = sumCents(current, 'ads_spend_cents')
-  const adsGmv = sumCents(current, 'ads_gmv_cents')
-  const adsOrders = sum(current, 'ads_orders')
-  const adsImpressions = sum(current, 'ads_impressions')
-  const adsClicks = sum(current, 'ads_clicks')
+  // Ads: fonte autoritativa = all_cpc (RPC shopee_ads_summary, bate painel Shopee Ads).
+  // Fallback pro daily_metrics se a RPC não retornar (períodos sem sync de campanhas).
+  const adsSpend = adsCur ? adsCur.spend_cents / 100 : sumCents(current, 'ads_spend_cents')
+  const adsGmv = adsCur ? adsCur.gmv_cents / 100 : sumCents(current, 'ads_gmv_cents')
+  const adsOrders = adsCur ? adsCur.orders : sum(current, 'ads_orders')
+  const adsImpressions = adsCur ? adsCur.impressions : sum(current, 'ads_impressions')
+  const adsClicks = adsCur ? adsCur.clicks : sum(current, 'ads_clicks')
   // Lucro Bruto Macro (fórmula João): Vendas − Taxas Marketplace − Ads. Sem COGS.
   const lucroBrutoMacro = faturamento - taxasShopee - adsSpend
   const lucroLiquido = lucroEscrow - adsSpend
@@ -519,9 +532,9 @@ export function MetricasView({
   const prevFrete = sum(previous, 'total_shipping_cost')
   const prevTaxasShopee = prevComissao + prevFrete
   const prevLucroEscrow = sumLucroReal(previous)
-  const prevAdsSpend = sumCents(previous, 'ads_spend_cents')
-  const prevAdsGmv = sumCents(previous, 'ads_gmv_cents')
-  const prevAdsOrders = sum(previous, 'ads_orders')
+  const prevAdsSpend = adsPrev ? adsPrev.spend_cents / 100 : sumCents(previous, 'ads_spend_cents')
+  const prevAdsGmv = adsPrev ? adsPrev.gmv_cents / 100 : sumCents(previous, 'ads_gmv_cents')
+  const prevAdsOrders = adsPrev ? adsPrev.orders : sum(previous, 'ads_orders')
   const prevLucroBrutoMacro = prevFat - prevTaxasShopee - prevAdsSpend
   const prevLucroLiquido = prevLucroEscrow - prevAdsSpend
   const prevTicket = prevPed > 0 ? prevFat / prevPed : 0

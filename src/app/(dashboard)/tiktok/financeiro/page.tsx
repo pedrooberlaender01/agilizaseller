@@ -73,8 +73,9 @@ export default async function TiktokFinanceiroPage({
   const { from, to } = periodRangeIso(period, customFrom, customTo)
   const offset = (page - 1) * PAGE_SIZE
 
-  const [kpiResult, listResult] = await Promise.all([
+  const [kpiResult, affiliateResult, listResult] = await Promise.all([
     supabase.rpc('tt_finance_realtime', { p_from: from, p_to: to }),
+    supabase.rpc('tt_affiliate_realtime', { p_from: from, p_to: to }),
     supabase
       .from('tt_settlements')
       .select('statement_id, settlement_amount, fee, revenue, currency, statement_time, raw', { count: 'exact' })
@@ -88,6 +89,8 @@ export default async function TiktokFinanceiroPage({
   const kpi = (kpiResult.data ?? { statements: 0, repasse: 0, taxas: 0, receita: 0 }) as {
     statements: number; repasse: number | string; taxas: number | string; receita: number | string
   }
+  const af = (affiliateResult.data ?? {}) as { affiliate_commission?: number | string }
+  const affiliateCommission = Number(af.affiliate_commission ?? 0)
 
   return (
     <FinanceiroView
@@ -96,6 +99,7 @@ export default async function TiktokFinanceiroPage({
         repasse: Number(kpi.repasse ?? 0),
         taxas: Number(kpi.taxas ?? 0),
         receita: Number(kpi.receita ?? 0),
+        afiliados: affiliateCommission,
       }}
       statements={(listResult.data ?? []) as StatementRow[]}
       totalCount={listResult.count ?? 0}

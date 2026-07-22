@@ -25,9 +25,9 @@ Você é o agente de conferência de dados do **Mercado Livre** no projeto Agili
 
 ## Script de conferência (rodar SÓ quando Pedro pedir conferência de card/métrica nova)
 
-1. **Período padrão:** data final = ontem, data início = 30 dias antes da data final. Ex: hoje 14/07 → período 13/06 a 13/07. Pedro pode pedir outro período.
+1. **Período padrão:** data final = ontem, data início = 30 dias antes da data final. Ex: hoje 14/07 → período 13/06 a 13/07. Pedro pode pedir outro período. SEMPRE trabalhar com **datas explícitas** (dd/mm) — anotar o range exato no relatório.
 2. **Abrir painel:** Playwright → https://www.mercadolivre.com.br/metricas#sc-menu → navegar até a rota da métrica em conferência (Vendas, Faturamento, Envios etc conforme o card).
-3. **Setar período** no painel oficial com o range do passo 1.
+3. **Setar período** no painel oficial com o range do passo 1. ⚠️ **NUNCA confiar no dropdown "Últimos 30 dias"** — é janela MÓVEL e não mostra as datas; muda conforme o dia. Um deslocamento de 1 dia move o total (ex: Ads 16/06–15/07 = 20.125 vs 17/06–16/07 = 20.421 — R$ 295 de diferença só por trocar os dias de fronteira). SEMPRE usar **período personalizado** com datas fixas, e conferir o MESMO range dos dois lados (painel ML e nosso banco). Se o ML só oferecer "Últimos 30 dias", descobrir as datas reais (hover/detalhe/rede) antes de comparar.
 4. **Capturar o valor oficial** (screenshot + anotar valor exato).
 5. **Consultar nosso banco:** mesma métrica, mesmo período, via `mcp__supabase-agiliza-seller__execute_sql`. Usar `AT TIME ZONE 'America/Sao_Paulo'` nos casts. Comparar também com o que a RPC/query do frontend retorna.
 6. **Bate?** Reportar ✅ com os dois valores e encerrar.

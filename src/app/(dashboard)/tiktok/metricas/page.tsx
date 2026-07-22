@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import { MetricasView, type DailyPoint, type StatusCount } from './metricas-view'
+import { MetricasView, type DailyRow, type StatusCount } from './metricas-view'
 
 export const revalidate = 60
 
-type Period = '7d' | '30d' | '90d' | 'custom'
+type Period = '7d' | '30d' | '90d' | 'mes' | 'custom'
 
 function parsePeriod(raw: string | undefined): Period {
-  return raw === '7d' || raw === '90d' || raw === 'custom' ? raw : '30d'
+  if (raw === '7d' || raw === '90d' || raw === 'mes' || raw === 'custom') return raw
+  return '30d'
 }
 function parseIsoDateOnly(s: string | undefined): string | null {
   if (!s) return null
@@ -21,6 +22,10 @@ function periodRangeIso(period: Period, cf: string | null, ct: string | null): {
     const t = new Date(ct + 'T00:00:00-03:00')
     t.setDate(t.getDate() + 1)
     return { from: f.toISOString(), to: t.toISOString() }
+  }
+  if (period === 'mes') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: start.toISOString(), to: now.toISOString() }
   }
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const d = new Date(now)
@@ -68,11 +73,23 @@ export default async function TiktokMetricasPage({
 
   const { from, to } = periodRangeIso(period, customFrom, customTo)
 
-  const [metricsRes, financeRes, seriesRes] = await Promise.all([
+  const [metricsRes, financeRes, seriesRes, cancelRes, affiliateRes] = await Promise.all([
     supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_finance_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_daily_series', { p_from: from, p_to: to }),
+    supabase.rpc('tt_cancel_breakdown', { p_from: from, p_to: to }),
+    supabase.rpc('tt_affiliate_realtime', { p_from: from, p_to: to }),
   ])
+  const af = (affiliateRes.data ?? {}) as { affiliate_commission?: number | string; coverage_orders?: number }
+  const affiliate = { commission: Number(af.affiliate_commission ?? 0), coverage: Number(af.coverage_orders ?? 0) }
+  const cb = (cancelRes.data ?? {}) as { total?: number; nao_pago?: number; comprador?: number; loja?: number; outros?: number }
+  const cancelBreakdown = {
+    total: Number(cb.total ?? 0),
+    naoPago: Number(cb.nao_pago ?? 0),
+    comprador: Number(cb.comprador ?? 0),
+    loja: Number(cb.loja ?? 0),
+    outros: Number(cb.outros ?? 0),
+  }
 
   const m = (metricsRes.data ?? {}) as {
     orders_count?: number; gross_revenue?: number | string; ticket_medio?: number | string
@@ -82,8 +99,11 @@ export default async function TiktokMetricasPage({
   const byStatus: StatusCount[] = Object.entries(m.by_status ?? {})
     .map(([status, count]) => ({ status, count: Number(count) }))
     .sort((a, b) => b.count - a.count)
-  const series = ((seriesRes.data ?? []) as Array<{ dia: string; pedidos: number; faturamento: number | string }>)
-    .map((r) => ({ dia: r.dia, pedidos: Number(r.pedidos), faturamento: Number(r.faturamento) })) as DailyPoint[]
+  const daily = ((seriesRes.data ?? []) as Array<{ dia: string; pedidos: number; faturamento: number | string; cancelados: number }>)
+    .map((r) => ({ dia: r.dia, pedidos: Number(r.pedidos), faturamento: Number(r.faturamento), cancelados: Number(r.cancelados) })) as DailyRow[]
+
+  const orders = Number(m.orders_count ?? 0)
+  const cancelled = Number(m.cancelled ?? 0)
 
   return (
     <MetricasView
@@ -91,16 +111,18 @@ export default async function TiktokMetricasPage({
       customFrom={period === 'custom' ? customFrom : null}
       customTo={period === 'custom' ? customTo : null}
       kpi={{
-        orders: Number(m.orders_count ?? 0),
+        orders,
         gross: Number(m.gross_revenue ?? 0),
         ticket: Number(m.ticket_medio ?? 0),
-        cancelled: Number(m.cancelled ?? 0),
+        cancelled,
         delivered: Number(m.delivered ?? 0),
         repasse: Number(f.repasse ?? 0),
         taxas: Number(f.taxas ?? 0),
       }}
       byStatus={byStatus}
-      series={series}
+      daily={daily}
+      cancelBreakdown={cancelBreakdown}
+      affiliate={affiliate}
     />
   )
 }
