@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { Fragment, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Area,
@@ -54,8 +54,11 @@ function violationsTone(n: number): Tone {
   return 'error'
 }
 
+// API get_shop_performance devolve rating numérico 1-4 (4=Excelente). Dados antigos podem vir como texto.
 function ratingTone(r: string | null): Tone {
   if (!r) return 'neutral'
+  const n = Number(r)
+  if (!Number.isNaN(n)) return n >= 3 ? 'success' : n === 2 ? 'warning' : 'error'
   const lower = r.toLowerCase()
   if (lower.includes('excellent') || lower.includes('good')) return 'success'
   if (lower.includes('improvement')) return 'warning'
@@ -64,6 +67,8 @@ function ratingTone(r: string | null): Tone {
 
 function ratingLabel(r: string | null): string {
   if (!r) return '—'
+  const n = Number(r)
+  if (!Number.isNaN(n)) return n >= 4 ? 'Excelente' : n === 3 ? 'Bom' : n === 2 ? 'Precisa Melhorar' : 'Crítico'
   const lower = r.toLowerCase()
   if (lower.includes('excellent')) return 'Excelente'
   if (lower.includes('good')) return 'Bom'
@@ -315,6 +320,127 @@ function PunishmentsCard({ punishments }: { punishments: Punishment[] }) {
   )
 }
 
+type PerfMetric = {
+  metric_name: string
+  current_period: number | null
+  target?: { value: number; comparator: string }
+  unit?: number
+}
+
+// metric_name (API get_shop_performance) → rótulo PT + como formatar o valor
+const METRIC_META: Record<string, { label: string; fmt: 'pct' | 'days' | 'rating' | 'count' }> = {
+  non_fulfillment_rate: { label: 'Taxa de Não Cumprimento', fmt: 'pct' },
+  late_shipment_rate: { label: 'Taxa de Envio Atrasado', fmt: 'pct' },
+  avg_preparation_time_ps: { label: 'Tempo de Preparação', fmt: 'days' },
+  saturday_shipment_rate: { label: 'Envios aos Sábados', fmt: 'pct' },
+  cancellation_rate: { label: 'Taxa de Cancelamento', fmt: 'pct' },
+  return_refund_rate: { label: 'Taxa de Devolução/Reembolso', fmt: 'pct' },
+  severe_listing_violations: { label: 'Violações de Anúncios Graves', fmt: 'count' },
+  pre_order_listing_rate: { label: 'Produtos Pré-encomenda', fmt: 'pct' },
+  the_amount_of_pre_order_listing: { label: 'Qtd Pré-encomenda', fmt: 'count' },
+  other_listing_violations: { label: 'Outras Violações de Anúncio', fmt: 'count' },
+  prohibited_listings: { label: 'Anúncios Proibidos', fmt: 'count' },
+  counterfeit_ip_infringement: { label: 'Contrafação / IP', fmt: 'count' },
+  spam_listings: { label: 'Anúncios Spam', fmt: 'count' },
+  pqr_products: { label: 'Produtos PQR', fmt: 'count' },
+  response_rate: { label: 'Taxa de Resposta', fmt: 'pct' },
+  shop_rating: { label: 'Avaliação da Loja', fmt: 'rating' },
+}
+
+const METRIC_GROUPS: { title: string; keys: string[] }[] = [
+  { title: 'Performance de Pedidos Concluídos', keys: ['non_fulfillment_rate', 'late_shipment_rate', 'avg_preparation_time_ps', 'saturday_shipment_rate', 'cancellation_rate', 'return_refund_rate'] },
+  { title: 'Performance do Produto', keys: ['severe_listing_violations', 'pre_order_listing_rate', 'the_amount_of_pre_order_listing', 'other_listing_violations', 'prohibited_listings', 'counterfeit_ip_infringement', 'spam_listings', 'pqr_products'] },
+  { title: 'Performance de Atendimento ao Cliente', keys: ['response_rate', 'shop_rating'] },
+]
+
+function fmtBr(v: number): string {
+  return v.toFixed(2).replace('.', ',')
+}
+
+function fmtMetricValue(v: number | null | undefined, fmt: string): string {
+  if (v === null || v === undefined) return '–'
+  if (fmt === 'days') return `${fmtBr(v)} dias`
+  if (fmt === 'rating') return `${fmtBr(v)}/5`
+  if (fmt === 'pct') return `${fmtBr(v)}%`
+  return `${v}` // count
+}
+
+function fmtMetricTarget(t: PerfMetric['target'], fmt: string): string {
+  if (!t) return '—'
+  const c = t.comparator === '>=' ? '≥' : t.comparator === '<=' ? '≤' : t.comparator
+  const val = String(t.value).replace('.', ',')
+  if (fmt === 'days') return `${c}${val} dias`
+  if (fmt === 'rating') return `${c}${val}/5`
+  if (fmt === 'pct') return `${c}${val}%`
+  return `${c}${val}`
+}
+
+// Verde se bate a meta, vermelho se estoura, neutro se sem dado (current_period null).
+function metricTone(v: number | null | undefined, t: PerfMetric['target']): Tone {
+  if (v === null || v === undefined || !t) return 'neutral'
+  switch (t.comparator) {
+    case '<': return v < t.value ? 'success' : 'error'
+    case '<=': return v <= t.value ? 'success' : 'error'
+    case '>': return v > t.value ? 'success' : 'error'
+    case '>=': return v >= t.value ? 'success' : 'error'
+    default: return 'neutral'
+  }
+}
+
+function MetricsDetailCard({ metrics }: { metrics: PerfMetric[] }) {
+  const byName = new Map(metrics.map((m) => [m.metric_name, m]))
+  return (
+    <div className="border border-zinc-800 bg-zinc-900/40 flex flex-col p-0">
+      <div className="flex items-center gap-2 border-b border-white/8 p-lg">
+        <Icon name="table_chart" className="text-zinc-600" />
+        <h3 className="text-base font-semibold text-white">Detalhes das Métricas</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead>
+            <tr className="border-b border-white/8 text-left text-[11px] uppercase tracking-wider text-zinc-500">
+              <th className="px-lg py-3 font-medium">Métrica</th>
+              <th className="px-lg py-3 font-medium">Período Atual</th>
+              <th className="px-lg py-3 font-medium">Meta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {METRIC_GROUPS.map((g) => {
+              const rows = g.keys.map((k) => byName.get(k)).filter((m): m is PerfMetric => !!m)
+              if (rows.length === 0) return null
+              return (
+                <Fragment key={g.title}>
+                  <tr>
+                    <td colSpan={3} className="bg-zinc-900/60 px-lg py-2 text-xs font-semibold text-zinc-300">
+                      {g.title}
+                    </td>
+                  </tr>
+                  {rows.map((m) => {
+                    const meta = METRIC_META[m.metric_name] ?? { label: m.metric_name, fmt: 'count' as const }
+                    const tone = toneClasses[metricTone(m.current_period, m.target)]
+                    return (
+                      <tr key={m.metric_name} className="border-b border-white/5">
+                        <td className="px-lg py-3 text-zinc-300">
+                          <span className="flex items-center gap-2">
+                            <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} />
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className={cn('px-lg py-3 font-medium', tone.text)}>{fmtMetricValue(m.current_period, meta.fmt)}</td>
+                        <td className="px-lg py-3 text-zinc-500">{fmtMetricTarget(m.target, meta.fmt)}</td>
+                      </tr>
+                    )
+                  })}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function EmptyStateView({ nickname }: { nickname: string | null }) {
   return (
     <main className="flex flex-1 items-center justify-center p-margin">
@@ -385,6 +511,8 @@ export function SaudeView({
 
   const r = ratingTone(latest.overall_performance_rating)
   const punishments = (Array.isArray(latest.ongoing_punishment) ? latest.ongoing_punishment : []) as Punishment[]
+  const perfPayload = (latest.perf_raw_payload && typeof latest.perf_raw_payload === 'object' ? latest.perf_raw_payload : null) as { metric_list?: PerfMetric[] } | null
+  const metrics = Array.isArray(perfPayload?.metric_list) ? perfPayload.metric_list : []
 
   return (
     <>
@@ -443,6 +571,12 @@ export function SaudeView({
           </div>
 
           <HistoryChart data={history} period={period} onPeriodChange={setPeriod} />
+
+          {metrics.length > 0 && (
+            <div className="col-span-12">
+              <MetricsDetailCard metrics={metrics} />
+            </div>
+          )}
 
           <div className="col-span-12">
             <PunishmentsCard punishments={punishments} />

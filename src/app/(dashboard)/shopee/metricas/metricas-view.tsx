@@ -67,13 +67,13 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; d
     title: 'Faturamento',
     oQueE: 'Soma do valor pago pelos compradores em pedidos confirmados do período. Inclui frete pago pelo comprador e já vem líquido de cupons subsidiados pela Shopee.',
     origem: 'Campo "valor total do pedido" que a API oficial da Shopee retorna em cada pedido, somado por dia (data de criação, fuso Brasil). Sincronizado em tempo real via webhook + reconciliação automática.',
-    difere: 'A Shopee tem DOIS funis nas Informações Gerenciais (Dados → Informações Gerenciais → Tipo de Pedido) e nós temos TRÊS modos no botão Funil — case cada um antes de comparar:\n\n• Modo "Produto Pago (Shopee)" ↔ funil "Produto Pago" da Shopee: fica em ~0,9% do valor "Vendas" deles. Aqui esse modo usa o PREÇO DE PRODUTO pago (mesma base que a Shopee), não o valor cheio do pedido. Não crava 100% e NÃO tem como: a Shopee redefiniu a métrica "Vendas" em 2026 (a fórmula exata não é pública) e não existe API que devolva esse número agregado — só dá pra somar pedido a pedido. Os ~0,9% são esse limite, não dado faltando.\n\n• Modo "Pedido Feito (Shopee)" ↔ funil "Pedido Feito": a QUANTIDADE de pedidos bate exato (todo pedido criado, inclusive Pix nunca pago). A receita fica ~1-2% abaixo porque usa o valor do pedido, não o preço de produto da definição nova.\n\n• Modo "Padrão" (nosso): o mais conservador — tira TODO cancelado e todo não-pago. É a receita que efetivamente vira repasse.\n\nUse SEMPRE o mesmo período dos dois lados, terminando ONTEM (o dia de hoje ainda está aberto e não fecha).',
+    difere: 'A Shopee tem DOIS funis nas Informações Gerenciais (Dados → Informações Gerenciais → Tipo de Pedido) e nós temos TRÊS modos no botão Funil — case cada um antes de comparar:\n\n• Modo "Produto Pago (Shopee)" ↔ funil "Produto Pago" da Shopee: fica ~1% do valor "Vendas" deles (aqui usamos o PREÇO DE PRODUTO pago, mesma base que a Shopee). NÃO crava 100% e NÃO tem como: a Shopee inclui no "Produto Pago" alguns pedidos que foram PAGOS e depois CANCELADOS — mas no nosso dado todo pedido cancelado vem com o valor do produto ZERADO no extrato financeiro (a Shopee zera ao cancelar) e sem a hora do pagamento, então não dá pra saber quais cancelados pagaram nem recuperar o valor deles. Somando esses ~1% que faltam. Além disso, a Shopee redefiniu a métrica "Vendas" em 2026 (fórmula não pública) e não existe API que devolva esse número agregado. Os ~1% são esse limite, não dado faltando.\n\n• Modo "Pedido Feito (Shopee)" ↔ funil "Pedido Feito": a QUANTIDADE de pedidos bate exato (todo pedido criado, inclusive Pix nunca pago). A receita fica ~1-2% abaixo porque usa o valor do pedido, não o preço de produto da definição nova.\n\n• Modo "Padrão" (nosso): o mais conservador — tira TODO cancelado e todo não-pago. É a receita que efetivamente vira repasse.\n\nUse SEMPRE o mesmo período dos dois lados, terminando ONTEM (o dia de hoje ainda está aberto e não fecha).',
   },
   'Pedidos': {
     title: 'Pedidos',
     oQueE: 'Quantidade de pedidos do período. O botão Funil escolhe o critério: Padrão (só válidos), Produto Pago ou Pedido Feito.',
     origem: 'Contagem dos pedidos retornados pela API oficial da Shopee, por status e data de criação.',
-    difere: 'Para bater 100% exato com a Shopee, ponha o Funil em "Pedido Feito (Shopee)" e compare com o funil "Pedido Feito" das Informações Gerenciais — esse modo conta todo pedido criado, inclusive Pix nunca pago. O modo "Produto Pago" fica um pouco acima do funil equivalente da Shopee porque incluímos todos os cancelados (a API não expõe a hora do pagamento, então não dá pra separar cancelado-antes de cancelado-depois de pagar). O modo Padrão exclui todos os cancelados e é sempre o menor.',
+    difere: 'Para bater 100% exato com a Shopee, ponha o Funil em "Pedido Feito (Shopee)" e compare com o funil "Pedido Feito" das Informações Gerenciais — esse modo conta todo pedido criado, inclusive Pix nunca pago. O modo "Produto Pago" fica ~2% do funil equivalente da Shopee: conta os pedidos válidos (pagos), mas a Shopee ainda soma alguns pedidos que foram PAGOS e depois CANCELADOS. Não dá pra igualar: no nosso extrato todo cancelado vem sem a hora do pagamento e com o valor zerado, então não conseguimos identificar quais cancelados pagaram (todos ficam idênticos). Somando esses ~2% de pedidos que faltam. A definição do funil não é pública, a Shopee mudou em 2026 e não tem API pra ela — ~2% é o piso. O modo Padrão exclui todos os cancelados.',
   },
   'Ticket Médio': {
     title: 'Ticket Médio',
@@ -493,8 +493,10 @@ export function MetricasView({
   const faturamentoField = config.criterio === 'pedido_feito' ? 'gross_revenue_all'
     : config.criterio === 'produto_pago' ? 'total_product_sales'
     : 'gross_revenue'
+  // Produto Pago conta orders_count (valido): incl_cancel somava TODOS os cancelados (+8% vs Shopee),
+  // mas a Shopee so conta os cancelados pagos (~poucos). orders_count fica ~2% (limite fórmula 2026).
   const pedidosField = config.criterio === 'pedido_feito' ? 'orders_count_all'
-    : config.criterio === 'produto_pago' ? 'orders_count_incl_cancel'
+    : config.criterio === 'produto_pago' ? 'orders_count'
     : 'orders_count'
   const faturamento = sum(current, faturamentoField) || sum(current, 'gross_revenue')
   // Base correta pra % de taxa: preço de venda dos produtos (sem frete/vouchers Shopee)
