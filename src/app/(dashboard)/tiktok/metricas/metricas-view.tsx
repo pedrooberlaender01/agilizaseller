@@ -25,6 +25,7 @@ export function MetricasView({
   daily,
   cancelBreakdown,
   affiliate,
+  adsSpend,
 }: {
   period: Period
   customFrom: string | null
@@ -33,7 +34,8 @@ export function MetricasView({
   byStatus: StatusCount[]
   daily: DailyRow[]
   cancelBreakdown: { total: number; naoPago: number; comprador: number; loja: number; outros: number }
-  affiliate: { commission: number; coverage: number }
+  affiliate: { commission: number; shipping: number; coverage: number }
+  adsSpend: number
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -132,9 +134,9 @@ export function MetricasView({
           <div className="h-px flex-1 bg-zinc-800" />
         </div>
         <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          <KpiCard label="Gasto em Ads" value="—" soon />
+          <KpiCard label="Gasto em Ads" value={fmtBrl(adsSpend)} icon="campaign" tone="red" sub="GMV Max (TikTok Ads)" />
           <KpiCard label="Comissão Afiliados" value={fmtBrl(affiliate.commission)} icon="handshake" tone="red" sub={affiliate.coverage > 0 ? `${fmtNum(affiliate.coverage)} pedidos com fee sync` : 'sync em andamento'} />
-          <KpiCard label="Frete Vendedor" value="—" soon />
+          <KpiCard label="Frete Vendedor" value={fmtBrl(affiliate.shipping)} icon="local_shipping" tone="red" sub="frete pago pela loja" />
           <KpiCard label="Taxas TikTok" value={fmtBrl(kpi.taxas)} icon="percent" tone="red" sub="comissão + taxas do período" />
           <KpiCard label="Repasse Liberado" value={fmtBrl(kpi.repasse)} icon="account_balance" tone="green" sub="settlements liberados" />
         </div>
