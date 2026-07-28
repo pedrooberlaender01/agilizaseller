@@ -283,7 +283,8 @@ export function PedidosView({
                   return (
                     <tr
                       key={o.id}
-                      className="border-b border-zinc-800/60 transition-colors hover:bg-white/5"
+                      onClick={() => router.push(`/tiktok/pedidos/${encodeURIComponent(o.order_id)}`)}
+                      className="cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-white/5"
                     >
                       <td className="px-6 py-4">
                         <p className="line-clamp-2 max-w-[340px] text-sm font-medium text-white">
