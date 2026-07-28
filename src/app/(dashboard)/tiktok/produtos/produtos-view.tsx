@@ -59,7 +59,10 @@ export function ProdutosView({
   status: string
   search: string
   statuses: string[]
-  totals: { total: number; ativos: number; naoPublicados: number; estoque: number }
+  totals: {
+    total: number; ativos: number; inativos: number; excluidos: number
+    estoqueAtivo: number; estoqueInativo: number; vendidos: number; receitaItens: number
+  }
 }) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -112,18 +115,22 @@ export function ProdutosView({
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
             <p className="text-[10px] uppercase tracking-wider text-slate-400">Total Produtos</p>
             <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.total)}</p>
-            <p className="mt-1 font-mono text-[11px] text-zinc-500">{fmtNum(totals.ativos)} ativos · {fmtNum(totals.naoPublicados)} não publicados</p>
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              {fmtNum(totals.ativos)} ativos · {fmtNum(totals.inativos)} inativos
+              {totals.excluidos > 0 && ` · ${fmtNum(totals.excluidos)} excluídos`}
+            </p>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400">Estoque Total</p>
-            <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.estoque)}</p>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Estoque (ativos)</p>
+            <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.estoqueAtivo)}</p>
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">+{fmtNum(totals.estoqueInativo)} em produtos inativos</p>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-wider text-slate-400">Vendidos (acumulado)</p>
-              <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-medium text-blue-200">Em breve</span>
-            </div>
-            <p className="mt-1 text-3xl font-semibold text-zinc-600">—</p>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Vendidos (acumulado)</p>
+            <p className="mt-1 text-3xl font-semibold text-white">{fmtNum(totals.vendidos)}</p>
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              R$ {totals.receitaItens.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} em itens
+            </p>
           </div>
         </div>
 
