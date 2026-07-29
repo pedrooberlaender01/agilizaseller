@@ -446,6 +446,7 @@ export interface ShopeeAccountHealth {
   listing_violation_count: number
   ongoing_punishment: any
   perf_raw_payload?: any
+  penalty_raw_payload?: any
 }
 
 export interface ShopeeReturnItem {

@@ -112,13 +112,13 @@ function StatusHeroCard({ snap }: { snap: ShopeeAccountHealth }) {
 
         <div className="flex items-center justify-between gap-md">
           <div className="flex flex-col">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Performance Rating</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Avaliação de Performance</span>
             <span className={cn('mt-1 inline-flex w-fit rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider', tone.cls)}>
               {ratingLabel(snap.overall_performance_rating)}
             </span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Penalty Points</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Pontos de Penalidade</span>
             <div className="mt-1 flex items-baseline gap-1">
               <span className={cn('text-[42px] font-bold leading-none', pTone.text)}>{snap.penalty_points}</span>
               <span className="text-xs text-zinc-500">/ 12</span>
@@ -193,12 +193,12 @@ function HistoryChart({
       <div className="flex flex-wrap items-center justify-between gap-md border-b border-white/8 p-lg">
         <div className="flex items-center gap-2">
           <Icon name="show_chart" className="text-zinc-600" />
-          <h3 className="text-base font-semibold text-white">Histórico de Penalty Points</h3>
+          <h3 className="text-base font-semibold text-white">Histórico de Pontos de Penalidade</h3>
         </div>
         <div className="flex items-center gap-md">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-zinc-50" />
-            <span className="text-xs text-zinc-500">Penalty Points</span>
+            <span className="text-xs text-zinc-500">Pontos de Penalidade</span>
           </div>
           <div className="flex rounded-lg border border-zinc-800 bg-[#050507] p-1">
             {([30, 60, 90] as PeriodDays[]).map((d) => (
@@ -258,7 +258,7 @@ function HistoryChart({
                 }}
                 labelStyle={{ color: '#94a3b8' }}
                 itemStyle={{ color: '#facc3c' }}
-                formatter={(v) => [`${v} pts`, 'Penalty']}
+                formatter={(v) => [`${v} pts`, 'Penalidade']}
               />
               <Area
                 type="monotone"
@@ -441,6 +441,60 @@ function MetricsDetailCard({ metrics }: { metrics: PerfMetric[] }) {
   )
 }
 
+type PenaltyPoint = {
+  issue_time: number
+  reference_id?: number | string
+  violation_type: number
+  latest_point_num: number
+  original_point_num?: number
+}
+
+// Shopee não documenta os códigos de violation_type publicamente (API só devolve o número).
+// Por isso mostramos o dado bruto (data + pontos + código) em vez de inventar um nome —
+// e linkamos pro Desempenho da Conta na Shopee, que mostra a descrição oficial em PT.
+function fmtUnixDate(unixSeconds: number): string {
+  return fmtSnapshotDate(new Date(unixSeconds * 1000).toISOString())
+}
+
+function PenaltyReportCard({ points }: { points: PenaltyPoint[] }) {
+  if (points.length === 0) return null
+  const sorted = [...points].sort((a, b) => b.issue_time - a.issue_time)
+
+  return (
+    <div className="col-span-12 border border-amber-500/25 bg-amber-500/[0.04] flex flex-col p-0">
+      <div className="flex items-center gap-2 border-b border-amber-500/15 p-lg">
+        <Icon name="report_problem" className="text-amber-400" filled />
+        <h3 className="text-base font-semibold text-white">Relatório de Penalidades — possíveis causas</h3>
+      </div>
+      <div className="flex flex-col gap-2 p-lg">
+        <p className="text-xs text-zinc-400">
+          A Shopee não expõe o nome da violação via API, só o código. Confira a descrição oficial clicando em
+          &quot;Ver na Shopee&quot;.
+        </p>
+        {sorted.map((p, i) => (
+          <div key={`${p.reference_id ?? i}-${p.issue_time}`} className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/15 bg-zinc-900/40 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                +{p.latest_point_num} pt{p.latest_point_num !== 1 ? 's' : ''}
+              </span>
+              <span className="text-sm text-zinc-300">Violação tipo {p.violation_type}</span>
+              <span className="font-mono text-[10px] text-zinc-600">{fmtUnixDate(p.issue_time)}</span>
+            </div>
+            <a
+              href="https://seller.shopee.com.br/portal/accounthealth/home"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 text-xs font-medium text-amber-300 hover:underline"
+            >
+              Ver na Shopee →
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function EmptyStateView({ nickname }: { nickname: string | null }) {
   return (
     <main className="flex flex-1 items-center justify-center p-margin">
@@ -513,6 +567,8 @@ export function SaudeView({
   const punishments = (Array.isArray(latest.ongoing_punishment) ? latest.ongoing_punishment : []) as Punishment[]
   const perfPayload = (latest.perf_raw_payload && typeof latest.perf_raw_payload === 'object' ? latest.perf_raw_payload : null) as { metric_list?: PerfMetric[] } | null
   const metrics = Array.isArray(perfPayload?.metric_list) ? perfPayload.metric_list : []
+  const penaltyPayload = (latest.penalty_raw_payload && typeof latest.penalty_raw_payload === 'object' ? latest.penalty_raw_payload : null) as { penalty_point_list?: PenaltyPoint[] } | null
+  const penaltyPoints = Array.isArray(penaltyPayload?.penalty_point_list) ? penaltyPayload.penalty_point_list : []
 
   return (
     <>
@@ -547,7 +603,7 @@ export function SaudeView({
 
           <div className="col-span-12 grid grid-cols-1 gap-gutter md:grid-cols-3 lg:col-span-8">
             <MetricCard
-              label="Penalty Points"
+              label="Pontos de Penalidade"
               value={latest.penalty_points}
               unit="/ 12"
               tone={penaltyTone(latest.penalty_points)}
@@ -555,20 +611,22 @@ export function SaudeView({
               hint="Suspensão automática em 12 pts. Verde até 3, amarelo 4–9, vermelho ≥10."
             />
             <MetricCard
-              label="Listing Violations"
+              label="Violações de Anúncios"
               value={latest.listing_violation_count}
               tone={violationsTone(latest.listing_violation_count)}
               icon="block"
               hint="Anúncios com violação ativa. Reduzir para evitar pontos adicionais."
             />
             <MetricCard
-              label="Performance Rating"
+              label="Avaliação de Performance"
               value={ratingLabel(latest.overall_performance_rating)}
               tone={r}
               icon={toneClasses[r].icon}
               hint="Avaliação consolidada de envios, cancelamentos e satisfação."
             />
           </div>
+
+          <PenaltyReportCard points={penaltyPoints} />
 
           <HistoryChart data={history} period={period} onPeriodChange={setPeriod} />
 
