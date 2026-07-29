@@ -73,15 +73,22 @@ export default async function TiktokMetricasPage({
 
   const { from, to } = periodRangeIso(period, customFrom, customTo)
 
-  const [metricsRes, financeRes, seriesRes, cancelRes, affiliateRes] = await Promise.all([
+  const [metricsRes, financeRes, seriesRes, cancelRes, affiliateRes, adsRes] = await Promise.all([
     supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_finance_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_daily_series', { p_from: from, p_to: to }),
     supabase.rpc('tt_cancel_breakdown', { p_from: from, p_to: to }),
     supabase.rpc('tt_affiliate_realtime', { p_from: from, p_to: to }),
+    supabase.rpc('tt_ads_realtime', { p_from: from, p_to: to }),
   ])
-  const af = (affiliateRes.data ?? {}) as { affiliate_commission?: number | string; coverage_orders?: number }
-  const affiliate = { commission: Number(af.affiliate_commission ?? 0), coverage: Number(af.coverage_orders ?? 0) }
+  const ads = (adsRes.data ?? {}) as { ads_spend?: number | string }
+  const adsSpend = Number(ads.ads_spend ?? 0)
+  const af = (affiliateRes.data ?? {}) as { affiliate_commission?: number | string; shipping_cost?: number | string; coverage_orders?: number }
+  const affiliate = {
+    commission: Number(af.affiliate_commission ?? 0),
+    shipping: Number(af.shipping_cost ?? 0),
+    coverage: Number(af.coverage_orders ?? 0),
+  }
   const cb = (cancelRes.data ?? {}) as { total?: number; nao_pago?: number; comprador?: number; loja?: number; outros?: number }
   const cancelBreakdown = {
     total: Number(cb.total ?? 0),
@@ -123,6 +130,7 @@ export default async function TiktokMetricasPage({
       daily={daily}
       cancelBreakdown={cancelBreakdown}
       affiliate={affiliate}
+      adsSpend={adsSpend}
     />
   )
 }

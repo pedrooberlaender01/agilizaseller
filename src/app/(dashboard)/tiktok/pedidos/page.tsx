@@ -22,7 +22,7 @@ function periodRangeIso(
   period: Period,
   customFrom: string | null,
   customTo: string | null,
-): { from: string; to: string | null } {
+): { from: string; to: string } {
   if (period === 'custom' && customFrom && customTo) {
     const f = new Date(customFrom + 'T00:00:00-03:00')
     const t = new Date(customTo + 'T00:00:00-03:00')
@@ -32,7 +32,7 @@ function periodRangeIso(
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return { from: d.toISOString(), to: null }
+  return { from: d.toISOString(), to: new Date().toISOString() }
 }
 
 function NoConnectionState() {
@@ -90,8 +90,8 @@ export default async function TiktokPedidosPage({
     .select('*, tt_order_items(quantity, unit_price, product_name)', { count: 'exact' })
     .eq('connection_id', conn.id)
     .gte('create_time', from)
+    .lt('create_time', to)
 
-  if (to) query = query.lt('create_time', to)
   const statusesArr = statusFilter ? statusFilter.split(',').filter(Boolean) : null
   if (statusesArr && statusesArr.length > 0) query = query.in('order_status', statusesArr)
   if (search) {

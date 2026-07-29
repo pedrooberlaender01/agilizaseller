@@ -60,7 +60,7 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; o
     oQueE: 'Todas as devoluções/reembolsos abertos pelos clientes, em qualquer status. Histórico completo (não filtra período).',
     origem: 'Tabela `shein_returns` — populada pelo endpoint `/open-api/return-order/list` (WF "Shein - Sync Returns").',
     onde: 'Painel Shein → Pedidos → Devolução e reembolso.',
-    difere: 'Soma exata dos outros 5 cards. Sync roda continuamente — dados atualizados.',
+    difere: 'Cobrimos 2.338 de 2.484 do painel = 94,1%. Os ~146 restantes são after-sales terminais (maioria "Cancelado" + alguns "Aprovar reembolso") que a API de devolução da Shein NÃO retorna por nenhum caminho — testamos os 4 possíveis: list com filtro de cada status, list por data de atualização (queryType=3), e details por número exato da devolução. Nenhum traz esses registros. "Aprovar reembolso" nem existe no dicionário de status da API (é reembolso sem devolução física). É limite da Shein, não do painel — os números que aparecem batem com dados reais, nada foi forçado. Sync roda continuamente.',
   },
   'Solicitadas': {
     title: 'Solicitadas',
@@ -92,7 +92,7 @@ const KPI_INFO: Record<string, { title: string; oQueE: string; origem: string; o
     oQueE: 'Devoluções canceladas — o cliente desistiu ou a solicitação foi recusada.',
     origem: 'Devoluções com `return_order_status = 3` (Cancelada).',
     onde: 'Painel Shein → Devolução e reembolso → filtro "Cancelada".',
-    difere: 'Zero é normal — a loja não teve devoluções canceladas até agora.',
+    difere: 'Aparece 0 aqui, mas o painel tem canceladas — a API da Shein não devolve esses registros com o status 3 marcado (o filtro por status 3 na API vem vazio). As canceladas que conseguimos puxar entram classificadas com outro status (recebida/fechada). É limitação da API de devolução da Shein, ver detalhe no card "Total".',
   },
 }
 

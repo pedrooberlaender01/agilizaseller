@@ -65,18 +65,27 @@ export default async function TiktokProdutosPage({
     .order('updated_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  // catalogo pequeno: puxa status+stock de todos p/ dedupe + agregados
-  const { data: allRows } = await supabase
-    .from('tt_products')
-    .select('status, stock')
-    .eq('connection_id', conn.id)
-  const rows = (allRows ?? []) as Array<{ status: string | null; stock: number | string | null }>
-  const statuses = Array.from(new Set(rows.map((r) => r.status).filter((s): s is string => !!s))).sort()
+  // status distintos p/ o filtro + totais alinhados ao painel (exclui DELETED do total, estoque so de ativos)
+  const [statusRes, totalsRes] = await Promise.all([
+    supabase.from('tt_products').select('status').eq('connection_id', conn.id),
+    supabase.rpc('tt_products_totals'),
+  ])
+  const statuses = Array.from(
+    new Set(((statusRes.data ?? []) as Array<{ status: string | null }>).map((r) => r.status).filter((s): s is string => !!s)),
+  ).sort()
+  const t = (totalsRes.data ?? {}) as {
+    total?: number; ativos?: number; inativos?: number; excluidos?: number
+    estoque_ativo?: number; estoque_inativo?: number; vendidos?: number; receita_itens?: number
+  }
   const totals = {
-    total: rows.length,
-    ativos: rows.filter((r) => r.status === 'ACTIVATE').length,
-    naoPublicados: rows.filter((r) => r.status && r.status !== 'ACTIVATE').length,
-    estoque: rows.reduce((a, r) => a + (Number(r.stock) || 0), 0),
+    total: Number(t.total ?? 0),
+    ativos: Number(t.ativos ?? 0),
+    inativos: Number(t.inativos ?? 0),
+    excluidos: Number(t.excluidos ?? 0),
+    estoqueAtivo: Number(t.estoque_ativo ?? 0),
+    estoqueInativo: Number(t.estoque_inativo ?? 0),
+    vendidos: Number(t.vendidos ?? 0),
+    receitaItens: Number(t.receita_itens ?? 0),
   }
 
   return (

@@ -1,58 +1,81 @@
+import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
-import { KpiCard } from '../_ui'
+import { createClient } from '@/lib/supabase/server'
+import { AnunciosView, type AdsDay } from './anuncios-view'
 
-// Estrutura espelhando /shopee/anuncios (aba Ads). Dados TikTok Ads ainda não integrados.
-const ADS_KPIS = [
-  'Saldo Conta Ads', 'Gasto Período', 'GMV Via Ads', 'ROAS Global', 'ACOS Global', '% Vendas via Ads',
-  'Impressões', 'Visitantes (Cliques)', 'CTR', 'Conversão Ampla', 'Conversão Direta', 'Custo / Conversão',
-]
-const COMPARATIVO = ['Faturamento Bruto', 'GMV via Ads', 'Gasto em Ads', 'Lucro Líquido']
+export const revalidate = 60
 
-export default function TiktokAnunciosPage() {
+type Period = '7d' | '30d' | '90d'
+
+function parsePeriod(raw: string | undefined): Period {
+  return raw === '7d' || raw === '90d' ? raw : '30d'
+}
+function periodRangeIso(period: Period): { from: string; to: string } {
+  const now = new Date()
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+  const d = new Date(now)
+  d.setDate(d.getDate() - days)
+  return { from: d.toISOString(), to: now.toISOString() }
+}
+
+export default async function TiktokAnunciosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>
+}) {
+  const sp = await searchParams
+  const period = parsePeriod(sp.period)
+
+  const supabase = await createClient()
+  const { data: conn } = await supabase
+    .from('marketplace_connections')
+    .select('id')
+    .eq('marketplace', 'tiktok_shop')
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+
+  if (!conn) {
+    return (
+      <>
+        <TopBar title="Anúncios — TikTok Shop" />
+        <main className="flex flex-1 items-center justify-center p-margin">
+          <div className="border border-zinc-800 bg-zinc-900/40 flex max-w-md flex-col items-center gap-md rounded-2xl p-xl text-center">
+            <span className="material-symbols-outlined text-4xl text-zinc-50">link_off</span>
+            <h2 className="text-h2 font-semibold text-zinc-50">Sem conexão TikTok Shop ativa</h2>
+            <Link href="/configuracoes" className="mt-2 inline-flex items-center gap-2 rounded-lg bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100">
+              <span className="material-symbols-outlined text-[18px]">link</span>
+              Ir para Configurações
+            </Link>
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  const { from, to } = periodRangeIso(period)
+
+  const [adsRes, seriesRes, metricsRes] = await Promise.all([
+    supabase.rpc('tt_ads_realtime', { p_from: from, p_to: to }),
+    supabase.rpc('tt_ads_series', { p_from: from, p_to: to }),
+    supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
+  ])
+
+  const a = (adsRes.data ?? {}) as { ads_spend?: number | string; payments_count?: number }
+  const m = (metricsRes.data ?? {}) as { gross_revenue?: number | string }
+  const series = ((seriesRes.data ?? []) as Array<{ dia: string; gasto: number | string; cobrancas: number }>)
+    .map((r) => ({ dia: r.dia, gasto: Math.abs(Number(r.gasto)), cobrancas: Number(r.cobrancas) })) as AdsDay[]
+
+  const gasto = Math.abs(Number(a.ads_spend ?? 0))
+  const faturamento = Number(m.gross_revenue ?? 0)
+
   return (
-    <>
-      <TopBar title="Anúncios — TikTok Shop" />
-      <main className="overflow-y-auto p-margin">
-        {/* Tabs */}
-        <div className="mb-lg flex items-center gap-1 border-b border-zinc-800">
-          <span className="border-b-2 border-white px-3 pb-2 text-sm font-medium text-white">Ads</span>
-          <span className="px-3 pb-2 text-sm font-medium text-zinc-500">Anúncios (catálogo → ver Produtos)</span>
-        </div>
-
-        {/* Hero resumo de ontem */}
-        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-5">
-          {['Investido', 'Vendido (GMV Ads)', 'Pedidos Ads', 'ROAS', '% sobre Bruto'].map((l) => (
-            <KpiCard key={l} label={l} value="—" soon />
-          ))}
-        </div>
-
-        {/* KPIs período */}
-        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          {ADS_KPIS.map((l) => (
-            <KpiCard key={l} label={l} value="—" soon />
-          ))}
-        </div>
-
-        {/* Comparativo */}
-        <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-4">
-          {COMPARATIVO.map((l) => (
-            <KpiCard key={l} label={l} value="—" soon />
-          ))}
-        </div>
-
-        {/* Tabela de campanhas (vazia) */}
-        <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
-          <div className="border-b border-white/10 p-lg">
-            <h3 className="font-h3 text-h3 text-white">Campanhas</h3>
-            <p className="font-mono-sm text-mono-sm uppercase tracking-[0.18em] text-slate-500">TikTok Ads API — não integrado</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-3xl text-zinc-600">campaign</span>
-            <p className="text-sm text-zinc-500">Integração de Ads pendente.</p>
-            <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[11px] font-medium text-blue-200">Em breve</span>
-          </div>
-        </div>
-      </main>
-    </>
+    <AnunciosView
+      period={period}
+      gasto={gasto}
+      cobrancas={Number(a.payments_count ?? 0)}
+      faturamento={faturamento}
+      series={series}
+    />
   )
 }
