@@ -93,7 +93,7 @@ export function PedidosView({
 }: {
   orders: OrderRow[]
   totalCount: number
-  periodTotals: { gmv: number; count: number; ticket: number; cancelled: number }
+  periodTotals: { gmv: number; count: number; ticket: number; cancelled: number; repasseReal: number; escrowSyncPct: number }
   page: number
   period: Period
   customFrom: string | null
@@ -181,9 +181,9 @@ export function PedidosView({
         <div className="mb-lg grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           <KpiCard label="Pedidos" value={fmtNum(periodTotals.count)} icon="shopping_cart" />
           <KpiCard label="Faturamento" value={fmtBrlUi(periodTotals.gmv)} icon="payments" tone="green" />
-          <KpiCard label="Repasse Real" value="—" soon />
+          <KpiCard label="Repasse Real" value={fmtBrlUi(periodTotals.repasseReal)} icon="account_balance_wallet" tone="green" sub="pedidos já liquidados" />
           <KpiCard label="Ticket Médio" value={fmtBrlUi(periodTotals.ticket)} icon="receipt_long" />
-          <KpiCard label="Escrow Sync" value="—" soon />
+          <KpiCard label="Escrow Sync" value={fmtPct(periodTotals.escrowSyncPct)} icon="sync" sub="pedidos já liquidados pelo TikTok" />
           <KpiCard
             label="Cancelados"
             value={fmtPct(periodTotals.count + periodTotals.cancelled > 0 ? (periodTotals.cancelled / (periodTotals.count + periodTotals.cancelled)) * 100 : 0)}
