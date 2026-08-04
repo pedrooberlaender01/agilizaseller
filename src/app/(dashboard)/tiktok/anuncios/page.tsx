@@ -54,17 +54,27 @@ export default async function TiktokAnunciosPage({
   }
 
   const { from, to } = periodRangeIso(period)
+  const fromDate = from.slice(0, 10)
+  const toDate = to.slice(0, 10)
 
-  const [adsRes, seriesRes, metricsRes] = await Promise.all([
+  const [adsRes, seriesRes, metricsRes, campaignsRes] = await Promise.all([
     supabase.rpc('tt_ads_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_ads_series', { p_from: from, p_to: to }),
     supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
+    supabase.rpc('tt_ads_campaigns_table', { p_from: fromDate, p_to: toDate }),
   ])
 
   const a = (adsRes.data ?? {}) as { ads_spend?: number | string; payments_count?: number }
   const m = (metricsRes.data ?? {}) as { gross_revenue?: number | string }
   const series = ((seriesRes.data ?? []) as Array<{ dia: string; gasto: number | string; cobrancas: number }>)
     .map((r) => ({ dia: r.dia, gasto: Math.abs(Number(r.gasto)), cobrancas: Number(r.cobrancas) })) as AdsDay[]
+  const campaigns = (campaignsRes.data ?? []) as Array<{
+    campaign_id: string; campaign_name: string | null; operation_status: string | null
+    secondary_status: string | null; spend: number | string; orders: number
+    gross_revenue: number | string; roi: number | string | null
+    impressions: number | string | null; clicks: number | string | null; ctr: number | string | null
+    live_views: number | string | null; live_follows: number | string | null
+  }>
 
   const gasto = Math.abs(Number(a.ads_spend ?? 0))
   const faturamento = Number(m.gross_revenue ?? 0)
@@ -76,6 +86,7 @@ export default async function TiktokAnunciosPage({
       cobrancas={Number(a.payments_count ?? 0)}
       faturamento={faturamento}
       series={series}
+      campaigns={campaigns}
     />
   )
 }
