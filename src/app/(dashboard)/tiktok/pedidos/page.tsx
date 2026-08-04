@@ -99,12 +99,13 @@ export default async function TiktokPedidosPage({
     query = query.or(`order_id.ilike.%${term}%,buyer_name.ilike.%${term}%`)
   }
 
-  const [pageResult, statusesResult, metricsResult] = await Promise.all([
+  const [pageResult, statusesResult, metricsResult, extraResult] = await Promise.all([
     query
       .order('create_time', { ascending: false, nullsFirst: false })
       .range(offset, offset + PAGE_SIZE - 1),
     supabase.rpc('tt_distinct_order_statuses'),
     supabase.rpc('tt_metrics_realtime', { p_from: from, p_to: to }),
+    supabase.rpc('tt_pedidos_kpis_extra', { p_from: from, p_to: to }),
   ])
   const { data, count } = pageResult
   const uniqueStatuses = ((statusesResult.data ?? []) as Array<{ status: string | null }>)
@@ -112,11 +113,14 @@ export default async function TiktokPedidosPage({
     .filter((s): s is string => !!s)
 
   const m = (metricsResult.data ?? {}) as { orders_count?: number; gross_revenue?: number | string; ticket_medio?: number | string; cancelled?: number }
+  const e = (extraResult.data ?? {}) as { repasse_real?: number | string; escrow_sync_pct?: number | string }
   const periodTotals = {
     gmv: Number(m.gross_revenue ?? 0),
     count: Number(m.orders_count ?? 0),
     ticket: Number(m.ticket_medio ?? 0),
     cancelled: Number(m.cancelled ?? 0),
+    repasseReal: Number(e.repasse_real ?? 0),
+    escrowSyncPct: Number(e.escrow_sync_pct ?? 0),
   }
 
   return (
