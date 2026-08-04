@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { TopBar } from '@/components/top-bar'
 import { createClient } from '@/lib/supabase/server'
-import { FinanceiroView, type StatementRow } from './financeiro-view'
+import { FinanceiroView, type StatementRow, type TransactionRow, type OrderFeeRow, type WithdrawalRow } from './financeiro-view'
 
 export const revalidate = 60
 
@@ -73,7 +73,7 @@ export default async function TiktokFinanceiroPage({
   const { from, to } = periodRangeIso(period, customFrom, customTo)
   const offset = (page - 1) * PAGE_SIZE
 
-  const [kpiResult, affiliateResult, listResult] = await Promise.all([
+  const [kpiResult, affiliateResult, listResult, adsResult, transactionsResult, orderFeesResult, withdrawalsResult, settlesResult] = await Promise.all([
     supabase.rpc('tt_finance_realtime', { p_from: from, p_to: to }),
     supabase.rpc('tt_affiliate_realtime', { p_from: from, p_to: to }),
     supabase
@@ -84,6 +84,34 @@ export default async function TiktokFinanceiroPage({
       .lt('statement_time', to)
       .order('statement_time', { ascending: false, nullsFirst: false })
       .range(offset, offset + PAGE_SIZE - 1),
+    supabase.rpc('tt_ads_realtime', { p_from: from, p_to: to }),
+    supabase
+      .from('tt_statement_transactions')
+      .select('transaction_id, statement_id, type, settlement_amount, order_create_time', { count: 'exact' })
+      .eq('connection_id', conn.id)
+      .gte('order_create_time', from)
+      .lt('order_create_time', to)
+      .order('order_create_time', { ascending: false, nullsFirst: false })
+      .limit(500),
+    supabase.rpc('tt_order_fees_paid', { p_from: from, p_to: to }),
+    supabase
+      .from('tt_withdrawals')
+      .select('withdrawal_id, type, amount, currency, status, create_time', { count: 'exact' })
+      .eq('connection_id', conn.id)
+      .eq('type', 'WITHDRAW')
+      .gte('create_time', from)
+      .lt('create_time', to)
+      .order('create_time', { ascending: false, nullsFirst: false })
+      .limit(500),
+    supabase
+      .from('tt_withdrawals')
+      .select('withdrawal_id, type, amount, currency, status, create_time', { count: 'exact' })
+      .eq('connection_id', conn.id)
+      .eq('type', 'SETTLE')
+      .gte('create_time', from)
+      .lt('create_time', to)
+      .order('create_time', { ascending: false, nullsFirst: false })
+      .limit(500),
   ])
 
   const kpi = (kpiResult.data ?? { statements: 0, repasse: 0, taxas: 0, receita: 0 }) as {
@@ -91,6 +119,19 @@ export default async function TiktokFinanceiroPage({
   }
   const af = (affiliateResult.data ?? {}) as { affiliate_commission?: number | string }
   const affiliateCommission = Number(af.affiliate_commission ?? 0)
+  const a = (adsResult.data ?? {}) as { ads_spend?: number | string }
+  const adsSpend = Math.abs(Number(a.ads_spend ?? 0))
+  const of = (orderFeesResult.data ?? {}) as {
+    summary?: { orders_count?: number; platform?: number | string; sfp?: number | string; fee_per_item?: number | string }
+    list?: OrderFeeRow[]
+  }
+  const orderFeesSummary = {
+    ordersCount: Number(of.summary?.orders_count ?? 0),
+    platform: Number(of.summary?.platform ?? 0),
+    sfp: Number(of.summary?.sfp ?? 0),
+    feePerItem: Number(of.summary?.fee_per_item ?? 0),
+  }
+  const orderFeesList = (of.list ?? []) as OrderFeeRow[]
 
   return (
     <FinanceiroView
@@ -100,9 +141,19 @@ export default async function TiktokFinanceiroPage({
         taxas: Number(kpi.taxas ?? 0),
         receita: Number(kpi.receita ?? 0),
         afiliados: affiliateCommission,
+        ads: adsSpend,
       }}
       statements={(listResult.data ?? []) as StatementRow[]}
       totalCount={listResult.count ?? 0}
+      transactions={(transactionsResult.data ?? []) as TransactionRow[]}
+      transactionsTotalCount={transactionsResult.count ?? 0}
+      orderFees={orderFeesList}
+      orderFeesTotalCount={orderFeesSummary.ordersCount}
+      orderFeesSummary={orderFeesSummary}
+      withdrawals={(withdrawalsResult.data ?? []) as WithdrawalRow[]}
+      withdrawalsTotalCount={withdrawalsResult.count ?? 0}
+      settles={(settlesResult.data ?? []) as WithdrawalRow[]}
+      settlesTotalCount={settlesResult.count ?? 0}
       page={page}
       period={period}
       customFrom={period === 'custom' ? customFrom : null}
