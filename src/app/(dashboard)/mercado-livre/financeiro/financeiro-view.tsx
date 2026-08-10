@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom'
 import { TopBar } from '@/components/top-bar'
 import type { Period } from '@/components/metrics-chart'
 import { DateRangePopover, fmtDateBRShort, fmtDateBRFull } from '@/components/date-range-popover'
-import { saveMlAffiliateData, deleteMlAffiliateEntry, type AffiliateEntry } from '@/app/actions/mercadolivre'
 import { cn } from '@/lib/utils'
 
 const periods: { key: Period; label: string }[] = [
@@ -67,228 +66,6 @@ function shortDate(iso: string): string {
   return `${d}/${m}`
 }
 
-function AffiliateModal({
-  defaultFrom,
-  defaultTo,
-  entries,
-  onClose,
-}: {
-  defaultFrom: string
-  defaultTo: string
-  entries: AffiliateEntry[]
-  onClose: () => void
-}) {
-  const router = useRouter()
-  const [saving, startSaving] = useTransition()
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [from, setFrom] = useState(defaultFrom)
-  const [to, setTo] = useState(defaultTo)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [affiliatesCount, setAffiliatesCount] = useState('')
-  const [soldAmount, setSoldAmount] = useState('')
-  const [soldUnits, setSoldUnits] = useState('')
-  const [estimatedCost, setEstimatedCost] = useState('')
-
-  const parseNum = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0
-  const parseInt2 = (s: string) => Math.round(parseNum(s))
-  const intToInput = (n: number) => (n ? maskIntBR(String(n)) : '')
-  const decToInput = (n: number) => (n ? fmtBrl(n) : '')
-
-  function resetForm() {
-    setEditingId(null)
-    setFrom(defaultFrom)
-    setTo(defaultTo)
-    setAffiliatesCount('')
-    setSoldAmount('')
-    setSoldUnits('')
-    setEstimatedCost('')
-    setErr(null)
-  }
-
-  function editEntry(e: AffiliateEntry) {
-    setEditingId(e.id)
-    setFrom(e.date_from)
-    setTo(e.date_to)
-    setAffiliatesCount(intToInput(e.affiliates_count))
-    setSoldAmount(decToInput(e.sold_amount))
-    setSoldUnits(intToInput(e.sold_units))
-    setEstimatedCost(decToInput(e.estimated_cost))
-    setErr(null)
-  }
-
-  function save() {
-    setErr(null)
-    startSaving(async () => {
-      const res = await saveMlAffiliateData({
-        id: editingId ?? undefined,
-        from,
-        to,
-        affiliatesCount: parseInt2(affiliatesCount),
-        soldAmount: parseNum(soldAmount),
-        soldUnits: parseInt2(soldUnits),
-        estimatedCost: parseNum(estimatedCost),
-      })
-      if (res.ok) {
-        resetForm()
-        router.refresh()
-      } else {
-        setErr(res.error ?? 'Erro ao salvar')
-      }
-    })
-  }
-
-  function removeEntry(id: string) {
-    setErr(null)
-    setBusyId(id)
-    startSaving(async () => {
-      const res = await deleteMlAffiliateEntry(id)
-      setBusyId(null)
-      if (res.ok) {
-        if (editingId === id) resetForm()
-        router.refresh()
-      } else {
-        setErr(res.error ?? 'Erro ao remover')
-      }
-    })
-  }
-
-  const inputCls = 'w-full rounded-lg border border-white/10 bg-[#050507] px-3 py-2 text-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary'
-
-  if (typeof document === 'undefined') return null
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
-      <div style={{ width: 'min(460px, 92vw)' }} className={cn('max-h-[90vh] rounded-2xl border border-white/10 bg-[#0d1117] p-6', pickerOpen ? 'overflow-visible' : 'overflow-y-auto')} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-on-surface">{editingId ? 'Editar registro' : 'Dados de Afiliados'}</h3>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-on-surface-variant hover:bg-white/10 hover:text-on-surface">
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
-        </div>
-        <p className="mb-4 text-xs text-on-surface-variant">
-          Lançamento manual — o ML não expõe afiliados por API. Copie do painel <span className="text-on-surface">Venda com afiliados → Métricas de afiliados</span>. O card agrega os registros na proporção do período filtrado.
-        </p>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1 text-xs text-on-surface-variant">
-            Período
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setPickerOpen((v) => !v)}
-                className={`${inputCls} flex items-center justify-between text-left`}
-              >
-                <span className="text-on-surface">{fmtDateBRFull(from)} <span className="text-on-surface-variant">—</span> {fmtDateBRFull(to)}</span>
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">calendar_month</span>
-              </button>
-              {pickerOpen && (
-                <DateRangePopover
-                  from={from}
-                  to={to}
-                  align="left"
-                  onApply={(f, t) => {
-                    setFrom(f)
-                    setTo(t)
-                    setPickerOpen(false)
-                  }}
-                  onClose={() => setPickerOpen(false)}
-                />
-              )}
-            </div>
-          </div>
-          <label className="flex flex-col gap-1 text-xs text-on-surface-variant">
-            Afiliados
-            <input type="text" inputMode="numeric" value={affiliatesCount} onChange={(e) => setAffiliatesCount(maskIntBR(e.target.value))} placeholder="0" className={inputCls} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-on-surface-variant">
-            Vendas (R$)
-            <input type="text" inputMode="decimal" value={soldAmount} onChange={(e) => setSoldAmount(maskDecimalBR(e.target.value))} placeholder="0,00" className={inputCls} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-on-surface-variant">
-            Unidades vendidas
-            <input type="text" inputMode="numeric" value={soldUnits} onChange={(e) => setSoldUnits(maskIntBR(e.target.value))} placeholder="0" className={inputCls} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-on-surface-variant">
-            Custo estimado (R$)
-            <input type="text" inputMode="decimal" value={estimatedCost} onChange={(e) => setEstimatedCost(maskDecimalBR(e.target.value))} placeholder="0,00" className={inputCls} />
-          </label>
-        </div>
-        {err && <p className="mt-2 text-xs text-error">{err}</p>}
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => (editingId ? resetForm() : onClose())}
-            className="rounded-lg px-4 py-2 text-sm text-on-surface-variant hover:bg-white/5 hover:text-on-surface"
-          >
-            {editingId ? 'Cancelar edição' : 'Fechar'}
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-primary/90 disabled:opacity-50"
-          >
-            {saving ? 'Salvando…' : editingId ? 'Atualizar registro' : 'Adicionar registro'}
-          </button>
-        </div>
-
-        <div className="mt-6 border-t border-white/10 pt-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-            Registros ({entries.length})
-          </p>
-          {entries.length === 0 ? (
-            <p className="text-xs text-on-surface-variant/70">Nenhum registro lançado ainda.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {entries.map((e) => {
-                const isEditing = editingId === e.id
-                return (
-                  <div
-                    key={e.id}
-                    className={cn(
-                      'flex items-center justify-between gap-2 rounded-lg border px-3 py-2',
-                      isEditing ? 'border-primary/40 bg-primary/5' : 'border-white/10 bg-[#050507]',
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-on-surface">
-                        {fmtDateBRShort(e.date_from)} — {fmtDateBRShort(e.date_to)}
-                        <span className="ml-2 font-mono text-error">R$ {fmtBrl(e.estimated_cost)}</span>
-                      </p>
-                      <p className="truncate text-[11px] text-on-surface-variant">
-                        R$ {fmtBrl(e.sold_amount)} em vendas · {e.sold_units} un · {e.affiliates_count} afiliados
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => editEntry(e)}
-                        className="rounded-md p-1.5 text-on-surface-variant hover:bg-white/10 hover:text-primary"
-                        aria-label="Editar"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeEntry(e.id)}
-                        disabled={busyId === e.id}
-                        className="rounded-md p-1.5 text-on-surface-variant hover:bg-white/10 hover:text-error disabled:opacity-50"
-                        aria-label="Remover"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">{busyId === e.id ? 'hourglass_empty' : 'delete'}</span>
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  )
-}
 
 export function FinanceiroView({
   rows,
@@ -297,8 +74,6 @@ export function FinanceiroView({
   afiliadoCost,
   afiliadoVendas,
   afiliadoUnidades,
-  afiliadoCount,
-  affiliateEntries,
   billingPeriods,
   defaultFrom,
   defaultTo,
@@ -312,8 +87,6 @@ export function FinanceiroView({
   afiliadoCost: number
   afiliadoVendas: number
   afiliadoUnidades: number
-  afiliadoCount: number
-  affiliateEntries: AffiliateEntry[]
   billingPeriods: { key: string; from: string; to: string; status: string; rows: { categoria: string; valor: number }[]; total: number }[]
   defaultFrom: string
   defaultTo: string
@@ -326,7 +99,6 @@ export function FinanceiroView({
   const [pending, startTransition] = useTransition()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [openInfo, setOpenInfo] = useState<string | null>(null)
-  const [affiliateModal, setAffiliateModal] = useState(false)
   const [billingKey, setBillingKey] = useState(billingPeriods[0]?.key ?? '')
   const [billingOpen, setBillingOpen] = useState(false)
   const billingRef = useRef<HTMLDivElement>(null)
@@ -391,7 +163,7 @@ export function FinanceiroView({
   const margemPct = faturamento > 0 ? (margem / faturamento) * 100 : 0
   const adsPct = faturamento > 0 ? (ads / faturamento) * 100 : 0
 
-  type MacroSub = { label: string; value: string; sign: string; tone: string; sub: string; info: ReactNode; action?: 'affiliate' }
+  type MacroSub = { label: string; value: string; sign: string; tone: string; sub: string; info: ReactNode }
   const macroSubs: MacroSub[] = [
     {
       label: 'Faturamento', value: fmtBrlInt(faturamento), sign: '', tone: 'text-on-surface', sub: 'vendas concluídas (líquido)',
@@ -487,6 +259,21 @@ export function FinanceiroView({
         </>
       ),
     },
+    {
+      label: 'Comissão Afiliados', value: `R$ ${fmtBrl(afiliadoCost)}`, icon: 'group', tone: 'text-error',
+      info: (
+        <>
+          Comissão paga aos afiliados/creators do <span className="text-on-surface">Programa de Afiliados do ML</span>, somada venda a venda no período.
+          <br /><br />
+          {afiliadoVendas > 0 ? (
+            <>Geraram <span className="text-on-surface">R$ {fmtBrl(afiliadoVendas)}</span> em vendas · <span className="text-on-surface">{fmtNum(afiliadoUnidades)}</span> unidades.<br /><br /></>
+          ) : null}
+          <span className="font-semibold text-on-background">Onde conferir no ML:</span> Faturamento → Tarifas e pagamentos → <span className="text-on-surface">&quot;Tarifas do programa de afiliados&quot;</span>.
+          <br /><br />
+          <span className="text-tertiary">O ML cobra o afiliado com ~2 meses de atraso</span> — a comissão de uma venda só aparece quando entra na fatura. Por isso os períodos mais recentes ficam zerados até o ML faturar.
+        </>
+      ),
+    },
   ]
 
   const totalMix = paymentMix.reduce((a, m) => a + m.qtd, 0)
@@ -519,9 +306,6 @@ export function FinanceiroView({
 
   return (
     <>
-      {affiliateModal && (
-        <AffiliateModal defaultFrom={defaultFrom} defaultTo={defaultTo} entries={affiliateEntries} onClose={() => setAffiliateModal(false)} />
-      )}
       <TopBar showSearch />
       <div className={cn('p-margin flex flex-col gap-gutter flex-1 overflow-y-auto', pending && 'opacity-70 pointer-events-none transition-opacity')}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -630,15 +414,6 @@ export function FinanceiroView({
                     </div>
                     <div className={cn('font-h3 text-h3 mt-1', s.tone)}>{s.sign}{s.value}</div>
                     <div className="text-[10px] text-on-surface-variant/70 mt-0.5">{s.sub}</div>
-                    {s.action === 'affiliate' && (
-                      <button
-                        type="button"
-                        onClick={() => setAffiliateModal(true)}
-                        className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-white/10 px-2 py-0.5 text-[10px] text-on-surface-variant transition-colors hover:bg-white/5 hover:text-on-surface"
-                      >
-                        <span className="material-symbols-outlined text-[12px]">edit</span> Preencher
-                      </button>
-                    )}
                   </div>
                 )
               })}
@@ -647,7 +422,7 @@ export function FinanceiroView({
         </div>
 
         {/* KPIs secundários */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-gutter">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-gutter">
           {secondaryKpis.map((kpi, i) => {
             const open = openInfo === kpi.label
             const alignRight = i >= secondaryKpis.length - 2
