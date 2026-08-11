@@ -163,8 +163,14 @@ export function AdsView({
     },
     {
       label: '% Vendas via Ads', value: faturamento > 0 ? fmtPct(t.pctVendas) : '—', icon: 'campaign', tone: 'text-on-surface',
-      sub: 'do faturamento do período',
-      info: <>Fatia do faturamento que veio de anúncios pagos. Base: vendas concluídas do período (mesma do Financeiro).</>,
+      sub: 'vendido via Ads ÷ faturamento',
+      info: (
+        <>
+          Fatia do <span className="text-on-surface">faturamento total</span> que veio de anúncios pagos. Base: vendas concluídas do período (mesma do Financeiro).
+          <br /><br />
+          <span className="text-tertiary">Não compare com o % do painel do ML</span> — lá o cálculo é sobre <span className="text-on-surface">só os itens anunciados</span> e em nº de vendas, não em faturamento. São perguntas diferentes; a daqui é &quot;quanto do meu faturamento veio de Ads&quot;.
+        </>
+      ),
     },
     {
       label: 'Impressões', value: fmtNum(t.prints), icon: 'visibility', tone: 'text-on-surface',
@@ -345,10 +351,19 @@ export function AdsView({
                 <tbody className="divide-y divide-white/5">
                   {tableRows.map((r) => {
                     const roas = r.cost > 0 ? r.gmv / r.cost : 0
+                    const hojeIso = new Date().toISOString().slice(0, 10)
+                    const parcial = r.date === hojeIso
                     return (
                       <tr key={r.date} className="relative hover:bg-white/[0.02]">
                         <td className="px-lg py-3 text-on-surface">
-                          <span className="relative z-10">{shortDate(r.date)}</span>
+                          <span className="relative z-10">
+                            {shortDate(r.date)}
+                            {parcial && (
+                              <span className="ml-1.5 rounded bg-tertiary/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-tertiary">
+                                parcial
+                              </span>
+                            )}
+                          </span>
                           <span
                             className="absolute inset-y-0 left-0 bg-primary/10"
                             style={{ width: `${(r.cost / maxCost) * 100}%` }}
